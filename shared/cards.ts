@@ -1,7 +1,12 @@
 import type { RewardType } from "./enemy-definitions";
 import { chanceWithLuck } from "./luck-research";
+import { proceduralMapNumber } from "./procedural-map-core";
+import type { WoodTreeKind } from "./woodcutting";
 
-/** Cards: a rare drop from every campaign enemy and boss, switched on in the Cards tab (active-cards.ts). */
+/**
+ * Cards: a rare drop from every campaign enemy and boss, from Endless bosses (one Warden card per band of ten maps)
+ * and from two kinds of tree, switched on in the Cards tab (active-cards.ts).
+ */
 
 export type CardRarity = "regular" | "elite" | "boss";
 /** A card's type: a weapon (HAND), helmet (HEAD) or armor (CHEST) card. */
@@ -19,7 +24,7 @@ export type CardEffectId =
   | "eliteGuard" | "raceGuard" | "shield" | "panicHeal" | "lastStand" | "web" | "prism"
   // Utility
   | "fleetFoot" | "longShot" | "statGain" | "allStatGain" | "cardHunter" | "treasure" | "respawn" | "miningSpeed"
-  | "oreFind" | "starshardFind";
+  | "oreFind" | "starshardFind" | "woodcuttingSpeed" | "logFind" | "onward";
 
 /** A negative value is a cost. Boss cards may override an effect's chance, share, seconds or targets. */
 export type CardEffect = {
@@ -42,6 +47,14 @@ export type CardDefinition = {
   rarity: CardRarity;
   slot: CardSlot;
   effects: readonly CardEffect[];
+  /** An Endless boss card: the Wardens of maps `from` to `to` (no end when missing) drop it. */
+  endless?: { from: number; to?: number };
+  /** A tree card: felling this kind of tree drops it. */
+  tree?: WoodTreeKind;
+  /** Fells (or kills) per drop in play, for a card whose odds are not its rarity's. */
+  outcomes?: number;
+  /** Left out of the Card Seller, so adding it never changed what an old tab and the server offer. */
+  shop?: false;
 };
 
 /** Kills per card drop as designed; for bosses, boss kills. */
@@ -64,12 +77,14 @@ export const cardMeterFull = (rarity: CardRarity) => CARD_DROP_OUTCOMES[rarity] 
 /** One kill's chance at its card: `odds` kills' worth out of `outcomes`, raised by Card Luck, never past certainty. */
 export const cardDropChance = (outcomes: number, odds: number, cardLuckRank = 0) =>
   outcomes > 0 ? chanceWithLuck(odds / outcomes, "cardLuck", cardLuckRank) : 0;
+/** Kills (fells for a tree card) per drop in play: the card's own odds, or its rarity's. */
+export const cardOutcomes = (card: Pick<CardDefinition, "rarity" | "outcomes">) => card.outcomes ?? CARD_DROP_OUTCOMES[card.rarity];
 /** One kill's chance at this card as the server rolls it: Card Hunter cards raise the odds, Card Luck the chance. */
-export const cardKillChance = (card: Pick<CardDefinition, "rarity">, cardHunter = 0, cardLuckRank = 0) =>
-  cardDropChance(CARD_DROP_OUTCOMES[card.rarity], 1 + Math.max(0, cardHunter), cardLuckRank);
+export const cardKillChance = (card: Pick<CardDefinition, "rarity" | "outcomes">, cardHunter = 0, cardLuckRank = 0) =>
+  cardDropChance(cardOutcomes(card), 1 + Math.max(0, cardHunter), cardLuckRank);
 /** Kills from an empty meter to a sure drop: each kill fills it by the Card Hunter odds (Card Luck does not). */
-export const cardSureByKills = (card: Pick<CardDefinition, "rarity">, cardHunter = 0) =>
-  Math.ceil(cardMeterFull(card.rarity) / (1 + Math.max(0, cardHunter)) - 1e-9);
+export const cardSureByKills = (card: Pick<CardDefinition, "rarity" | "outcomes">, cardHunter = 0) =>
+  Math.ceil(cardOutcomes(card) * CARD_METER_MULTIPLE / (1 + Math.max(0, cardHunter)) - 1e-9);
 
 export const CARDS: readonly CardDefinition[] = Object.freeze([
   { id: "bramble_card", enemy: "Bramble", mapId: "tutorial_forest", tier: 1, rarity: "regular", slot: "CHEST",
@@ -344,11 +359,32 @@ export const CARDS: readonly CardDefinition[] = Object.freeze([
     effects: [{ effect: "critChance", value: 1.4 }, { effect: "critDamage", value: 8 }] },
   { id: "aegis_prime_card", enemy: "Aegis Prime", mapId: "ion_citadel", tier: 15, rarity: "boss", slot: "CHEST",
     effects: [{ effect: "shield", value: 25, seconds: 6 }, { effect: "bossGuard", value: 10 }] },
+  // Endless: one Warden card for each band of ten maps, at the boss odds.
+  { id: "warden_i_card", enemy: "Warden I", mapId: "endless", tier: 15, rarity: "boss", slot: "CHEST", endless: { from: 1, to: 10 }, shop: false,
+    effects: [{ effect: "maxHealth", value: 7 }, { effect: "bossGuard", value: 12 }] },
+  { id: "warden_ii_card", enemy: "Warden II", mapId: "endless", tier: 15, rarity: "boss", slot: "HEAD", endless: { from: 11, to: 20 }, shop: false,
+    effects: [{ effect: "onward", value: 1 }] },
+  { id: "warden_iii_card", enemy: "Warden III", mapId: "endless", tier: 15, rarity: "boss", slot: "HAND", endless: { from: 21, to: 30 }, shop: false,
+    effects: [{ effect: "bossSlayer", value: 15 }, { effect: "atk", value: 5 }] },
+  { id: "warden_iv_card", enemy: "Warden IV", mapId: "endless", tier: 15, rarity: "boss", slot: "HEAD", endless: { from: 31, to: 40 }, shop: false,
+    effects: [{ effect: "cardHunter", value: 20 }] },
+  { id: "warden_v_card", enemy: "Warden V", mapId: "endless", tier: 15, rarity: "boss", slot: "CHEST", endless: { from: 41, to: 50 }, shop: false,
+    effects: [{ effect: "shield", value: 9 }, { effect: "armor", value: 8 }] },
+  { id: "warden_vi_card", enemy: "Warden VI", mapId: "endless", tier: 15, rarity: "boss", slot: "HAND", endless: { from: 51 }, shop: false,
+    effects: [{ effect: "critDamage", value: 16 }, { effect: "doubleStrike", value: 2 }] },
+  // Timberwood: felling the tree drops its card, at odds of its own.
+  { id: "oak_tree_card", enemy: "Oak Tree", mapId: "timberwood", tier: 5, rarity: "regular", slot: "HEAD", tree: "oak", outcomes: 500, shop: false,
+    effects: [{ effect: "woodcuttingSpeed", value: 7 }] },
+  { id: "elder_tree_card", enemy: "Elder Tree", mapId: "timberwood", tier: 13, rarity: "elite", slot: "HEAD", tree: "elder", outcomes: 150, shop: false,
+    effects: [{ effect: "logFind", value: 7 }] },
 ]);
 
 const BY_ID = new Map(CARDS.map(card => [card.id, card]));
-const BY_ENEMY = new Map(CARDS.filter(card => card.rarity !== "boss").map(card => [`${card.mapId}:${card.enemy}`, card]));
-const BY_BOSS = new Map(CARDS.filter(card => card.rarity === "boss").map(card => [card.mapId, card]));
+const MAP_CARDS = CARDS.filter(card => !card.endless && !card.tree);
+const BY_ENEMY = new Map(MAP_CARDS.filter(card => card.rarity !== "boss").map(card => [`${card.mapId}:${card.enemy}`, card]));
+const BY_BOSS = new Map(MAP_CARDS.filter(card => card.rarity === "boss").map(card => [card.mapId, card]));
+const ENDLESS_CARDS = CARDS.filter(card => card.endless);
+const BY_TREE = new Map(CARDS.filter(card => card.tree).map(card => [card.tree, card]));
 
 export function cardDefinition(cardId: unknown) {
   return typeof cardId === "string" ? BY_ID.get(cardId) : undefined;
@@ -358,8 +394,16 @@ export function cardForEnemy(mapId: string, enemy: string) {
   return BY_ENEMY.get(`${mapId}:${enemy}`);
 }
 
+/** A campaign map's boss card, or for Endless map N the Warden card of N's band. */
 export function cardForBoss(mapId: string) {
-  return BY_BOSS.get(mapId);
+  const number = proceduralMapNumber(mapId);
+  if (number === null) return BY_BOSS.get(mapId);
+  return ENDLESS_CARDS.find(card => number >= card.endless!.from && number <= (card.endless!.to ?? Infinity));
+}
+
+/** The card felling this kind of tree can drop. */
+export function cardForTree(kind: string) {
+  return BY_TREE.get(kind as WoodTreeKind);
 }
 
 /**

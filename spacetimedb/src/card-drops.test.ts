@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 import { Timestamp } from "spacetimedb";
 import { crystalFixture } from "../../tests/helpers/crystal-hollows-fixture";
 import { fillDefeatBudget, reportEnemy } from "../../tests/helpers/enemy-defeat";
-import { awardCardDrops } from "./card-drops";
+import { awardCardDrops, awardTreeCardDrops } from "./card-drops";
 import { cardCount } from "./gear-cards";
 import { publishItemDrop } from "./equipment-copies";
 import { CARD_DROP_OUTCOMES, cardDefinition, cardKillChance, cardMeterFull, cardSureByKills } from "../../shared/cards";
@@ -47,13 +47,43 @@ describe("card drops", () => {
     expect(cards(f, "needle_card")).toBe(1);
   });
 
-  it("drops nothing on maps without cards, and nothing for an enemy that is not on the map", () => {
+  it("drops nothing for an enemy that is not on the map, nor for Endless's regular enemies", () => {
     const f = crystalFixture();
     always(f, 0);
-    award(f, "endless_1", [{ enemy: "site:0", count: 5 }], 1);
+    award(f, "endless_1", [{ enemy: "site:0", count: 5 }]);
     award(f, "beginner_desert", [{ enemy: "Needle", count: 5 }]); // Needle lives in the forest
     expect(f.db.playerCard.count()).toBe(0n);
     expect(f.db.playerCardDrop.count()).toBe(0n);
+  });
+
+  it("drops an Endless boss's Warden card by its band of ten maps, at the boss odds", () => {
+    const f = crystalFixture();
+    always(f, .99 / CARD_DROP_OUTCOMES.boss);
+    award(f, "endless_10", [], 1);
+    award(f, "endless_11", [], 1);
+    award(f, "endless_201", [], 1);
+    expect([cards(f, "warden_i_card"), cards(f, "warden_ii_card"), cards(f, "warden_vi_card")]).toEqual([1, 1, 1]);
+    // Odds no better than a boss's lose.
+    always(f, 1 / CARD_DROP_OUTCOMES.boss);
+    award(f, "endless_25", [], 1);
+    expect(cards(f, "warden_iii_card")).toBe(0);
+  });
+
+  it("drops a tree's card from felling it, at the tree's own odds and meter", () => {
+    const f = crystalFixture();
+    const oak = cardDefinition("oak_tree_card")!, elder = cardDefinition("elder_tree_card")!;
+    always(f, .99 / 150);
+    f.transaction(() => awardTreeCardDrops(f.ctx, f.ctx.sender, [{ kind: "elder" }, { kind: "oak" }, { kind: "pine" }]));
+    expect([cards(f, "elder_tree_card"), cards(f, "oak_tree_card")]).toEqual([1, 0]);
+    // Never lucky: the meter makes the oak's card sure by its 1,000th oak.
+    always(f, .999);
+    expect(cardSureByKills(oak)).toBe(1_000);
+    expect(cardSureByKills(elder)).toBe(300);
+    // One oak is on its meter already.
+    f.transaction(() => awardTreeCardDrops(f.ctx, f.ctx.sender, Array.from({ length: 998 }, () => ({ kind: "oak" }))));
+    expect(cards(f, "oak_tree_card")).toBe(0);
+    f.transaction(() => awardTreeCardDrops(f.ctx, f.ctx.sender, [{ kind: "oak" }]));
+    expect(cards(f, "oak_tree_card")).toBe(1);
   });
 
   it("tells the client what was found, counting every card", () => {

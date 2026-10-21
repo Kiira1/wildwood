@@ -10,6 +10,9 @@ import { IRONHORN_ATLAS } from "../game/runtime/boss/ironhorn-sprite";
 import { DREADREAPER_ATLAS } from "../game/runtime/boss/dreadreaper-sprite";
 import { PRISMSHELL_ATLAS } from "../game/runtime/boss/prismshell-sprite";
 import { cardDefinition, type CardDefinition, type CardRarity } from "../../shared/cards";
+import { SOUL_ATLAS_SOURCE, soulFrame } from "../game/runtime/soul/soul-prop-renderer";
+import { woodTreeFrame } from "../game/town-world";
+import type { WoodTreeKind } from "../../shared/woodcutting";
 
 /** Portrait size in CSS pixels; drawn at twice this. */
 export const CARD_PORTRAIT = Object.freeze({ width: 96, height: 120 });
@@ -119,6 +122,14 @@ async function drawBossPose(ctx: CanvasRenderingContext2D, card: CardDefinition)
   drawBossSheetFrame(ctx, sheet, { bossId, frame: 0, cellWidth, cellHeight, columns, drawWidth: cellWidth * fit, drawHeight: cellHeight * fit, top: -cellHeight * fit });
 }
 
+/** A tree card's tree, as Timberwood draws that kind. */
+async function drawTreePose(ctx: CanvasRenderingContext2D, kind: WoodTreeKind) {
+  const frame = soulFrame(woodTreeFrame(kind));
+  if (!frame) return;
+  const fit = bossFit(frame.w, frame.h);
+  ctx.drawImage(await loadImage(SOUL_ATLAS_SOURCE), frame.x, frame.y, frame.w, frame.h, -frame.ax * fit, -frame.ay * fit, frame.w * fit, frame.h * fit);
+}
+
 /** The smallest box around every pixel drawn. */
 function drawnBounds(ctx: CanvasRenderingContext2D) {
   const { width, height } = ctx.canvas;
@@ -173,9 +184,11 @@ export function cardPortrait(cardId: string, shadow = false): Promise<string> {
     scratchContext.imageSmoothingEnabled = false;
     scratchContext.translate(ORIGIN.x, ORIGIN.y);
     try {
-      if (card.rarity === "boss") await drawBossPose(scratchContext, card);
+      if (card.tree) await drawTreePose(scratchContext, card.tree);
+      else if (card.rarity === "boss" && !card.endless) await drawBossPose(scratchContext, card);
       else {
-        const source = (ENEMY_SPRITE_LAYOUTS as Record<string, EnemySpriteSource>)[card.enemy];
+        // Endless's Wardens wear their map's art; their cards show the Dread Warden who stands in every Endless camp.
+        const source = (ENEMY_SPRITE_LAYOUTS as Record<string, EnemySpriteSource>)[card.endless ? "Dread Warden" : card.enemy];
         if (source) await drawEnemyPose(scratchContext, source);
       }
     } catch {

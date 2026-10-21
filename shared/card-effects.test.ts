@@ -83,7 +83,7 @@ describe("guards and slayers", () => {
 describe("card stats", () => {
   it("turns stat cards into multipliers, crit and the caps, and leaves everything at one without cards", () => {
     expect(cardStatFactors(NO_CARDS)).toEqual({ damage: 1, maxHp: 1, armor: 1, regen: 1, critChance: 0, critDamage: 0, attackCapRaise: 0, moveSpeed: 0, range: 0,
-      miningSpeed: 0, oreFind: 0, starshardFind: 0, cardHunter: 0, treasure: 0, respawn: 0 });
+      miningSpeed: 0, oreFind: 0, woodcuttingSpeed: 0, logFind: 0, starshardFind: 0, cardHunter: 0, treasure: 0, respawn: 0, onward: false });
     const stats = cardStatFactors(cardTotals(["spitter_card", "ember_raider_card", "mossback_card", "brood_card", "striker_card", "dune_striker_card", "dune_needle_card", "tempest_kirin_card", "dune_archer_card"]));
     expect(stats.damage).toBeCloseTo(1.069, 9);
     expect(stats.maxHp).toBeCloseTo(.964, 9);

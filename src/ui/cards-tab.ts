@@ -1,5 +1,5 @@
 import { CARDS, cardDefinition, cardKillChance, cardSureByKills, type CardDefinition, type CardSlot } from "../../shared/cards";
-import { CARD_SLOT_NAMES, cardEffectText, cardName, cardOddsText, cardSureText, mapName } from "../../shared/card-text";
+import { CARD_SLOT_NAMES, cardEffectText, cardName, cardOddsText, cardOrigin, cardSureText, mapName } from "../../shared/card-text";
 import {
   BASE_CARD_SLOTS, CARD_SLOT_PERKS, CARD_TYPES, CARD_TYPE_NAMES, MAX_ACTIVE_CARD_SLOTS, NO_ACTIVE_CARDS, activationError,
   activeCopies, type ActiveCards, type ActiveCardSlots,
@@ -11,9 +11,11 @@ import type { ItemInspectionAction } from "./item-inspection-controller";
 
 const RARITY_ORDER = { regular: 0, elite: 1, boss: 2 } as const;
 const CARD_ORDER = new Map(CARDS.map((card, index) => [card.id, index]));
+/** The campaign's maps first, then the Endless Warden cards, then the tree cards. */
+const zoneRank = (card: CardDefinition) => card.tree ? 2 : card.endless ? 1 : 0;
 /** Map order, then regular, elite, boss. */
 export const byMapThenRarity = (a: CardDefinition, b: CardDefinition) =>
-  a.tier - b.tier || RARITY_ORDER[a.rarity] - RARITY_ORDER[b.rarity] || (CARD_ORDER.get(a.id) ?? 0) - (CARD_ORDER.get(b.id) ?? 0);
+  zoneRank(a) - zoneRank(b) || a.tier - b.tier || RARITY_ORDER[a.rarity] - RARITY_ORDER[b.rarity] || (CARD_ORDER.get(a.id) ?? 0) - (CARD_ORDER.get(b.id) ?? 0);
 
 /** One card as a bag-style tile: its enemy's name, its portrait and the count held. Not found yet, only its shadow. */
 export function cardTile(card: CardDefinition, count: number, onPick: () => void, found = true) {
@@ -296,7 +298,7 @@ export function createCardsTab(options: {
     status.textContent = `${owned.toLocaleString("en-US")} Owned · ${copies} Equipped`;
     const origin = document.createElement("span");
     origin.className = "cards-equip-origin";
-    origin.textContent = `${card.rarity === "boss" ? "Boss" : card.rarity === "elite" ? "Elite" : "Regular"} · ${mapName(card.mapId)}`;
+    origin.textContent = cardOrigin(card);
     head.append(cardArt(card, false, "cards-equip-art"), title, origin, status);
     const effects = document.createElement("ul");
     effects.className = "cards-equip-effects";

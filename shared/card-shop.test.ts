@@ -41,7 +41,8 @@ describe("the offer", () => {
       if (offer.join() === cardShopOffer(rotation + 1).join()) repeats++;
     }
     expect(repeats).toBe(0);
-    expect(seen.size).toBe(CARDS.length);
+    // Endless's and the trees' cards stay out, so adding them changed no rotation.
+    expect(seen.size).toBe(CARDS.filter(card => card.shop !== false).length);
   });
 });
 
@@ -62,7 +63,7 @@ describe("prices", () => {
 
   it("follow the refine grades: tiers 1-4 copper, 5-8 iron, 9-12 mithril, 13-15 adamant", () => {
     const grade = ["copper_ore", "iron_ore", "mithril_ore", "adamant_ore"];
-    for (const card of CARDS) {
+    for (const card of CARDS.filter(card => card.shop !== false)) {
       const ore = Object.keys(cardShopPrice(card.id)!).find(oreId => oreId !== "starshard");
       expect(ore, card.id).toBe(grade[card.tier <= 4 ? 0 : card.tier <= 8 ? 1 : card.tier <= 12 ? 2 : 3]);
     }

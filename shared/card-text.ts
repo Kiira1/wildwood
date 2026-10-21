@@ -12,7 +12,10 @@ export const CARD_SLOT_NAMES: Readonly<Record<CardSlot, string>> = { HAND: "Weap
 const number = (value: number) => `${Math.round(value * 100) / 100}`;
 const percent = (share: number) => `${Math.round(share * 100)}%`;
 const signed = (value: number) => (value < 0 ? `-${number(-value)}` : `+${number(value)}`);
-export const mapName = (mapId: string) => (MAP_DISPLAY_NAMES as Record<string, string>)[mapId]?.replace(/ - \d+$/, "") ?? mapId;
+/** The Cards tab's zones that are not a map: the Warden cards and the tree cards. */
+const CARD_ZONE_NAMES: Readonly<Record<string, string>> = { endless: "Endless", timberwood: "Timberwood" };
+export const mapName = (mapId: string) =>
+  (MAP_DISPLAY_NAMES as Record<string, string>)[mapId]?.replace(/ - \d+$/, "") ?? CARD_ZONE_NAMES[mapId] ?? mapId;
 
 /** What one effect of a card does, as players read it. */
 export function cardEffectText(effect: CardEffect): string {
@@ -75,6 +78,9 @@ export function cardEffectText(effect: CardEffect): string {
     miningSpeed: () => `Mining speed ${signed(v)}%`,
     oreFind: () => `${abs}% chance for an extra ore`,
     starshardFind: () => `${signed(v)}% chance of a second Starshard`,
+    woodcuttingSpeed: () => `Chop speed ${signed(v)}%`,
+    logFind: () => `${abs}% chance for an extra log`,
+    onward: () => "Beat a boss that opens the next map: you go straight there",
   };
   return lines[effect.effect]?.() ?? effect.effect;
 }
@@ -82,15 +88,25 @@ export function cardEffectText(effect: CardEffect): string {
 /** "Needle Card". */
 export const cardName = (card: CardDefinition) => `${card.enemy} Card`;
 
+
+const killWord = (card: CardDefinition, many: boolean) =>
+  card.tree ? `tree${many ? "s" : ""}` : `${card.rarity === "boss" ? "boss " : ""}kill${many ? "s" : ""}`;
+
+/** "Endless 11–20", "Endless 51+": the maps whose Wardens drop a card. */
+const endlessBand = ({ from, to }: { from: number; to?: number }) => `Endless ${from}${to === undefined ? "+" : `–${to}`}`;
+/** Where a card drops: its map, or for a Warden card its band, "Endless 11–20". */
+const cardWhere = (card: CardDefinition) => card.endless ? endlessBand(card.endless) : mapName(card.mapId);
+
 /** "Elite · Tutorial Forest". */
 export const cardOrigin = (card: CardDefinition) =>
-  `${card.rarity === "boss" ? "Boss" : card.rarity === "elite" ? "Elite" : "Regular"} · ${mapName(card.mapId)}`;
+  `${card.rarity === "boss" ? "Boss" : card.rarity === "elite" ? "Elite" : "Regular"} · ${cardWhere(card)}`;
 
-const killWord = (card: CardDefinition, many: boolean) => `${card.rarity === "boss" ? "boss " : ""}kill${many ? "s" : ""}`;
-
-/** Where a card drops and one kill's chance at it: "Tutorial Forest · 1 in 877 kills" (boss cards per boss kill). */
+/**
+ * Where a card drops and one kill's chance at it: "Tutorial Forest · 1 in 877 kills" (boss cards per boss kill,
+ * Warden cards by their band of Endless, tree cards per tree felled).
+ */
 export function cardOddsText(card: CardDefinition, chance: number) {
-  const where = mapName(card.mapId);
+  const where = cardWhere(card);
   if (!(chance > 0)) return `${where} · No drop`;
   if (chance >= 1) return `${where} · Every ${killWord(card, false)}`;
   return `${where} · 1 in ${Math.max(1, Math.round(1 / chance)).toLocaleString("en-US")} ${killWord(card, true)}`;

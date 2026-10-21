@@ -1,6 +1,6 @@
 import { table, t } from "spacetimedb/server";
 import type { Identity } from "spacetimedb";
-import { CARD_DROP_OUTCOMES, CARD_METER_MULTIPLE, cardDropChance, cardForBoss, cardForEnemy } from "../../shared/cards";
+import { CARD_METER_MULTIPLE, cardDropChance, cardForBoss, cardForEnemy, cardForTree, cardOutcomes } from "../../shared/cards";
 import { cardStatFactors, type CardTotals } from "../../shared/card-effects";
 import { personalBossDefinition } from "../../shared/personal-bosses";
 import { bossRespawnSecondsWithResearch } from "../../shared/utility-research";
@@ -42,15 +42,17 @@ function bossCardRollReady(ctx: Ctx, identity: Identity, mapId: string) {
   return true;
 }
 
-/** Rolls a card for each paid kill, and one for a boss kill the boss had time to respawn for; finds go to player_card and player_card_drop. */
-export function awardCardDrops(ctx: Ctx, identity: Identity, mapId: string, kills: readonly { enemy: string; count: number }[],
-  bossKills: number, chanceMultiplier = 1, worn?: CardTotals) {
+type CardRoll = { cardId: string; outcomes: number; times: number };
+
+/**
+ * Rolls each card its number of times against its odds and meter; finds go to player_card and player_card_drop.
+ * Active Card Hunter cards raise every roll, and Card Luck the chance but not the meter; read only once a roll is due.
+ */
+function rollCards(ctx: Ctx, identity: Identity, rolls: readonly CardRoll[], chanceMultiplier = 1, worn?: CardTotals) {
   const found: string[] = [];
-  // Active Card Hunter cards raise every roll, and Card Luck the chance but not the meter;
-  // read only once a kill has a card to roll for.
   let odds = 0, cardLuck = 0, oddsRead = false;
-  const roll = (cardId: string, outcomes: number, times: number) => {
-    if (times < 1) return;
+  for (const { cardId, outcomes, times } of rolls) {
+    if (times < 1) continue;
     if (!oddsRead) {
       odds = chanceMultiplier * (1 + cardStatFactors(worn ?? activeCardTotalsFor(ctx, identity)).cardHunter);
       cardLuck = luckInPlay(ctx, identity).cardLuck;
@@ -67,13 +69,7 @@ export function awardCardDrops(ctx: Ctx, identity: Identity, mapId: string, kill
     }
     if (meter) ctx.db.playerCardMeter.key.update({ ...meter, progress });
     else ctx.db.playerCardMeter.insert({ key, identity, cardId, progress });
-  };
-  for (const { enemy, count } of kills) {
-    const card = cardForEnemy(mapId, enemy);
-    if (card) roll(card.id, CARD_DROP_OUTCOMES[card.rarity], count);
   }
-  const boss = bossKills > 0 ? cardForBoss(mapId) : undefined;
-  if (boss && bossCardRollReady(ctx, identity, mapId)) roll(boss.id, CARD_DROP_OUTCOMES.boss, 1);
   if (!found.length) return found;
   for (const cardId of found) addCard(ctx, identity, cardId);
   const previous = ctx.db.playerCardDrop.identity.find(identity);
@@ -81,4 +77,29 @@ export function awardCardDrops(ctx: Ctx, identity: Identity, mapId: string, kill
   if (previous) ctx.db.playerCardDrop.identity.update(next);
   else ctx.db.playerCardDrop.insert(next);
   return found;
+}
+
+/** Rolls a card for each paid kill, and one for a boss kill the boss had time to respawn for (an Endless boss: its band's Warden card). */
+export function awardCardDrops(ctx: Ctx, identity: Identity, mapId: string, kills: readonly { enemy: string; count: number }[],
+  bossKills: number, chanceMultiplier = 1, worn?: CardTotals) {
+  const rolls: CardRoll[] = [];
+  for (const { enemy, count } of kills) {
+    const card = cardForEnemy(mapId, enemy);
+    if (card) rolls.push({ cardId: card.id, outcomes: cardOutcomes(card), times: count });
+  }
+  const boss = bossKills > 0 ? cardForBoss(mapId) : undefined;
+  if (boss && bossCardRollReady(ctx, identity, mapId)) rolls.push({ cardId: boss.id, outcomes: cardOutcomes(boss), times: 1 });
+  return rollCards(ctx, identity, rolls, chanceMultiplier, worn);
+}
+
+/** Rolls the tree cards for the trees a player felled (Oak Tree and Elder Tree cards), on the same meters. */
+export function awardTreeCardDrops(ctx: Ctx, identity: Identity, trees: readonly { kind: string }[]) {
+  const counts = new Map<string, number>();
+  for (const { kind } of trees) counts.set(kind, (counts.get(kind) ?? 0) + 1);
+  const rolls: CardRoll[] = [];
+  for (const [kind, times] of counts) {
+    const card = cardForTree(kind);
+    if (card) rolls.push({ cardId: card.id, outcomes: cardOutcomes(card), times });
+  }
+  return rolls.length ? rollCards(ctx, identity, rolls) : [];
 }

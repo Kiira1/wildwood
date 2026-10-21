@@ -13,7 +13,7 @@ const KNOWN_EFFECTS: readonly CardEffectId[] = [
   "chainLightning", "lifesteal", "quickDraw", "arrowStorm", "ricochet", "piercing", "iaido", "reap", "maxHealth", "armor",
   "regen", "reflect", "secondWind", "dodge", "rangedGuard", "meleeGuard", "bossGuard", "eliteGuard", "raceGuard", "shield",
   "panicHeal", "lastStand", "web", "prism", "fleetFoot", "longShot", "statGain", "allStatGain", "cardHunter", "treasure",
-  "respawn", "miningSpeed", "oreFind", "starshardFind",
+  "respawn", "miningSpeed", "oreFind", "starshardFind", "woodcuttingSpeed", "logFind", "onward",
 ];
 
 describe("the cards", () => {
@@ -29,8 +29,8 @@ describe("the cards", () => {
       }
       expect(cardForBoss(map.id), map.id).toMatchObject({ enemy: map.bossName, mapId: map.id, tier: index + 1, rarity: "boss" });
     });
-    // Nothing else: no card for an enemy that is not on its map.
-    expect(CARDS).toHaveLength(enemies + CAMPAIGN_MAPS.length);
+    // Nothing else but the Endless Warden cards and the tree cards: no card for an enemy that is not on its map.
+    expect(CARDS.filter(card => !card.endless && !card.tree)).toHaveLength(enemies + CAMPAIGN_MAPS.length);
     expect(new Set(CARDS.map(card => card.id)).size).toBe(CARDS.length);
     expect(CARDS.every(card => cardDefinition(card.id) === card)).toBe(true);
     expect(cardDefinition("not_a_card")).toBeUndefined();

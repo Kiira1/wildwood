@@ -27,10 +27,10 @@ function seededRandom(seed: number) {
   };
 }
 
-/** The rotation's three different cards, drawn from the whole catalog. */
+/** The rotation's three different cards, drawn from the catalog the Card Seller sells. */
 export function cardShopOffer(rotation: number): string[] {
   const random = seededRandom(rotation);
-  const pool = CARDS.map(card => card.id);
+  const pool = CARDS.filter(card => card.shop !== false).map(card => card.id);
   const offer: string[] = [];
   while (offer.length < CARD_SHOP_OFFER_SIZE && pool.length) offer.push(pool.splice(Math.floor(random() * pool.length), 1)[0]);
   return offer;
@@ -46,7 +46,7 @@ const PRICES: Readonly<Record<CardRarity, { ore: number; starshard: number }>> =
 /** What a card costs at the Card Seller, or null for no such card. */
 export function cardShopPrice(cardId: unknown): Partial<Record<OreId, number>> | null {
   const card = cardDefinition(cardId);
-  if (!card) return null;
+  if (!card || card.shop === false) return null;
   const { ore, starshard } = PRICES[card.rarity];
   const price: Partial<Record<OreId, number>> = { [GRADE_ORES[tierGrade(card.tier)]]: ore };
   if (starshard) price.starshard = starshard;

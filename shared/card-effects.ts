@@ -137,14 +137,18 @@ export function cardStatFactors(totals: CardTotals) {
     attackCapRaise: Math.max(0, cardValue(totals, "quickDraw")),
     moveSpeed: Math.max(0, cardValue(totals, "fleetFoot")) / 100,
     range: Math.max(0, cardValue(totals, "longShot")),
-    // What they do outside a fight, as fractions: faster mining, an extra ore's chance, Starshard, card and gear
-    // drop chances, and faster respawns.
+    // What they do outside a fight, as fractions: faster mining and chopping, an extra ore's or log's chance,
+    // Starshard, card and gear drop chances, and faster respawns.
     miningSpeed: Math.max(0, cardValue(totals, "miningSpeed")) / 100,
     oreFind: cardChance(totals, "oreFind") / 100,
+    woodcuttingSpeed: Math.max(0, cardValue(totals, "woodcuttingSpeed")) / 100,
+    logFind: cardChance(totals, "logFind") / 100,
     starshardFind: Math.max(0, cardValue(totals, "starshardFind")) / 100,
     cardHunter: Math.max(0, cardValue(totals, "cardHunter")) / 100,
     treasure: Math.max(0, cardValue(totals, "treasure")) / 100,
     respawn: Math.max(0, cardValue(totals, "respawn")) / 100,
+    /** Beating a boss that opens the next map takes the player there (Warden II). */
+    onward: cardValue(totals, "onward") > 0,
   };
 }
 

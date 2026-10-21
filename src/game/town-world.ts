@@ -526,6 +526,8 @@ const TREE_LOOKS: Readonly<Record<WoodTreeKind, readonly { frame: SoulFrame; s: 
   yew: [{ frame: "Tree_16_Green", s: .94 }, { frame: "Tree_16_Green", s: 1.02 }],
   elder: [{ frame: "Tree_06_Green", s: 1.08 }, { frame: "Tree_15_Green", s: 1 }],
 };
+/** The look a kind of tree is best known by: its card's portrait. */
+export const woodTreeFrame = (kind: WoodTreeKind) => TREE_LOOKS[kind][0].frame;
 export function woodTreeDecor(tree: WoodTree): Extract<WorldDecor, { type: "woodTree" }> {
   const looks = TREE_LOOKS[tree.kind], look = looks[tree.id % looks.length];
   return { type: "woodTree", x: tree.x, y: tree.y, s: look.s, node: tree.id, frame: look.frame, flip: tree.id % 3 === 1 };
