@@ -9,8 +9,13 @@ type IdleWindow = { requestIdleCallback?: (callback: () => void, options?: { tim
 const IDLE_TIMEOUT_MS = 2_000;
 const FALLBACK_DELAY_MS = 250;
 
-let entered = false;
+// The game and the co-op client are separate bundles, each with its own copy of
+// this module: the signal lives on the page so both copies see the one entry.
+const ENTERED_EVENT = "wildstat:entered";
+type SharedPage = { __wildstatEntered?: boolean } & Partial<Pick<EventTarget, "addEventListener" | "dispatchEvent">>;
+const page = globalThis as SharedPage;
 const held: Task[] = [];
+let listening = false;
 
 function run(task: Task) {
   try { task(); } catch (error) { console.warn("WildStat deferred load failed:", error); }
@@ -23,17 +28,25 @@ export function whenIdle(task: Task, timeout = IDLE_TIMEOUT_MS) {
   else setTimeout(() => run(task), FALLBACK_DELAY_MS);
 }
 
-/** Queues `task` until the player has entered the world, then runs it at idle. */
-export function afterEntry(task: Task) {
-  if (entered) whenIdle(task);
-  else held.push(task);
-}
+export const hasEntered = () => page.__wildstatEntered === true;
 
-/** The player is in the world: release everything that was held back. */
-export function markEntered() {
-  if (entered) return;
-  entered = true;
+function release() {
   for (const task of held.splice(0)) whenIdle(task);
 }
 
-export const hasEntered = () => entered;
+/** Queues `task` until the player has entered the world, then runs it at idle. */
+export function afterEntry(task: Task) {
+  if (hasEntered()) { whenIdle(task); return; }
+  held.push(task);
+  if (listening) return;
+  listening = true;
+  page.addEventListener?.(ENTERED_EVENT, () => { listening = false; release(); }, { once: true });
+}
+
+/** The player is in the world: release everything held back, in this bundle and the other. */
+export function markEntered() {
+  if (hasEntered()) return;
+  page.__wildstatEntered = true;
+  release();
+  page.dispatchEvent?.(new Event(ENTERED_EVENT));
+}
