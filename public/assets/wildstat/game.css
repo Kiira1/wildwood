@@ -2001,7 +2001,7 @@
   .stat-reward-toast {
     --stat-reward-accent: var(--green);
     display: grid;
-    grid-template-columns: 21px minmax(0, auto) auto 14px;
+    grid-template-columns: minmax(0, auto) auto;
     align-items: center;
     column-gap: 6px;
     width: max-content;
@@ -2042,38 +2042,6 @@
 
   .stat-reward-label { color: #fff; white-space: nowrap; }
   .stat-reward-value { color: var(--green); white-space: nowrap; font-variant-numeric: tabular-nums; }
-
-  .stat-reward-arrow {
-    position: relative;
-    width: 14px;
-    height: 20px;
-    filter: drop-shadow(0 2px 0 #143516);
-    -webkit-text-stroke: 0;
-    text-shadow: none;
-  }
-
-  .stat-reward-arrow::before {
-    position: absolute;
-    left: 5px;
-    bottom: 1px;
-    width: 5px;
-    height: 12px;
-    border-radius: 1px;
-    background: var(--green);
-    content: "";
-  }
-
-  .stat-reward-arrow::after {
-    position: absolute;
-    top: 1px;
-    left: 1px;
-    width: 0;
-    height: 0;
-    border-right: 6px solid transparent;
-    border-bottom: 7px solid var(--green);
-    border-left: 6px solid transparent;
-    content: "";
-  }
 
   @keyframes floatout {
     0% { opacity: 0; transform: translateY(10px) scale(.95); }
@@ -4587,7 +4555,6 @@
   z-index: 100000;
 }
 
-.stat-reward-toast.is-capped .stat-reward-arrow { visibility: hidden; }
 
 .player-visibility-toggle { position: relative; }
 .player-visibility-countdown { position: absolute; right: 0; bottom: 0; font-size: 11px; line-height: 1; color: white; text-shadow: 0 1px 2px #000, 1px 0 2px #000; pointer-events: none; }
