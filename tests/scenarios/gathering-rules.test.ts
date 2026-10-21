@@ -381,7 +381,7 @@ describe("Tools at the Smith", () => {
   it("a craft tool saves part of each material and adds craft experience; a Worn one saves nothing", () => {
     const world = scenarioWorld();
     const craft = (who: ReturnType<typeof atSmith>, itemId: string) =>
-      who.player.call("craftGradeGear", { itemId, expectedMaterials: craftMaterialsKey(gradeCraftMaterials(itemId)!) });
+      who.player.call("craftGradeItem", { itemId, expectedMaterials: craftMaterialsKey(gradeCraftMaterials(itemId)!) });
     const worn = atSmith(world, "Worn"), keen = atSmith(world, "Keen");
     keen.setLevel("hammer", 10);
     const needs = gradeCraftMaterials("crude_sword")!.copper_ore;
@@ -478,7 +478,7 @@ describe("The client's gathering reports", () => {
     expect([ann.tool("pickaxe"), ann.ore("copper_ore")]).toEqual([1, 0]);
     // Every such call sends what is waiting first, whatever its own answer.
     for (const call of [
-      () => api.refineItem("iron_bow", 0n, 0), () => api.destroyOre("copper_ore", 1), () => api.craftGradeGear("iron_bow"),
+      () => api.refineItem("iron_bow", 0n, 0), () => api.destroyOre("copper_ore", 1), () => api.craftGradeItem("iron_bow"),
       () => api.buyShopCard(0, "card"), () => api.buyGradeGear("iron_bow", 1), () => api.claimStarterWeapon("bow"),
       () => api.fallIntoWell(), () => api.flushGathering(),
     ]) {

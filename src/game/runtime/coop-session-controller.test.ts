@@ -71,9 +71,10 @@ describe("coop session controller", () => {
 });
 
 it("refreshes inventory card rows and an open Smith even with no profile open", () => {
-  const inventory = { render: vi.fn() }, smith = { isOpen: () => true, render: vi.fn(), refreshNotice: vi.fn() };
+  const inventory = { render: vi.fn() }, smith = { isOpen: () => true, render: vi.fn() };
+  const gearSellers = { isOpen: () => false, render: vi.fn(), refreshNotice: vi.fn() };
   const profileWindow = { identity: () => null, render: vi.fn() };
-  const refresh = createSessionWindowRefresh({ coop: null, playerSafety: { refresh: vi.fn() }, inventory, smith, profileWindow });
+  const refresh = createSessionWindowRefresh({ coop: null, playerSafety: { refresh: vi.fn() }, inventory, smith, gearSellers, profileWindow });
   refresh();
   expect(inventory.render).toHaveBeenCalledOnce();
   expect(smith.render).toHaveBeenCalledOnce();
@@ -81,6 +82,6 @@ it("refreshes inventory card rows and an open Smith even with no profile open", 
   smith.isOpen = () => false;
   refresh();
   expect(smith.render).toHaveBeenCalledOnce();
-  // The Town button's Smith dot follows every refresh, open or not.
-  expect(smith.refreshNotice).toHaveBeenCalledTimes(2);
+  // The HUD's gear upgrades chip follows every refresh, a seller open or not.
+  expect(gearSellers.refreshNotice).toHaveBeenCalledTimes(2);
 });

@@ -9,7 +9,7 @@ import {
 import { WEAPON_SCHOOL_NAMES, masteryLevel, type WeaponSchool } from "./weapon-mastery";
 
 /**
- * The Smith's gear for gold (buy_grade_gear): a piece can be bought once its grade is open and it is above the best
+ * The sellers' gear for gold (buy_grade_gear): a piece can be bought once its grade is open and it is above the best
  * held on its line, so grades in between can be skipped. Shared so the window and the server judge a buy the same way.
  */
 export type MasteryLevels = Readonly<Partial<Record<WeaponSchool, number>>>;
@@ -28,6 +28,11 @@ export const GRADE_SHOP_LINES: readonly GradeShopLine[] = [
 export const gradeShopItemId = (line: GradeShopLine, grade: GearGrade): GradeItemId =>
   "armorClass" in line ? gradeItemId(line.kind, grade, line.armorClass)
     : "bootStyle" in line ? gradeItemId("boots", grade, line.bootStyle) : gradeItemId(line.kind, grade);
+
+/** The Town's two gear sellers: weapons (bows, swords, staves), and armor (helmets, armor, boots). */
+export type GearSeller = "weapons" | "armor";
+export const gearSellerOfLine = (line: GradeShopLine): GearSeller => (GRADE_WEAPON_KINDS as readonly string[]).includes(line.kind) ? "weapons" : "armor";
+export const gearSellerOf = (itemId: GradeItemId): GearSeller => gearSellerOfLine(gradeShopLineOf(itemId));
 
 /** A line's key for a window's picks: "helmet:light", "boots:ranger" or "bow:". */
 export const gradeShopLineKey = (line: GradeShopLine) =>

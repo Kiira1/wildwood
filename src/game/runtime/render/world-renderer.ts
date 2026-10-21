@@ -59,6 +59,8 @@ type CharredTreeDecor = Extract<WorldDecor, { type: "charredTree" }>;
 
 /** The Weapon Mastery schools' buildings, drawn as a sign on the wall. */
 const SCHOOL_BUILDINGS: ReadonlySet<string> = new Set(Object.values(SCHOOL_DETAILS).map(school => school.building));
+/** The market's sellers: the line under each one's name. */
+const STALL_SIGNS: Readonly<Record<string, string>> = { "Card Seller": "Cards for Ore", "Weapon Seller": "Buy · Sell", "Armor Seller": "Buy · Sell" };
 const STATIC_TILE_SIZE = 640;
 /** The minimap inside the Town's rooms: a campaign map's 4,800 square, following the player. */
 const TOWN_ROOMS_MINIMAP_SPAN = WORLD_WIDTH;
@@ -993,20 +995,21 @@ if (options.getMapId() === ION_CITADEL_MAP_ID) { drawIonRoads(ctx, options.paths
         ctx.font = '900 15px "Arial Rounded MT Bold", "Arial Rounded MT", Arial, sans-serif';
         options.outlinedText("Smith", 0, -18 + bob, "#ffb347", 4);
         ctx.font = '900 13px "Arial Rounded MT Bold", "Arial Rounded MT", Arial, sans-serif';
-        options.outlinedText("Refining", 0, -2 + bob, "#ffd75e", 4);
+        options.outlinedText("Crafting", 0, -2 + bob, "#ffd75e", 4);
       });
       return;
     }
-    // The stall is the village's own art; only its name hangs over the awning.
-    if (station.label === "Card Seller") {
+    // The stalls are the village's own art; only each seller's name hangs over its awning.
+    const stall = STALL_SIGNS[station.label];
+    if (stall) {
       drawScreenSpaceAt(ctx, camera.zoom, x, y - 128, () => {
         ctx.textAlign = "center";
         ctx.textBaseline = "bottom";
         const bob = Math.sin(options.getGameTime() * 2.2) * 2;
         ctx.font = '900 15px "Arial Rounded MT Bold", "Arial Rounded MT", Arial, sans-serif';
-        options.outlinedText("Card Seller", 0, -18 + bob, "#ffb347", 4);
+        options.outlinedText(station.label, 0, -18 + bob, "#ffb347", 4);
         ctx.font = '900 13px "Arial Rounded MT Bold", "Arial Rounded MT", Arial, sans-serif';
-        options.outlinedText("Cards for Ore", 0, -2 + bob, "#ffd75e", 4);
+        options.outlinedText(stall, 0, -2 + bob, "#ffd75e", 4);
       });
       return;
     }

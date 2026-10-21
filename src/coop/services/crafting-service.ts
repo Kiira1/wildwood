@@ -10,7 +10,7 @@ type Target = { connection: DbConnection; isCurrent: () => boolean };
 const noExperience = (): Record<CraftSkill, bigint> => Object.fromEntries(CRAFT_SKILLS.map(skill => [skill, 0n])) as Record<CraftSkill, bigint>;
 const isCraftSkill = (value: unknown): value is CraftSkill => (CRAFT_SKILLS as readonly unknown[]).includes(value);
 
-/** This account's craft experience by craft (my_craft_skills), and crafting through craft_grade_gear; the server judges each. */
+/** This account's craft experience by craft (my_craft_skills), crafting (craft_grade_item) and reforging (reforge_weapon); the server judges each. */
 export function createCraftingRows(notify: () => void) {
   let target: Target | null = null;
   let experience = noExperience();
@@ -29,13 +29,13 @@ export function createCraftingRows(notify: () => void) {
     connection.subscriptionBuilder().onApplied(read).subscribe([tables.myCraftSkills]);
   }
 
-  async function craftGradeGear(itemId: string): Promise<CraftResult> {
+  /** Sends a craft or a Reforge with the recipe this client shows, so a changed one is refused rather than charged. */
+  async function send(itemId: string, call: (connection: DbConnection, expectedMaterials: string) => Promise<unknown>): Promise<CraftResult> {
     const current = target, materials = gradeCraftMaterials(itemId);
     if (!current || !current.isCurrent() || !current.connection.isActive) return { ok: false, error: "NOT CONNECTED" };
     if (!materials) return { ok: false, error: "That cannot be crafted." };
     try {
-      // The recipe this client shows goes with the craft, so a changed one is refused rather than charged.
-      await withRequestDeadline(current.connection.reducers.craftGradeGear({ itemId, expectedMaterials: craftMaterialsKey(materials) }));
+      await withRequestDeadline(call(current.connection, craftMaterialsKey(materials)));
       return { ok: true };
     } catch (error) {
       return { ok: false, error: reducerErrorMessage(error) };
@@ -46,8 +46,11 @@ export function createCraftingRows(notify: () => void) {
     watch,
     api: {
       craftSkills: (): Readonly<Record<CraftSkill, bigint>> => experience,
-      /** A graded piece crafted at the Smith from the recipe this client shows. */
-      craftGradeGear,
+      /** A new graded piece crafted at the Smith, even one already held. */
+      craftGradeItem: (itemId: string) => send(itemId, (connection, expectedMaterials) => connection.reducers.craftGradeItem({ itemId, expectedMaterials })),
+      /** One held weapon copy reforged (copy id 0 is the first copy). */
+      reforgeWeapon: (itemId: string, copyId: bigint) =>
+        send(itemId, (connection, expectedMaterials) => connection.reducers.reforgeWeapon({ itemId, copyId, expectedMaterials })),
     },
   };
 }

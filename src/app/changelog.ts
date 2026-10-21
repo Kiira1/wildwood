@@ -1,4 +1,10 @@
 export const RELEASE_NOTES: Record<string, string[]> = {
+  "0.916.20": [
+    "Craft always makes a new piece, so you can own more than one of the same bow",
+    "Reforge has its own Smith tab: pick which weapon to reforge",
+    "New Weapon and Armor Sellers in Town buy and sell gear; the Smith is for crafting, reforging and refining",
+    "Slot Upgrades are back at their own station",
+  ],
   "0.916.19": [
     "Endless bosses now drop six Warden cards, one for every ten maps",
     "Oak and Elder Trees drop two new woodcutting cards",

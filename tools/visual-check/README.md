@@ -25,6 +25,7 @@ Picked by URL hash in `visual-check.html`:
 | `icons` | The inventory window over a full bag (every item, a few grades again at ★10 / ★20), at 390 and 1280 wide |
 | `hud` | The in-game HUD: player card, toolbar icons, gem wallet, minimap |
 | `wordmark` | The start screen with the wordmark |
+| `shops` | The Smith on Reforge, the Weapon Seller on Sell and the Armor Seller on Buy, stacked, at phone width |
 
 `world`, `town` and `bosses` build a map the way the game does (`game-world.ts`: the bootstrap state,
 the map's layout, camps and boss, `createWorldRendering`) with no server; workers are off so ground

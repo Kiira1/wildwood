@@ -150,9 +150,9 @@ describe("Tools at the Smith", () => {
       before: player => serverGatherer(world, player).give({ ...top.materials }, top.gold) });
     const held = serverGatherer(world, ann.player);
     const materials = Object.keys(top.materials) as OreId[];
-    // The Smith's window opens as she walks up to him; the Upgrade view lists the tools.
+    // The Smith's window opens as she walks up to him; the Tools view lists the tools.
     expect(await walkUpToTheSmith(ann.tab)).toBe(true);
-    await press(ann.tab, ann.tab.document.querySelector<HTMLButtonElement>('[data-view="upgrade"]'));
+    await press(ann.tab, ann.tab.document.querySelector<HTMLButtonElement>('[data-view="tools"]'));
     // The gold is spent elsewhere before her tap lands (this window has not heard): refused, nothing taken.
     world.setup(ctx => takeGold(ctx, ann.player.identity, top.gold));
     await press(ann.tab, pickaxeButton(ann.tab));
@@ -164,7 +164,7 @@ describe("Tools at the Smith", () => {
     expect(ann.tab.shown("smithTitle")).toBe(false);
     await ann.tab.hold("KeyA", 600);
     expect(await walkUpToTheSmith(ann.tab)).toBe(true);
-    await press(ann.tab, ann.tab.document.querySelector<HTMLButtonElement>('[data-view="upgrade"]'));
+    await press(ann.tab, ann.tab.document.querySelector<HTMLButtonElement>('[data-view="tools"]'));
     await press(ann.tab, pickaxeButton(ann.tab));
     expect(held.tool("pickaxe")).toBe(10);
     expect([held.gold(), ...materials.map(id => held.ore(id))]).toEqual([0n, ...materials.map(() => 0)]);

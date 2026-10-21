@@ -203,6 +203,19 @@ export const TOWN_CARD_SELLER_POSITION = Object.freeze({ x: TOWN_CARD_SELLER_STA
 export const TOWN_CARD_SELLER_REACH = 60;
 export const TOWN_CARD_SELLER_SERVER_REACH = 100;
 /**
+ * The gear sellers keep two more of the market's stalls (the Smith only crafts, reforges and refines): the Weapon
+ * Seller the right stall of the bottom row, nearest the Smith, facing south; the Armor Seller the top row's left
+ * end, far enough from the Card Seller that their names never overlap. Each stall's foot, where its name hangs,
+ * and where a player's feet stand at its counter.
+ */
+export const TOWN_WEAPON_SELLER_STALL = Object.freeze({ x: TOWN_CENTER.x - 100, y: TOWN_CENTER.y + 376 });
+export const TOWN_WEAPON_SELLER_POSITION = Object.freeze({ x: TOWN_WEAPON_SELLER_STALL.x, y: TOWN_WEAPON_SELLER_STALL.y + 50 });
+export const TOWN_ARMOR_SELLER_STALL = Object.freeze({ x: TOWN_CENTER.x - 481, y: TOWN_CENTER.y + 212 });
+export const TOWN_ARMOR_SELLER_POSITION = Object.freeze({ x: TOWN_ARMOR_SELLER_STALL.x, y: TOWN_ARMOR_SELLER_STALL.y + 50 });
+/** As the Card Seller's. */
+export const TOWN_GEAR_SELLER_REACH = 60;
+export const TOWN_GEAR_SELLER_SERVER_REACH = 100;
+/**
  * A gap in the log fence east of the Inn: the square's way out east,
  * to the river's crossing in the north-east and the Copper Hills past it. The fence's middle log section on that
  * side, and its collider, are left out (town-village.ts).

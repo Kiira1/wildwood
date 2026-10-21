@@ -724,8 +724,8 @@ describe("weapon skill news", () => {
     const ann = world.join("Ann");
     standAt(world, ann, TOWN_SPOTS.smith);
     giveOres(world, ann, { pine_log: 10_000, copper_ore: 10_000, arcane_crystal: 10_000 });
-    ann.call("craftGradeGear", { itemId: "crude_bow", expectedMaterials: craftMaterialsKey(gradeCraftMaterials("crude_bow")!) });
-    ann.call("craftGradeGear", { itemId: "crude_sword", expectedMaterials: craftMaterialsKey(gradeCraftMaterials("crude_sword")!) });
+    ann.call("craftGradeItem", { itemId: "crude_bow", expectedMaterials: craftMaterialsKey(gradeCraftMaterials("crude_bow")!) });
+    ann.call("craftGradeItem", { itemId: "crude_sword", expectedMaterials: craftMaterialsKey(gradeCraftMaterials("crude_sword")!) });
     const conn = connectClient(world, ann);
     const skills = createBowSkills(() => {});
     const news: { itemId: string; before: number; after: number }[] = [];
@@ -740,7 +740,7 @@ describe("weapon skill news", () => {
     let raised = 0;
     for (const itemId of ["crude_bow", "crude_sword", "crude_bow", "crude_sword", "crude_bow", "crude_sword"]) {
       const before = JSON.stringify(skills.api.weaponSkills(itemId));
-      await conn.reducers.craftGradeGear({ itemId, expectedMaterials: craftMaterialsKey(gradeCraftMaterials(itemId)!) });
+      await conn.reducers.reforgeWeapon({ itemId, copyId: 0n, expectedMaterials: craftMaterialsKey(gradeCraftMaterials(itemId)!) });
       await conn.fake.settle();
       if (JSON.stringify(skills.api.weaponSkills(itemId)) !== before) raised++;
     }

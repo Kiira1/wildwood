@@ -677,7 +677,7 @@ import { MAX_PLAYER_STAT, PLAYER_SPAWN } from "../shared/rules";
     beforeUpgradesOpen: () => panels.closeAllExcept("slotUpgrades"), onUpgradeFinished: progressNotices.onUpgradeFinished,
     applyEquipmentStats, saveProgress,
   });
-  const { smith, cardSeller, slotUpgrades } = town;
+  const { smith, cardSeller, gearSellers, slotUpgrades } = town;
 
   const mapGuide = createMapGuidePanel({
     coop: coopAccess, e: gameElements, currentMapId: () => currentMapId, mapName: mapId => MAP_CONFIG[mapId].name, inventory,
@@ -904,7 +904,7 @@ import { MAX_PLAYER_STAT, PLAYER_SPAWN } from "../shared/rules";
 
   offlineProgressSummary = createCoopSessionWiring({
     coop: coopAccess, player, inventory, renderInventory, saveProgress, healthMultiplierBonus, showMessage,
-    windows: { playerSafety, profileWindow, inventory: inventoryController, smith, cardSeller }, leaderboard, runtimeHud, slotUpgrades,
+    windows: { playerSafety, profileWindow, inventory: inventoryController, smith, cardSeller, gearSellers }, leaderboard, runtimeHud, slotUpgrades,
     inTutorial, isRunning: session.isRunning, moveSpeed: () => playerStats.moveSpeed(), playerInput,
     reconcileMap: () => { if (!inTutorial()) mapController.reconcileMapFromServer(); },
     syncLifetimeKills: progress.syncLifetimeKills, refreshGemCounter, refreshMailbox: mailbox.refresh, refreshGiftsAndMail: giftsAndMail.refresh,

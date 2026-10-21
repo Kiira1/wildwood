@@ -1,8 +1,12 @@
 import { SenderError, t } from "spacetimedb/server";
 import type { Identity } from "spacetimedb";
 import type spacetimedbType from "./index";
-import { isGradeItemId } from "../../shared/grade-equipment";
-import { gradeLineRefusal, gradeShopPrice, masteryLevels } from "../../shared/grade-shop";
+import { isGradeItemId, type GradeItemId } from "../../shared/grade-equipment";
+import { gearSellerOf, gradeLineRefusal, gradeShopPrice, masteryLevels } from "../../shared/grade-shop";
+import {
+  TOWN_ARMOR_SELLER_POSITION, TOWN_FEET_OFFSET, TOWN_GEAR_SELLER_SERVER_REACH, TOWN_WEAPON_SELLER_POSITION, isTownMap,
+} from "../../shared/town";
+import { withinStationReach } from "./door-reach";
 import { isSkillWeapon } from "../../shared/weapon-skills";
 import { standsAtTheSmith } from "./item-refine";
 import { readPlayerProgress } from "./wide-stats";
@@ -15,6 +19,16 @@ import { luckInPlay } from "./luck-research";
 
 type Ctx = any;
 
+/**
+ * Whether the player stands at the seller of this piece: the Weapon Seller's or the Armor Seller's stall. The Smith
+ * still counts for one release, for tabs from before the sellers opened (0.916.20).
+ */
+function standsAtSeller(ctx: Ctx, player: Parameters<typeof withinStationReach>[1], itemId: GradeItemId) {
+  const at = gearSellerOf(itemId) === "weapons" ? TOWN_WEAPON_SELLER_POSITION : TOWN_ARMOR_SELLER_POSITION;
+  return (isTownMap(player.mapId) && withinStationReach(ctx, player, { x: at.x, y: at.y - TOWN_FEET_OFFSET }, TOWN_GEAR_SELLER_SERVER_REACH))
+    || standsAtTheSmith(ctx, player);
+}
+
 export type GradeShopDeps = {
   requireControllingPlayer: (ctx: Ctx) => any;
   activeDuelFor: (ctx: Ctx, identity: Identity) => unknown;
@@ -24,16 +38,16 @@ export type GradeShopDeps = {
 };
 
 /**
- * One graded piece from the Smith for gold, into a free bag slot, as a new drop arrives: collected, its weapon
+ * One graded piece from a gear seller for gold, into a free bag slot, as a new drop arrives: collected, its weapon
  * skills rolled, not worn. Any open grade above the best held on its line can be bought. `expectedPrice` is the price the player saw, so a stale window cannot pay another.
  */
 export function buyGradeGearFor(ctx: Ctx, args: { itemId: string; expectedPrice: bigint }, deps: GradeShopDeps) {
   const player = deps.requireControllingPlayer(ctx);
-  if (!standsAtTheSmith(ctx, player)) throw new SenderError("Talk to the Smith first.");
-  if (deps.activeDuelFor(ctx, ctx.sender)) throw new SenderError("Finish your duel first.");
   const { itemId } = args, price = gradeShopPrice(itemId);
-  if (!isGradeItemId(itemId) || price === undefined) throw new SenderError("The Smith does not sell that.");
-  if (BigInt(price) !== args.expectedPrice) throw new SenderError("The Smith's price changed. Take another look.");
+  if (!isGradeItemId(itemId) || price === undefined) throw new SenderError("That is not for sale.");
+  if (!standsAtSeller(ctx, player, itemId)) throw new SenderError("Talk to the seller first.");
+  if (deps.activeDuelFor(ctx, ctx.sender)) throw new SenderError("Finish your duel first.");
+  if (BigInt(price) !== args.expectedPrice) throw new SenderError("The price changed. Take another look.");
   const progress = readPlayerProgress(ctx, ctx.sender);
   if (!progress) throw new SenderError("Player unavailable.");
   const inventory = deps.inventoryForProgress(progress);

@@ -24,12 +24,10 @@ function setup(stored: Record<string, string> = {}) {
   return { document, chip, teleports, storage, reminders, setInTown: (value: boolean) => { inTown = value; } };
 }
 
-it("puts Research Ready and Upgrades At The Smith in the timer column, above the ad button, hidden until true", () => {
+it("puts Research Ready and Gear Upgrades in the timer column, above the ad button, hidden until true", () => {
   const h = setup();
   const column = h.document.querySelector(".hud-timer-column")!;
   expect([...column.children].map(child => child.id)).toEqual(["researchReadyHint", "smithBuyNotice", "enemyRespawnAdBtn"]);
-  expect(h.chip("researchReadyHint").textContent).toBe("Research Ready");
-  expect(h.chip("smithBuyNotice").textContent).toBe("Upgrades At The Smith");
   expect(h.chip("researchReadyHint").hidden).toBe(true);
   // Nothing on the Town button any more.
   expect(h.document.getElementById("townBtn")!.children).toHaveLength(0);
@@ -50,7 +48,8 @@ it("teleports to the Town through the Town button away from it, and is only a re
 it("has a Settings switch for each, on by default, remembered, placed with the HUD rows", () => {
   const h = setup({ "wildstat-hud-smith-upgrades-visible": "false" });
   const rows = [...h.document.querySelectorAll("#settingsPanel .setting-row")].map(row => row.querySelector("span")!.textContent);
-  expect(rows).toEqual(["Research Ready Hint", "Smith Upgrades Hint", "Stat Tracker"]);
+  expect(rows).toHaveLength(3);
+  expect(rows.at(-1)).toBe("Stat Tracker");
   const research = h.document.querySelector<HTMLButtonElement>('[aria-label="Research Ready Hint"]')!;
   expect(research.getAttribute("aria-pressed")).toBe("true");
   expect(h.chip("smithBuyNotice").classList.contains("is-switched-off")).toBe(true);

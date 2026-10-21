@@ -411,7 +411,7 @@ export function createInventoryController(dependencies: InventoryDependencies) {
     }];
   }
 
-  /** Graded gear in the bag sells to the Smith for gold; worn or locked gear does not. */
+  /** Graded gear in the bag sells for gold, as at the sellers' stalls; worn or locked gear does not. */
   function saleActions(itemId: string, copyId = 0n) {
     const sell = dependencies.sellGradedItem, price = gradeShopSalePrice(itemId), inventory = dependencies.inventory;
     const worn = copyId === 0n && [inventory.equippedHead, inventory.equippedChest, inventory.equippedFeet, inventory.equippedRightHand, inventory.equippedLeftHand].includes(itemId);
@@ -424,7 +424,7 @@ export function createInventoryController(dependencies: InventoryDependencies) {
         const refine = dependencies.refineLevel?.(itemId, copyId) ?? 0;
         if (!await ask(confirmDestroy, {
           message: `Sell ${withRefineStars(itemDisplayName(itemId), refine)} for ${price} Gold?`,
-          details: [{ label: "The Smith pays", value: `${price} Gold` }, ...(refine ? [{ label: "Refines", value: "Lost with the item" }] : [])],
+          details: [{ label: "You Get", value: `${price} Gold` }, ...(refine ? [{ label: "Refines", value: "Lost with the item" }] : [])],
           confirmLabel: "Sell",
         })) return;
         dependencies.itemInspection.close();

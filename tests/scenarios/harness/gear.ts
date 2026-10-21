@@ -1,5 +1,7 @@
 import { vi } from "vitest";
-import { TOWN_CARD_SELLER_POSITION, TOWN_FEET_OFFSET, TOWN_SCHOOL_POSITIONS, TOWN_SMITH_POSITION } from "../../../shared/town";
+import {
+  TOWN_ARMOR_SELLER_POSITION, TOWN_CARD_SELLER_POSITION, TOWN_FEET_OFFSET, TOWN_SCHOOL_POSITIONS, TOWN_SMITH_POSITION, TOWN_WEAPON_SELLER_POSITION,
+} from "../../../shared/town";
 import { masteryPointsForLevel, type WeaponSchool } from "../../../shared/weapon-mastery";
 import { addGold } from "../../../spacetimedb/src/gold";
 import { grantMasteryPoints, weaponMasteryPoints } from "../../../spacetimedb/src/weapon-mastery";
@@ -22,6 +24,8 @@ const feetAt = (spot: { x: number; y: number }) => ({ mapId: "town", x: spot.x, 
 export const TOWN_SPOTS = {
   smith: feetAt(TOWN_SMITH_POSITION),
   cardSeller: feetAt(TOWN_CARD_SELLER_POSITION),
+  weaponSeller: feetAt(TOWN_WEAPON_SELLER_POSITION),
+  armorSeller: feetAt(TOWN_ARMOR_SELLER_POSITION),
   school: (school: WeaponSchool) => feetAt(TOWN_SCHOOL_POSITIONS[school]),
 };
 

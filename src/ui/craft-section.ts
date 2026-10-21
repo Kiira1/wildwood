@@ -1,10 +1,10 @@
 import { itemDisplayName, itemStats } from "../../shared/items";
 import { CRAFTED_REFINE, CRAFT_MAX_LEVEL, CRAFT_SKILLS, CRAFT_SKILL_NAMES, MATERIAL_NAMES, type CraftSkill } from "../../shared/crafting";
 import {
-  craftMaterialsShort, craftProgress, gradeCraftAction, gradeCraftLevel, gradeCraftMaterials, gradeCraftOffer, lineCraftSkill,
-  type GradeCraftAction,
+  craftMaterialsShort, craftProgress, gradeCraftLevel, gradeCraftMaterials, gradeCraftNeed, gradeCraftOffer, gradeCraftSkill, isCraftable, lineCraftSkill,
 } from "../../shared/grade-craft";
-import { ARMOR_CLASS_DETAILS, ARMOR_CLASS_NAMES, BOOT_STYLE_NAMES, GEAR_GRADE_NAMES, type GearGrade } from "../../shared/gear-grades";
+import { isSkillWeapon, weaponSkillLines, type WeaponSkillRoll } from "../../shared/weapon-skills";
+import { ARMOR_CLASS_DETAILS, ARMOR_CLASS_NAMES, BOOT_STYLE_NAMES, GEAR_GRADE_NAMES, gradeIndex, type GearGrade } from "../../shared/gear-grades";
 import { armorClassOf, bootStyleOf, gradeEquipmentKindOf, gradeOf, type GradeItemId } from "../../shared/grade-equipment";
 import { gradeShopItemId, gradeShopLineKey, masteryLevels, type GradeShopLine, type MasteryLevels } from "../../shared/grade-shop";
 import { bagSlotsWithOres } from "../../shared/ore-bag";
@@ -121,23 +121,30 @@ export function offerButton(text: string, enabled: boolean, onClick: () => void)
   return button;
 }
 
+/** One weapon copy held, for the Reforge tab: copy id 0 is the first copy, the one a slot holds. */
+export type HeldWeapon = { itemId: string; copyId: bigint; equipped: boolean; roll: WeaponSkillRoll | null };
+
 export type CraftSectionDeps = {
   craftSkills: () => Readonly<Partial<Record<CraftSkill, bigint>>>;
   ores: () => Ores;
   masteryLevels: () => MasteryLevels;
-  /** Every item held, worn or in a Slot Upgrade. */
-  heldItems: () => readonly string[];
   bagFull: () => boolean;
   craft: (itemId: string) => Promise<Result>;
+  /** Every weapon copy held, worn or in the bag, with its skills. */
+  weapons: () => readonly HeldWeapon[];
+  refineLevel: (itemId: string, copyId: bigint) => number;
+  reforge: (itemId: string, copyId: bigint) => Promise<Result>;
   showMessage: (text: string, color: string) => void;
 };
+
+const copyKey = (item: { itemId: string; copyId: bigint }) => `${item.itemId}:${item.copyId}`;
 
 /**
  * The Smith's crafting card: Smithing, Fletching and Enchanting side by side, each with its level and progress. His
  * Craft tab's rows take each line's craft line (craftLine), offering the best grade that craft's level opens, with
- * a stepper to pick any other open grade (gradeCraftOffer), its materials and a button naming what it makes:
- * "Craft Common Sword ★2", "Reforge Your Common Sword" for a weapon already held, Owned for armor already held.
- * The server decides (craft_grade_gear).
+ * a stepper to pick any other open grade (gradeCraftOffer), its materials and a button: "Craft Common Sword ★2",
+ * always a new piece. His Reforge tab lists each weapon copy held (reforgeRows), one Reforge each. The server decides
+ * (craft_grade_item, reforge_weapon).
  */
 export function createCraftSection(deps: CraftSectionDeps, options: { onChange?: () => void } = {}) {
   const section = document.createElement("section");
@@ -148,18 +155,15 @@ export function createCraftSection(deps: CraftSectionDeps, options: { onChange?:
       + `<span class="craft-level"></span><span class="craft-bar" role="progressbar" aria-valuemin="0" aria-label="${CRAFT_SKILL_NAMES[skill]} progress"><span></span></span>`
       + `<span class="craft-points"></span></li>`).join("")
     + `</ul><p class="craft-note">Crafted gear starts at ${refineStars(CRAFTED_REFINE)} with luckier skills. Higher grades need a higher craft level.</p></div>`;
+  /** The piece being crafted, or the copy being reforged. */
   let crafting: string | null = null, rendered = "";
-  /** Crafted here before the server's row arrives. */
-  const justCrafted = new Set<string>();
   /** The grade picked on each line; the best open one until the player steps. */
   const picked = new Map<string, GearGrade>();
 
-  const held = () => new Set([...deps.heldItems(), ...justCrafted]);
-
   function state() {
     const skills = deps.craftSkills();
-    return JSON.stringify([CRAFT_SKILLS.map(skill => String(skills[skill] ?? 0n)), deps.ores(), deps.masteryLevels(),
-      [...held()].filter(id => gradeOf(id)), deps.bagFull(), crafting, [...picked]]);
+    return JSON.stringify([CRAFT_SKILLS.map(skill => String(skills[skill] ?? 0n)), deps.ores(), deps.masteryLevels(), deps.bagFull(), crafting, [...picked],
+      reforgeable().map(weapon => [copyKey(weapon), weapon.equipped, weapon.roll, deps.refineLevel(weapon.itemId, weapon.copyId)])]);
   }
 
   function render() {
@@ -184,28 +188,55 @@ export function createCraftSection(deps: CraftSectionDeps, options: { onChange?:
    * A line's craft line, by the craft that makes it, at the grade picked (or the best open): a labelled grade stepper
    * with what the next grade needs, the materials held against needed, and a button naming what it makes, or why it waits.
    */
-  function craftLine(line: GradeShopLine, owned = held()) {
+  function craftLine(line: GradeShopLine) {
     const skill = lineCraftSkill(line), offer = gradeCraftOffer(line, skillLevel(skill)), choice = picked.get(gradeShopLineKey(line));
     const grade = choice && offer.grades.includes(choice) ? choice : offer.grade, itemId = gradeShopItemId(line, grade);
-    const action = gradeCraftAction(itemId, owned), ores = deps.ores(), materials = gradeCraftMaterials(itemId)!;
+    const ores = deps.ores(), materials = gradeCraftMaterials(itemId)!;
     const piece = `${GEAR_GRADE_NAMES[grade]} ${KIND_NAMES[gradeEquipmentKindOf(itemId)!]}`;
-    const lacking = craftMaterialsShort(materials, ores).length > 0, full = action === "craft" && deps.bagFull();
-    const ready = action !== "owned" && !lacking && !full && crafting === null;
-    const text = crafting === itemId ? (action === "reforge" ? "Reforging…" : "Crafting…") : action === "owned" ? "Owned"
-      : lacking ? (action === "reforge" ? "Need More To Reforge" : `Need More For ${piece}`) : full ? "Bag Full"
-        : action === "reforge" ? `Reforge Your ${piece}` : `Craft ${piece} ${refineStars(CRAFTED_REFINE)}`;
-    const button = offerButton(text, ready, () => { void craft(itemId, action); });
+    const lacking = craftMaterialsShort(materials, ores).length > 0, full = deps.bagFull();
+    const ready = !lacking && !full && crafting === null;
+    const text = crafting === itemId ? "Crafting…" : lacking ? `Need More For ${piece}` : full ? "Bag Full" : `Craft ${piece} ${refineStars(CRAFTED_REFINE)}`;
+    const button = offerButton(text, ready, () => { void craft(itemId); });
     button.classList.add("craft-action");
     const head = document.createElement("span");
     head.className = "craft-head";
     head.append(gradeStepper(line, offer.grades, grade));
     // The grade past the best open one, and the craft level it waits for.
     if (offer.next) head.append(hint(`${GEAR_GRADE_NAMES[gradeOf(offer.next)!]} needs ${CRAFT_SKILL_NAMES[skill]} Lv ${gradeCraftLevel(offer.next)}`, "craft-next"));
-    const terms: Node[] = [head, materialList(materials, ores)];
-    if (action === "reforge") terms.push(hint("Re-roll its skills, keeping the better roll"));
-    const element = offerLine(terms, button);
+    const element = offerLine([head, materialList(materials, ores)], button);
     element.classList.add("craft-offer", "craft-line");
-    return { itemId, action, next: offer.next, line: element };
+    return { itemId, next: offer.next, line: element };
+  }
+
+  /** The weapon copies a Reforge can take: graded ones a craft makes, worn first, then the best grade. */
+  function reforgeable() {
+    return deps.weapons().filter(weapon => isCraftable(weapon.itemId) && isSkillWeapon(weapon.itemId))
+      .sort((a, b) => Number(b.equipped) - Number(a.equipped) || gradeIndex(gradeOf(b.itemId)!) - gradeIndex(gradeOf(a.itemId)!)
+        || a.itemId.localeCompare(b.itemId) || (a.copyId < b.copyId ? -1 : 1));
+  }
+
+  /**
+   * The Reforge tab's rows: one per weapon copy held, its skills now (so two bows tell apart), the materials a
+   * Reforge takes against what is held, and one Reforge button, or why it waits.
+   */
+  function reforgeRows() {
+    const ores = deps.ores();
+    return reforgeable().map(weapon => {
+      const itemId = weapon.itemId as GradeItemId, skill = gradeCraftSkill(itemId)!, materials = gradeCraftMaterials(itemId)!;
+      const levelMet = skillLevel(skill) >= gradeCraftLevel(itemId), lacking = craftMaterialsShort(materials, ores).length > 0;
+      const key = copyKey(weapon);
+      const made = gradeItemRow(itemId, deps.refineLevel(itemId, weapon.copyId), levelMet ? [] : [{ text: `Needs ${gradeCraftNeed(itemId)}`, met: false }]);
+      made.row.dataset.copyId = String(weapon.copyId);
+      const skills = weaponSkillLines(itemId, weapon.roll);
+      made.row.querySelector(".smith-shop-copy")!.append(hint([weapon.equipped ? "Worn" : "", skills.length ? skills.join(" · ") : "No Skills Yet"].filter(Boolean).join(" · ")));
+      const text = crafting === key ? "Reforging…" : !levelMet ? "Locked" : lacking ? "Need More" : "Reforge";
+      const button = offerButton(text, levelMet && !lacking && crafting === null, () => { void reforge(weapon); });
+      button.classList.add("craft-action");
+      const line = offerLine([materialList(materials, ores)], button);
+      line.classList.add("craft-offer", "craft-line");
+      made.deal.append(line);
+      return made.row;
+    });
   }
 
   function gradeStepper(line: GradeShopLine, grades: readonly GearGrade[], grade: GearGrade) {
@@ -236,17 +267,28 @@ export function createCraftSection(deps: CraftSectionDeps, options: { onChange?:
     return list;
   }
 
-  async function craft(itemId: GradeItemId, action: GradeCraftAction) {
+  async function craft(itemId: GradeItemId) {
     if (crafting) return;
     crafting = itemId;
     changed();
     try {
       const result = await deps.craft(itemId);
-      if (result?.ok) {
-        justCrafted.add(itemId);
-        deps.showMessage(action === "reforge" ? `Reforged · ${nameOf(itemId)}. Each skill kept the higher roll.`
-          : `Crafted · ${nameOf(itemId)} ${refineStars(CRAFTED_REFINE)}. Equip it from your bag.`, "#ffd75e");
-      } else deps.showMessage(result?.error ?? "Not Connected", "#ff9b91");
+      if (result?.ok) deps.showMessage(`Crafted · ${nameOf(itemId)} ${refineStars(CRAFTED_REFINE)}. Equip it from your bag.`, "#ffd75e");
+      else deps.showMessage(result?.error ?? "Not Connected", "#ff9b91");
+    } finally {
+      crafting = null;
+      changed();
+    }
+  }
+
+  async function reforge(weapon: HeldWeapon) {
+    if (crafting) return;
+    crafting = copyKey(weapon);
+    changed();
+    try {
+      const result = await deps.reforge(weapon.itemId, weapon.copyId);
+      if (result?.ok) deps.showMessage(`Reforged · ${nameOf(weapon.itemId)}. Each skill kept the higher roll.`, "#ffd75e");
+      else deps.showMessage(result?.error ?? "Not Connected", "#ff9b91");
     } finally {
       crafting = null;
       changed();
@@ -262,12 +304,11 @@ export function createCraftSection(deps: CraftSectionDeps, options: { onChange?:
     element: section,
     render,
     craftLine,
+    reforgeRows,
     /** What the rows show, for the window that lists them. */
     state,
-    /** Pieces crafted here whose rows have not arrived yet. */
-    crafted: () => [...justCrafted],
-    /** Each visit goes by the server's word on the bag, and starts at each line's best grade. */
-    reset() { justCrafted.clear(); picked.clear(); rendered = ""; },
+    /** Each visit starts at each line's best grade. */
+    reset() { picked.clear(); rendered = ""; },
   };
 }
 
@@ -282,13 +323,16 @@ function hint(text: string, className = "craft-hint") {
 /** What the Smith's crafting reads from the coop session. */
 export type CraftCoop = {
   craftSkills?: () => Readonly<Record<CraftSkill, bigint>>;
-  craftGradeGear?: (itemId: string) => Promise<Result>;
+  craftGradeItem?: (itemId: string) => Promise<Result>;
+  reforgeWeapon?: (itemId: string, copyId: bigint) => Promise<Result>;
+  itemRefine?: (itemId: string, copyId?: bigint) => number;
+  weaponSkills?: (itemId: string) => WeaponSkillRoll | null;
   ores?: () => Ores;
   weaponMastery?: () => Readonly<Record<WeaponSchool, bigint>>;
   activeItemUpgrades?: () => readonly { itemId: string }[];
   inventorySlotsUnlocked?: () => number;
   research?: () => { inventorySlots?: number };
-  equipmentCopies?: () => readonly { id: bigint; itemId: string }[];
+  equipmentCopies?: () => readonly { id: bigint; itemId: string; roll?: WeaponSkillRoll }[];
 };
 export type CraftInventory = { itemIds: string[]; equippedHead: string; equippedChest: string; equippedFeet?: string; equippedRightHand: string; equippedLeftHand: string };
 
@@ -303,15 +347,27 @@ export function bagFullFor(coop: CraftCoop | null | undefined, inventory: CraftI
   return bagSlotsWithOres({ owned: inventory.itemIds, equipped, extraCopies: coop?.equipmentCopies?.().length ?? 0, ores: coop?.ores?.() ?? {}, capacity }) >= capacity;
 }
 
+/** Every weapon copy held: the bag's first copies, worn or not, and the kept copies, each with its skills. */
+export function heldWeaponsFor(coop: CraftCoop | null | undefined, inventory: CraftInventory): HeldWeapon[] {
+  const worn = new Set([inventory.equippedRightHand, inventory.equippedLeftHand]);
+  const firsts = [...new Set(inventory.itemIds)].filter(isSkillWeapon)
+    .map(itemId => ({ itemId, copyId: 0n, equipped: worn.has(itemId), roll: coop?.weaponSkills?.(itemId) ?? null }));
+  const kept = (coop?.equipmentCopies?.() ?? []).filter(copy => isSkillWeapon(copy.itemId) && inventory.itemIds.includes(copy.itemId))
+    .map(copy => ({ itemId: copy.itemId, copyId: copy.id, equipped: false, roll: copy.roll ?? null }));
+  return [...firsts, ...kept];
+}
+
 /** The Smith's crafting deps from the coop session and the bag. */
 export function craftDepsFor(coop: () => CraftCoop | null | undefined, inventory: CraftInventory, showMessage: CraftSectionDeps["showMessage"]): CraftSectionDeps {
   return {
     craftSkills: () => coop()?.craftSkills?.() ?? {},
     ores: () => coop()?.ores?.() ?? {},
     masteryLevels: () => masteryLevels(coop()?.weaponMastery?.() ?? {}),
-    heldItems: () => heldItemsFor(coop(), inventory),
     bagFull: () => bagFullFor(coop(), inventory),
-    craft: async itemId => coop()?.craftGradeGear?.(itemId) ?? { ok: false, error: "Not Connected" },
+    craft: async itemId => coop()?.craftGradeItem?.(itemId) ?? { ok: false, error: "Not Connected" },
+    weapons: () => heldWeaponsFor(coop(), inventory),
+    refineLevel: (itemId, copyId) => coop()?.itemRefine?.(itemId, copyId) ?? 0,
+    reforge: async (itemId, copyId) => coop()?.reforgeWeapon?.(itemId, copyId) ?? { ok: false, error: "Not Connected" },
     showMessage,
   };
 }

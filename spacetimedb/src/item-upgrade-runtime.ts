@@ -128,7 +128,7 @@ export const UPGRADE_BENCH_USE_RANGE = 75;
 export function startItemUpgradeFor(ctx: ModuleReducerCtx, { slot: requestedSlot, itemId }: { slot: number; itemId: string }) {
   const slot = requireUpgradeBenchSlot(requestedSlot);
   const playerAtBench = requireControllingPlayer(ctx);
-  // Slot Upgrades is a tab at the Smith as well as the smithy's bench: either reach will do.
+  // The smithy's bench; the Smith's reach still counts for tabs from before 0.916.20, where Slot Upgrades was his tab.
   const atBench = isTownMap(playerAtBench.mapId) && withinStationReach(ctx, playerAtBench, TOWN_BENCH_POSITION, UPGRADE_BENCH_USE_RANGE);
   if (!atBench && !standsAtTheSmith(ctx, playerAtBench)) {
     throw new SenderError("Go to the Smith or the Slot Upgrades bench first.");

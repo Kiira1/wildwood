@@ -1,10 +1,10 @@
 import { renderBooleanSetting } from "./settings";
 
 export type HudReminderKind = "research" | "smith";
-/** The chips: the Tech Tree shows Research Ready, the Smith runtime shows when Upgrade All has gear to buy. */
+/** The chips: the Tech Tree shows Research Ready, the gear sellers show when an Upgrade All has gear to buy. */
 export const HUD_REMINDERS: readonly { kind: HudReminderKind; id: string; text: string; label: string; key: string }[] = [
   { kind: "research", id: "researchReadyHint", text: "Research Ready", label: "Research Ready Hint", key: "wildstat-hud-research-ready-visible" },
-  { kind: "smith", id: "smithBuyNotice", text: "Upgrades At The Smith", label: "Smith Upgrades Hint", key: "wildstat-hud-smith-upgrades-visible" },
+  { kind: "smith", id: "smithBuyNotice", text: "Gear Upgrades In Town", label: "Gear Upgrades Hint", key: "wildstat-hud-smith-upgrades-visible" },
 ];
 
 /** The chips' markup, hidden until their owner says there is something to do. */
@@ -13,7 +13,7 @@ export function hudReminderMarkup() {
 }
 
 /**
- * Research Ready and Smith upgrades as readable chips in the timer column. A tap
+ * Research Ready and gear upgrades as readable chips in the timer column. A tap
  * away from the Town teleports there through the Town button, cooldown and all;
  * in the Town they are reminders only. Each has a Settings switch, on by default.
  */

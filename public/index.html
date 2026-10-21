@@ -175,7 +175,8 @@
           <button id="closeInventoryBtn" class="window-back-button" type="button" aria-label="Back from inventory">Back</button>
         </footer>
       </div>
-      <div id="slotUpgradesPanel" class="slot-upgrades-panel" role="group" aria-label="Slot Upgrades" hidden>
+      <div id="slotUpgradesPanel" class="slot-upgrades-panel" role="dialog" aria-modal="true" aria-labelledby="slotUpgradesTitle" hidden>
+        <h2 id="slotUpgradesTitle" class="window-banner"><span>Slot Upgrades</span></h2>
         <div class="slot-upgrades-content">
           <p id="slotUpgradesPrompt" class="slot-upgrades-prompt">Pick A Queue</p>
           <div class="slot-upgrades-queues" role="group" aria-label="Upgrade Queues">

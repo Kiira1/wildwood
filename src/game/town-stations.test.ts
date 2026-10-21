@@ -62,8 +62,8 @@ describe("Home's stations in the Town's buildings", () => {
       const decor = townWindowDecor(at.x, at.y);
       expect(decor).toContainEqual(expect.objectContaining({ type: "station", x: at.x, y: at.y, label }));
     }
-    // Out in the village, the rooms' stations are not in the window: only the Smith and the Card Seller, outdoors.
-    expect(stationLabels(TOWN_ARRIVAL)).toEqual(["Smith", "Card Seller"]);
+    // Out in the village, the rooms' stations are not in the window: only the Smith and the market's sellers, outdoors.
+    expect(stationLabels(TOWN_ARRIVAL)).toEqual(["Smith", "Card Seller", "Weapon Seller", "Armor Seller"]);
   });
   it("takes the place of one piece of furniture each, and overlaps no other", () => {
     const decor = townWindowDecor(TOWN_BENCH_POSITION.x, TOWN_BENCH_POSITION.y);

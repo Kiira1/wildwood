@@ -7,6 +7,7 @@ import { setRefineLevel } from "../../spacetimedb/src/item-refine";
 import { writeLuckRanks } from "../../spacetimedb/src/luck-research";
 import { refineCost, refineSafeLimit, refineSuccessChance } from "../../shared/refine";
 import { refineStars } from "../../src/ui/refine-badge";
+import { gradeShopPrice } from "../../shared/grade-shop";
 import type { OreId } from "../../shared/refine";
 import {
   TOWN_SPOTS, answerConfirm, answered, bagItems, deliverRows, fillBag, freeSlots, giveGold, giveItems, giveOres, goldOf, oresOf, playUntil, press,
@@ -15,41 +16,44 @@ import {
 
 /** The Smith's window while it is open. */
 const smithWindow = (tab: GameTab) => windowTitled(tab, "smithTitle");
-/** The Buy row offering this piece. */
-const offer = (tab: GameTab, itemId: string) => smithWindow(tab)?.querySelector<HTMLElement>(`[data-item-id="${itemId}"]`) ?? null;
+/** The gear sellers' windows while they are open. */
+const weaponSeller = (tab: GameTab) => windowTitled(tab, "weaponSellerTitle");
+const armorSeller = (tab: GameTab) => windowTitled(tab, "armorSellerTitle");
+/** The Armor Seller's Buy row offering this piece. */
+const offer = (tab: GameTab, itemId: string) => armorSeller(tab)?.querySelector<HTMLElement>(`[data-view=buy] [data-item-id="${itemId}"]`) ?? null;
 /** A row's own action: the last button on it (Buy, Craft). */
 const action = (row: Element | null) => [...(row?.querySelectorAll<HTMLButtonElement>("button") ?? [])].at(-1) ?? null;
 /** The price a row shows, in gold. */
 const shownPrice = (row: Element | null) => shownNumber(row?.querySelector("[aria-label$=' Gold']")?.textContent);
 const hudGold = (tab: GameTab) => shownNumber(tab.element("hudGoldBalance").textContent);
 
-describe("the Smith", () => {
+describe("the gear sellers and the Smith", () => {
   it("GEAR-07 Buy charges exactly the shown gold, keeps grade gates and bag room, refuses a stale price and spends nothing when it refuses", async () => {
     const world = gameWorld();
     const ann = world.join("Ann");
-    standAt(world, ann, TOWN_SPOTS.smith);
+    standAt(world, ann, TOWN_SPOTS.armorSeller);
     giveGold(world, ann, 1_000);
     setMastery(world, ann, "archery", 1);
     ann.disconnect();
     const tab = await playAs(world, "Ann");
-    await playUntil(tab, () => Boolean(offer(tab, "common_bow")), "the Smith opens on Buy beside him");
+    await playUntil(tab, () => Boolean(offer(tab, "common_light_armor")), "the Armor Seller opens on Buy beside his stall");
 
     // Buy: the shown price leaves the gold, and the piece lands in the bag, not worn.
-    const bow = offer(tab, "common_bow");
-    const price = shownPrice(bow);
+    const armor = offer(tab, "common_light_armor");
+    const price = shownPrice(armor);
     expect(price).toBeGreaterThan(0);
-    press(tab, action(bow));
-    await playUntil(tab, () => serverBag(ann).includes("common_bow"), "the bow is bought");
+    press(tab, action(armor));
+    await playUntil(tab, () => serverBag(ann).includes("common_light_armor"), "the armor is bought");
     expect(goldOf(world, ann)).toBe(BigInt(1_000 - price));
     await playUntil(tab, () => hudGold(tab) === 1_000 - price, "the HUD shows the gold left");
 
     // The line's next grade wants Lv 2 Archery: the row cannot be bought, and the server refuses it too.
-    const locked = offer(tab, "sturdy_bow");
+    const locked = offer(tab, "sturdy_light_armor");
     expect(action(locked)?.disabled).toBe(true);
     const goldBefore = goldOf(world, ann);
-    expect((await tab.coop.buyGradeGear("sturdy_bow", shownPrice(locked))).ok).toBe(false);
+    expect((await tab.coop.buyGradeGear("sturdy_light_armor", shownPrice(locked))).ok).toBe(false);
     expect(goldOf(world, ann)).toBe(goldBefore);
-    expect(serverBag(ann)).not.toContain("sturdy_bow");
+    expect(serverBag(ann)).not.toContain("sturdy_light_armor");
 
     // A price other than the Smith's is refused and takes nothing.
     const helmet = offer(tab, "common_light_helmet");
@@ -70,7 +74,7 @@ describe("the Smith", () => {
     giveGold(world, ann, 1_000);
     deliverRows(tab);
     await playUntil(tab, () => action(offer(tab, "common_light_helmet"))?.disabled === false, "the gold is back");
-    fillBag(world, ann, "common_bow");
+    fillBag(world, ann, "common_light_armor");
     deliverRows(tab);
     await playUntil(tab, () => action(offer(tab, "common_light_helmet"))?.disabled === true, "the helmet waits for bag room");
     const fullGold = goldOf(world, ann);
@@ -78,27 +82,30 @@ describe("the Smith", () => {
     expect(goldOf(world, ann)).toBe(fullGold);
     expect(serverBag(ann)).not.toContain("common_light_helmet");
 
-    // Room again: the Smith sells only in the Town, beside him.
+    // Room again: each seller sells only its own gear, at its stall in the Town.
     world.setup(ctx => { for (const copy of [...ctx.db.playerEquipmentCopy.identity.filter(ann.identity)]) ctx.db.playerEquipmentCopy.delete(copy); });
     deliverRows(tab);
     await playUntil(tab, () => action(offer(tab, "common_light_helmet"))?.disabled === false, "the bag has room again");
-    press(tab, smithWindow(tab)!.querySelector("footer button"));
-    expect(smithWindow(tab)).toBeNull();
+    press(tab, armorSeller(tab)!.querySelector("footer button"));
+    expect(armorSeller(tab)).toBeNull();
 
-    // The bag shows the bow bought, and the hand still holds what it held.
-    expect(bagItems(tab).map(item => item.itemId)).toContain("common_bow");
-    expect(wornItems(tab).hand).not.toBe("common_bow");
+    // The bag shows the armor bought, and the chest still holds what it held.
+    expect(bagItems(tab).map(item => item.itemId)).toContain("common_light_armor");
+    expect(wornItems(tab).chest).not.toBe("common_light_armor");
 
-    standAt(world, ann, { ...TOWN_SPOTS.smith, mapId: "crystal_hollows" });
+    expect((await tab.coop.buyGradeGear("common_bow", gradeShopPrice("common_bow")!)).ok).toBe(false);
+    standAt(world, ann, { ...TOWN_SPOTS.armorSeller, mapId: "crystal_hollows" });
     expect((await tab.coop.buyGradeGear("common_light_helmet", helmetPrice)).ok).toBe(false);
     expect(goldOf(world, ann)).toBe(fullGold);
+    standAt(world, ann, TOWN_SPOTS.weaponSeller);
+    expect((await tab.coop.buyGradeGear("common_bow", gradeShopPrice("common_bow")!)).ok).toBe(true);
   }, 60_000);
 
-  it("GEAR-10 Craft takes exactly the materials shown or none, makes the piece at ★2, reforges a line held and raises the craft", async () => {
+  it("GEAR-10 Craft takes exactly the materials shown or none and always makes a new piece at ★2; Reforge rerolls the copy picked and raises the craft", async () => {
     const world = gameWorld();
     const ann = world.join("Ann");
     standAt(world, ann, TOWN_SPOTS.smith);
-    giveOres(world, ann, { pine_log: 30, copper_ore: 30 });
+    giveOres(world, ann, { pine_log: 60, copper_ore: 60 });
     ann.disconnect();
     const tab = await playAs(world, "Ann");
     await playUntil(tab, () => Boolean(smithWindow(tab)), "the Smith opens");
@@ -109,40 +116,48 @@ describe("the Smith", () => {
     const needs = (row: Element | null) => Object.fromEntries([...(row?.querySelectorAll<HTMLElement>("[data-material]") ?? [])]
       .map(item => [item.dataset.material!, Number(/\/\s*([\d,]+)/.exec(item.textContent ?? "")![1].replace(/,/g, ""))]));
     const fletching = () => world.db.playerCraftSkill.key.find(`${ann.hex}:fletching`)?.experience ?? 0n;
+    const copies = () => [...world.db.playerEquipmentCopy.identity.filter(ann.identity)].filter(copy => copy.itemId === "crude_bow");
 
     // Craft: the shown materials leave the bag and the bow arrives at ★2, not worn.
     const bow = needs(craftRow("crude_bow"));
     expect(Object.keys(bow).length).toBeGreaterThan(0);
     press(tab, action(craftRow("crude_bow")));
     await playUntil(tab, () => serverBag(ann).includes("crude_bow"), "the bow is crafted");
-    for (const [oreId, count] of Object.entries(bow)) expect(oresOf(world, ann, oreId as OreId)).toBe(30 - count);
+    for (const [oreId, count] of Object.entries(bow)) expect(oresOf(world, ann, oreId as OreId)).toBe(60 - count);
     expect(refineOf(world, ann, "crude_bow")).toBe(CRAFTED_REFINE);
     expect(ann.progress().equippedRightHand).not.toBe("crude_bow");
     const once = fletching();
     expect(once).toBeGreaterThan(0n);
     expect(world.db.playerCraftLevel.key.find(`${ann.hex}:fletching`)?.level).toBeGreaterThan(1);
 
-    // Fletching now opens Common; a step down the line's grades reforges the bow held: the same materials and
-    // experience again, no second bow.
-    const bagSize = serverBag(ann).length;
+    // The same bow again: a second bow of its own, at ★2, beside the first in the bag.
     await playUntil(tab, () => Boolean(craftRow("common_bow")), "the line offers the next grade");
     press(tab, craftRow("common_bow")!.querySelector("[role=group] button"));
-    expect(action(craftRow("crude_bow"))?.disabled).toBe(false);
-    // Refined further since: a reforge keeps the refine.
-    world.setup(ctx => setRefineLevel(ctx, ann.identity, "crude_bow", 0n, 5));
     press(tab, action(craftRow("crude_bow")));
-    await playUntil(tab, () => fletching() === once * 2n, "the reforge trains Fletching again");
-    for (const [oreId, count] of Object.entries(bow)) expect(oresOf(world, ann, oreId as OreId)).toBe(30 - 2 * count);
-    expect(serverBag(ann).length).toBe(bagSize);
+    await playUntil(tab, () => copies().length === 1, "a second bow is crafted");
+    expect(refineOf(world, ann, "crude_bow", copies()[0].id)).toBe(CRAFTED_REFINE);
+    await playUntil(tab, () => bagItems(tab).filter(item => item.itemId === "crude_bow").length === 2, "the bag shows both bows");
+
+    // Reforge lists each bow; the second one is rerolled for the same materials and experience, and the first keeps its refine.
+    world.setup(ctx => setRefineLevel(ctx, ann.identity, "crude_bow", 0n, 5));
+    press(tab, smithWindow(tab)!.querySelector("button[data-view=reforge]"));
+    const reforgeRow = (copyId: bigint) => smithWindow(tab)!.querySelector(`[data-view=reforge] [data-item-id="crude_bow"][data-copy-id="${copyId}"]`);
+    await playUntil(tab, () => Boolean(reforgeRow(0n) && reforgeRow(copies()[0].id)), "Reforge lists both bows");
+    const second = copies()[0], ores = oresOf(world, ann, "pine_log");
+    press(tab, action(reforgeRow(second.id)));
+    await playUntil(tab, () => fletching() === once * 3n, "the reforge trains Fletching again");
+    expect(oresOf(world, ann, "pine_log")).toBe(ores - (bow.pine_log ?? 0));
+    expect(copies()).toHaveLength(1);
+    for (const skill of ["arrowStorm", "ricochet", "piercingShot"] as const) expect(copies()[0][skill]).toBeGreaterThanOrEqual(second[skill]);
     expect(refineOf(world, ann, "crude_bow")).toBe(5);
-    expect([...world.db.playerEquipmentCopy.identity.filter(ann.identity)]).toEqual([]);
 
     // Short of one material: the row waits, and the server takes nothing, not even what there is.
+    press(tab, smithWindow(tab)!.querySelector("button[data-view=craft]"));
     const staff = craftRow("crude_staff");
     expect(Object.keys(needs(staff))).toContain("arcane_crystal");
     expect(action(staff)?.disabled).toBe(true);
     const pine = oresOf(world, ann, "pine_log");
-    expect((await answered(tab, tab.coop.craftGradeGear("crude_staff"))).ok).toBe(false);
+    expect((await answered(tab, tab.coop.craftGradeItem("crude_staff"))).ok).toBe(false);
     expect(oresOf(world, ann, "pine_log")).toBe(pine);
     expect(serverBag(ann)).not.toContain("crude_staff");
   }, 60_000);
@@ -153,13 +168,14 @@ describe("the Smith", () => {
     standAt(world, ann, TOWN_SPOTS.smith);
     const all: Partial<Record<OreId, number>> = Object.fromEntries((["copper_ore", "iron_ore", "mithril_ore", "adamant_ore", "starshard", "pine_log", "oak_log", "yew_log", "elder_log", "arcane_crystal"] as OreId[]).map(id => [id, 100_000]));
     giveOres(world, ann, all);
-    const craft = (itemId: string, expectedMaterials = craftMaterialsKey(gradeCraftMaterials(itemId)!)) => ann.refusal("craftGradeGear", { itemId, expectedMaterials });
+    const craft = (itemId: string, expectedMaterials = craftMaterialsKey(gradeCraftMaterials(itemId)!)) => ann.refusal("craftGradeItem", { itemId, expectedMaterials });
 
     // A grade opens by the craft's level; Mastery plays no part.
     expect(craft("rare_bow")).not.toBeNull();
     expect(craft("crude_heavy_armor")).toBeNull();
-    // Armor held is not made twice, and a recipe other than the server's is refused.
-    expect(craft("crude_heavy_armor")).not.toBeNull();
+    // Armor held is made again, as another copy, and a recipe other than the server's is refused.
+    expect(craft("crude_heavy_armor")).toBeNull();
+    expect([...world.db.playerEquipmentCopy.identity.filter(ann.identity)].map(copy => copy.itemId)).toEqual(["crude_heavy_armor"]);
     expect(craft("crude_heavy_helmet", "[]")).not.toBeNull();
     expect(serverBag(ann)).not.toContain("crude_heavy_helmet");
 
@@ -248,35 +264,40 @@ describe("the Smith", () => {
     expect(tab.element("itemInspectionContent").textContent).toContain(refineStars(safe));
   }, 60_000);
 
-  it("GEAR-08 Upgrade All spends the gold it shows and puts every piece on", async () => {
+  it("GEAR-08 Upgrade All spends the gold it shows and puts every piece on, and the HUD points at the gear left to buy", async () => {
     const world = gameWorld();
     const ann = world.join("Ann");
-    standAt(world, ann, TOWN_SPOTS.smith);
+    standAt(world, ann, TOWN_SPOTS.armorSeller);
     giveGold(world, ann, 1_000);
     setMastery(world, ann, "archery", 1);
     ann.disconnect();
     const tab = await playAs(world, "Ann");
-    await playUntil(tab, () => Boolean(smithWindow(tab)), "the Smith opens");
+    await playUntil(tab, () => Boolean(armorSeller(tab)), "the Armor Seller opens");
     // The big button heads the Buy tab: its total, and the pieces it lists.
-    const upgrade = () => smithWindow(tab)!.querySelector<HTMLButtonElement>("[data-view=buy]:not(button) button")!;
+    const upgrade = () => armorSeller(tab)!.querySelector<HTMLButtonElement>("[data-view=buy]:not(button) button")!;
     const total = shownNumber(upgrade().querySelector("span")!.textContent);
     expect(total).toBeGreaterThan(0);
-    // The HUD says there are upgrades at the Smith while there are.
+    // The HUD says there are upgrades in Town while there are.
     expect(tab.shown("smithBuyNotice")).toBe(true);
     press(tab, upgrade());
     await playUntil(tab, () => goldOf(world, ann) === BigInt(1_000 - total), "Upgrade All is paid");
-    const worn = () => { const progress = ann.progress(); return [progress.equippedRightHand, progress.equippedHead, progress.equippedChest, progress.equippedFeet]; };
+    const worn = () => { const progress = ann.progress(); return [progress.equippedHead, progress.equippedChest, progress.equippedFeet]; };
     await playUntil(tab, () => worn().every(itemId => itemId.startsWith("common_")), "every piece goes on", 10_000);
-    expect(worn()).toEqual(["common_bow", "common_light_helmet", "common_light_armor", "common_ranger_boots"]);
-    // Nothing more to buy at this Mastery: the button waits.
-    await playUntil(tab, () => upgrade().disabled && !tab.shown("smithBuyNotice"), "Upgrade All waits");
-    press(tab, smithWindow(tab)!.querySelector("footer button"));
-    expect(wornItems(tab)).toEqual({ hand: "common_bow", head: "common_light_helmet", chest: "common_light_armor", feet: "common_ranger_boots" });
+    expect(worn()).toEqual(["common_light_helmet", "common_light_armor", "common_ranger_boots"]);
+    // Nothing more here at this Mastery: the button waits, and the HUD still points at the bow at the Weapon Seller.
+    await playUntil(tab, () => upgrade().disabled, "Upgrade All waits");
+    expect(tab.shown("smithBuyNotice")).toBe(true);
+    press(tab, armorSeller(tab)!.querySelector("footer button"));
+    expect(wornItems(tab)).toMatchObject({ head: "common_light_helmet", chest: "common_light_armor", feet: "common_ranger_boots" });
+    standAt(world, ann, TOWN_SPOTS.weaponSeller);
+    expect((await tab.coop.buyGradeGear("common_bow", gradeShopPrice("common_bow")!)).ok).toBe(true);
+    await playUntil(tab, () => !tab.shown("smithBuyNotice"), "nothing left to buy");
   }, 60_000);
 
   it("GEAR-09 selling graded gear pays the gold shown, one copy at a time, and never a worn or locked piece", async () => {
     const world = gameWorld();
     const ann = world.join("Ann");
+    standAt(world, ann, TOWN_SPOTS.weaponSeller);
     wear(world, ann, "common_bow", "equippedRightHand");
     giveItems(world, ann, "crude_bow");
     giveGold(world, ann, 100);
@@ -301,12 +322,22 @@ describe("the Smith", () => {
       return price;
     }
 
-    // Two crude bows: the first sale takes one copy and leaves the other.
-    expect(bowEntries()).toHaveLength(2);
-    const first = await sell(bowEntries()[0]);
+    // Two crude bows at the Weapon Seller's Sell tab, the worn bow not among them: a sale takes a second tap, and one copy.
+    await playUntil(tab, () => Boolean(weaponSeller(tab)), "the Weapon Seller opens");
+    press(tab, weaponSeller(tab)!.querySelector("button[data-view=sell]"));
+    const sellRows = () => [...weaponSeller(tab)!.querySelectorAll<HTMLElement>("[data-view=sell] [data-item-id]")];
+    await playUntil(tab, () => sellRows().length === 2, "both crude bows are for sale");
+    expect(sellRows().map(row => row.dataset.itemId)).toEqual(["crude_bow", "crude_bow"]);
+    const first = shownPrice(sellRows()[0]);
     expect(first).toBeGreaterThan(0);
+    const before = goldOf(world, ann);
+    press(tab, action(sellRows()[0]));
+    expect(goldOf(world, ann)).toBe(before);
+    press(tab, action(sellRows()[0]));
+    await playUntil(tab, () => goldOf(world, ann) === before + BigInt(first), "the sale is paid");
     expect(serverBag(ann)).toContain("crude_bow");
-    await playUntil(tab, () => bowEntries().length === 1, "the bag shows one bow left");
+    await playUntil(tab, () => sellRows().length === 1 && bowEntries().length === 1, "one bow left");
+    press(tab, weaponSeller(tab)!.querySelector("footer button"));
     // The last one goes, and its refine with it.
     expect(await sell(bowEntries()[0])).toBe(first);
     expect(serverBag(ann)).not.toContain("crude_bow");
