@@ -15,11 +15,15 @@ export type RemoteRegularEnemyCombatVisual = {
   critical: boolean;
   hp: number;
   maxHp: number;
+  /** The weapon fought with, so its attack is drawn whatever look is held. */
+  weaponItem?: string;
 };
 
 /** Existing saved stats needed to reproduce a remote regular-enemy fight locally. */
 export type RemoteCombatStats = {
   melee?: boolean;
+  /** The equipped weapon (saved progress); the player row only carries the look drawn. */
+  weaponItem?: string;
   damage: number;
   maxHp: number;
   armor: number;
@@ -46,6 +50,8 @@ export type RemotePlayer = RemoteEquipment & {
   simulationY?: number;
   throwClock?: number;
   regularEnemyCombat?: RemoteRegularEnemyCombatVisual;
+  /** The equipped weapon while fighting; the hand items may be a look of another kind. */
+  weaponItem?: string;
 };
 
 export type MapPlayerMarker = {

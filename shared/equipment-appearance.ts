@@ -1,4 +1,5 @@
 import { weaponKind } from "./equip-best";
+import { itemDefinition } from "./items";
 
 export type EquipmentAppearanceInput = {
   equippedHead: string;
@@ -35,17 +36,12 @@ function resolvedSlotAppearance(cosmeticItem: string | undefined, equippedItem: 
 
 /**
  * Cosmetics override appearance only; one cosmetic hand replaces both regular
- * hands. A hand look shows only on a weapon of its own kind (equip-best.ts
- * weaponKind), because the look is what moves: a sword's look on a bow would
- * swing while arrows flew, and a bow's on a sword would draw while it struck.
- * The weapon itself is drawn instead.
+ * hands. A hand look shows on any weapon: its art is held, but the attack is
+ * the equipped weapon's (attackPoseItem).
  */
 export function resolveEquipmentAppearance(equipment: EquipmentAppearanceInput): EquipmentAppearance {
-  const kind = weaponKind(equipment.equippedRightHand || equipment.equippedLeftHand);
-  const fits = (look: string) => isHiddenCosmeticItem(look) || weaponKind(look) === kind;
-  const rightLook = equipment.cosmeticRightHand || "", leftLook = equipment.cosmeticLeftHand || "";
-  const cosmeticRightHand = rightLook && fits(rightLook) ? rightLook : "";
-  const cosmeticLeftHand = cosmeticRightHand || !leftLook || !fits(leftLook) ? "" : leftLook;
+  const cosmeticRightHand = equipment.cosmeticRightHand || "";
+  const cosmeticLeftHand = cosmeticRightHand ? "" : equipment.cosmeticLeftHand || "";
   const hasCosmeticHand = Boolean(cosmeticRightHand || cosmeticLeftHand);
   return {
     headItem: resolvedSlotAppearance(equipment.cosmeticHead, equipment.equippedHead),
@@ -56,4 +52,17 @@ export function resolveEquipmentAppearance(equipment: EquipmentAppearanceInput):
     rightHandItem: hasCosmeticHand ? resolvedSlotAppearance(cosmeticRightHand, "") : equipment.equippedRightHand,
     leftHandItem: hasCosmeticHand ? resolvedSlotAppearance(cosmeticLeftHand, "") : equipment.equippedLeftHand,
   };
+}
+
+/**
+ * The item whose attack a drawn hand item makes: the look itself when it is the
+ * equipped weapon's kind (a bow look over a stone still draws), else the weapon,
+ * so a staff look on a bow is held while arrows fly. Tools are left as drawn;
+ * a hidden (empty) hand attacks with the weapon.
+ */
+export function attackPoseItem(drawnItem: string, weaponItem: string | undefined) {
+  if (!drawnItem) return weaponItem || "";
+  if (!weaponItem || drawnItem === weaponItem) return drawnItem;
+  if (itemDefinition(drawnItem)?.slot !== "HAND" || itemDefinition(weaponItem)?.slot !== "HAND") return drawnItem;
+  return weaponKind(drawnItem) === weaponKind(weaponItem) ? drawnItem : weaponItem;
 }

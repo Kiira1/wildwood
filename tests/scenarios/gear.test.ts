@@ -895,7 +895,7 @@ describe("the Card Seller", () => {
 });
 
 describe("looks", () => {
-  it("GEAR-19 a look changes what others see but never the stats; a hand look shows only on its own kind of weapon; hidden hides without unequipping", async () => {
+  it("GEAR-19 a look changes what others see but never the stats; a hand look shows on any weapon; hidden hides without unequipping", async () => {
     const world = gameWorld();
     const ann = world.join("Ann");
     wear(world, ann, "rare_light_helmet", "equippedHead");
@@ -934,11 +934,10 @@ describe("looks", () => {
     expect(wornItems(tab).head).toBe("rare_light_helmet");
     tab.tap("inventoryCosmeticsTab");
 
-    // A sword's look worn over a bow is not drawn: the bow is.
+    // A sword's look worn over a bow is drawn, but the bow is still what she fights with.
     useLook("crude_sword");
-    await tab.play(1_000);
+    await playUntil(tab, () => seen().rightHandItem === "crude_sword", "the sword look is drawn over the bow");
     expect(ann.progress().cosmeticRightHand).toBe("crude_sword");
-    expect(seen().rightHandItem).toBe("crude_bow");
     expect(ann.progress().equippedRightHand).toBe("crude_bow");
     expect(seen().powerLevel).toBe(power);
   }, 60_000);

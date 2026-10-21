@@ -372,6 +372,8 @@ export type DuelCombatant = Position & {
   feetItem: string;
   rightHandItem: string;
   leftHandItem: string;
+  /** The weapon fought with; the hand items may be a look of another kind. */
+  weaponItem?: string;
 };
 
 export type DuelShot = Position & {

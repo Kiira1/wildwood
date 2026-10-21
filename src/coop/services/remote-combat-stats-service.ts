@@ -111,6 +111,7 @@ export function remoteCombatStatsFromRows(
   const melee = itemDefinition(weaponItem)?.weapon?.mode === "MELEE";
   return {
     melee,
+    weaponItem,
     // A staff's bolts hit a little harder and come slower (shared/staff-skills.ts).
     damage: finitePositive(stats.damage * weaponHitFactor(weaponItem), 1),
     maxHp: finitePositive(stats.maxHp, 100),

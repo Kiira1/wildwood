@@ -181,6 +181,7 @@ export function createDuelPresentation(hooks: DuelPresentationHooks) {
         feetItem: isChallenger ? duel.challengerFeetItem : duel.opponentFeetItem,
         rightHandItem: isChallenger ? duel.challengerRightHandItem : duel.opponentRightHandItem,
         leftHandItem: isChallenger ? duel.challengerLeftHandItem : duel.opponentLeftHandItem,
+        weaponItem: duelWeapon(duel, isChallenger),
       };
     };
     return {
@@ -274,6 +275,7 @@ export function createDuelPresentation(hooks: DuelPresentationHooks) {
         feetItem: isChallenger ? replay.challengerFeetItem : replay.opponentFeetItem,
         rightHandItem: isChallenger ? replay.challengerRightHandItem : replay.opponentRightHandItem,
         leftHandItem: isChallenger ? replay.challengerLeftHandItem : replay.opponentLeftHandItem,
+        weaponItem: duelWeapon(replay, isChallenger),
       };
     };
     hooks.setReplayTitle({

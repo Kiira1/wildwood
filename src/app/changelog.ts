@@ -1,4 +1,7 @@
 export const RELEASE_NOTES: Record<string, string[]> = {
+  "0.916.20": [
+    "Weapon cosmetics show on any weapon",
+  ],
   "0.916.19": [
     "Endless bosses now drop six Warden cards, one for every ten maps",
     "Oak and Elder Trees drop two new woodcutting cards",

@@ -14,7 +14,7 @@ Picked by URL hash in `visual-check.html`:
 | Scene | What it draws |
 | --- | --- |
 | `plates` | Players' and enemies' overhead plates at the phone camera framing: guest, prestige badge, gender, dev and guild tags, long name with descenders, power, low HP, a chat bubble; enemy bars with and without HP numbers; Show My Name Plate off; chat bubbles stacked (system and duel notices left out); plate height over each helmet and the Invisible line; Safari's text metrics (no glyph bounds) |
-| `gear` | One character per grade × refine (★0 ★10 ★20) × armour class, all slots; the refine-look thresholds; every non-graded piece with world art; held weapons in either hand both ways, aim in eight directions, running sway and idle bob, attacks, tools by level, Galaxy and Diamond finishes, every skin tone, and the death fall |
+| `gear` | One character per grade × refine (★0 ★10 ★20) × armour class, all slots; the refine-look thresholds; every non-graded piece with world art; held weapons in either hand both ways, aim in eight directions, running sway and idle bob, attacks, looks held over another kind of weapon, tools by level, Galaxy and Diamond finishes, every skin tone, and the death fall |
 | `enemies` | Every atlas-animated enemy: idle and walk loops, the attack from its start, walking and attacking facing left, and dying, grouped by map |
 | `parts` | The parts-built enemies (goblins, skeletons, slimes …) facing right and left, aiming up-right, down-right and up-left, hit, and dying |
 | `combat-hits` | Damage numbers over a crowd at the phone framing (white dealt, yellow crits, red taken, a burst fanned out) as they rise, fade and go; each weapon's projectile and an enemy shot; bow, sword and staff skill effects partway through |

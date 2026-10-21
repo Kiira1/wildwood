@@ -156,6 +156,7 @@ export function createWorldRendering(deps: WorldRenderingDeps) {
       return {
         head: appearance.headItem, chest: appearance.chestItem, feet: appearance.feetItem,
         rightHand: appearance.rightHandItem, leftHand: appearance.leftHandItem,
+        weapon: inventory.equippedRightHand || inventory.equippedLeftHand,
       };
     },
     equipmentForIdentity: identity => {

@@ -395,6 +395,7 @@ export function createRemoteEnemyCombatShadows(options: {
       critical: attack.critical,
       hp: fighter.hp,
       maxHp: fighter.maxHp,
+      weaponItem: shadow.stats.weaponItem,
     };
     const selected = visuals.get(target.id);
     if (!selected || distanceSquared < selected.distanceSquared) {
@@ -598,6 +599,7 @@ export function createRemoteEnemyCombatShadows(options: {
         ...player,
         facing: Math.atan2(regularEnemyCombat.targetY - player.y, regularEnemyCombat.targetX - player.x),
         throwClock: regularEnemyCombat.throwClock,
+        weaponItem: regularEnemyCombat.weaponItem,
         regularEnemyCombat,
       });
     }

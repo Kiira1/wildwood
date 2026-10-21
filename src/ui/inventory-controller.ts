@@ -7,7 +7,6 @@ import {
 } from "../game/inventory";
 import { requiredElement } from "../game/runtime/dom";
 import { canDestroyEquipment, itemDefinition, itemDisplayName } from "../../shared/items";
-import { weaponKind } from "../../shared/equip-best";
 import { COSMETIC_CONVERSION_GEM_COST, canConvertToCosmetic } from "../../shared/cosmetic-conversion";
 import { inventoryMoveActions, inventoryWeaponSlot, renderInventoryView, type InventoryMode } from "./hud";
 import type { ItemInspectionController } from "./item-inspection-controller";
@@ -40,11 +39,9 @@ type SelectableInventory = InventoryState & { selectedItemId: string; selectedIt
 type Result = { ok: boolean; error?: string } | undefined;
 /** A copy kept from a duplicate drop, beyond the item's first. */
 
-/** Where a look shows: a hand look only on a weapon of its own kind (shared/equipment-appearance.ts). */
+/** Where a look shows: a hand look on any weapon (shared/equipment-appearance.ts). */
 export function cosmeticReach(itemId: string) {
-  if (itemDefinition(itemId)?.slot !== "HAND") return "Appearance only";
-  const kind = weaponKind(itemId);
-  return kind === "MELEE" ? "Shows on a sword" : kind === "MAGIC" ? "Shows on a staff" : "Shows on a bow";
+  return itemDefinition(itemId)?.slot === "HAND" ? "Shows on any weapon" : "Appearance only";
 }
 
 export type KeptEquipmentCopy = { id: bigint; itemId: string; roll: WeaponSkillRoll };

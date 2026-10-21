@@ -10,6 +10,7 @@ import { EXPANSION_HEAD_FRAME, DEFAULT_HEAD_ALIGNMENT } from "./player-head-temp
 import { drawPlayerHead, drawPlayerEyes } from "./player-face";
 import { drawAlignedPlayerLayer, type PlayerLayer, type PlayerLayerAlignment, type LayerBounds } from "./player-layer-alignment";
 import { STARTER_STONE } from "./inventory";
+import { attackPoseItem } from "../../shared/equipment-appearance";
 import { ITEM_PRESENTATIONS, itemFinish, itemHasGalaxyFinish, itemPresentation, type WorldSpritePresentation } from "./item-presentation";
 import { galaxyFinishFrame } from "./galaxy-finish";
 import { PLAYER_WORLD_SCALE } from "./player-render-scale";
@@ -419,7 +420,7 @@ function drawEgg(ctx: CanvasRenderingContext2D, width: number, height: number, i
 export function drawStartingPlayer(
   ctx: CanvasRenderingContext2D,
   assets: PlayerAppearanceAssets,
-  options: { x: number; y: number; facing: number; combatFacing?: number | null; moving?: boolean; gameTime: number; throwClock?: number; swordSpinClock?: number; skinTone?: number; headItem?: string; chestItem?: string; feetItem?: string; rightHandItem?: string; leftHandItem?: string; itemRefine?: (itemId: string) => number; alpha?: number; scale?: number; smooth?: boolean; alignment?: PlayerLayerAlignment; helmetOpacity?: number; presentationOverrides?: Record<string, WorldSpritePresentation>; onLayerBounds?: (layer: PlayerLayer, bounds: LayerBounds) => void },
+  options: { x: number; y: number; facing: number; combatFacing?: number | null; moving?: boolean; gameTime: number; throwClock?: number; swordSpinClock?: number; skinTone?: number; headItem?: string; chestItem?: string; feetItem?: string; rightHandItem?: string; leftHandItem?: string; weaponItem?: string; itemRefine?: (itemId: string) => number; alpha?: number; scale?: number; smooth?: boolean; alignment?: PlayerLayerAlignment; helmetOpacity?: number; presentationOverrides?: Record<string, WorldSpritePresentation>; onLayerBounds?: (layer: PlayerLayer, bounds: LayerBounds) => void },
 ) {
   const scale = options.scale ?? PLAYER_WORLD_SCALE;
   const walkFrame = options.moving ? Math.floor(options.gameTime * 10) % 3 + 1 : 0;
@@ -439,11 +440,18 @@ export function drawStartingPlayer(
   const heldSpritePresentation = heldPresentation?.kind === "SPRITE" && heldPresentation.layer === "HAND"
     ? heldPresentation
     : undefined;
-  const swordHeld = heldSpritePresentation?.handAction === "SWING";
-  const staffHeld = heldSpritePresentation?.handAction === "CAST";
-  // A sword and a staff have poses of their own; the shared nudge below is for bows and stones.
-  const posed = swordHeld || staffHeld;
-  const bowHeld = heldSpritePresentation?.handAction === "BOW";
+  const artAction = heldSpritePresentation?.handAction;
+  // The art says how the item is held; the equipped weapon (`weaponItem`) says how it attacks.
+  // A look of another kind keeps its own grip and moves the weapon's way: a staff on a bow recoils, on a sword swings.
+  const poseItem = heldItem ? attackPoseItem(heldItem, options.weaponItem) : "";
+  const posePresentation = poseItem === heldItem ? heldSpritePresentation : itemPresentation(poseItem)?.world;
+  const poseAction = posePresentation?.kind === "SPRITE" ? posePresentation.handAction : undefined;
+  const swordHeld = artAction === "SWING";
+  const staffHeld = artAction === "CAST";
+  const swings = poseAction === "SWING", casts = poseAction === "CAST";
+  // A sword and a staff have attacks of their own; the shared nudge below is for bows and stones.
+  const posed = swings || casts;
+  const bowHeld = artAction === "BOW";
   // Keep the grip attached to the same hand in local character space.
   // The actor transform mirrors it when turning; a second facing-dependent
   // offset here would make the weapon slide sideways across the hand.
@@ -457,7 +465,7 @@ export function drawStartingPlayer(
   heldX += bowAlignment.x;
   heldY += bowAlignment.y;
   let heldVisible = true;
-  if (heldSpritePresentation?.handAction === "THROW") {
+  if (artAction === "THROW" && poseAction === "THROW") {
     if (attackElapsed > 0 && attackElapsed < .12) {
       const windup = attackElapsed / .12;
       heldX -= 11 * (1 - (1 - windup) * (1 - windup));
@@ -586,7 +594,11 @@ export function drawStartingPlayer(
   if (facingLeft) ctx.scale(-1, 1);
   ctx.scale(scale, scale); ctx.translate(-90, -171);
   // A staff's cast draws a rune circle at the feet, under everything else.
-  if (staffHeld) drawStaffRune(ctx, 90, 168, staffCastPose(options.throwClock ?? 0).rune, staffBoltColor(heldItem));
+  if (casts) drawStaffRune(ctx, 90, 168, staffCastPose(options.throwClock ?? 0).rune, staffBoltColor(poseItem));
+  // Another kind's art swung as the sword is, or lifted and leaned as the staff is, around its own grip.
+  const swing = swings ? spin ?? swordSwingPose(options.throwClock ?? 0) : undefined;
+  const swingTurn = swing && !swordHeld ? (swing.angle + 28) * DEGREES_TO_RADIANS : 0;
+  const cast = casts && !staffHeld ? staffCastPose(options.throwClock ?? 0) : undefined;
   const drawHeldItem = () => {
     if (!heldItem || !heldSpritePresentation || !heldVisible) return;
     const held = sprite(heldItem);
@@ -597,25 +609,27 @@ export function drawStartingPlayer(
     const left = 90 - width / 2 + heldX;
     if (staffHeld) {
       // Held upright at its grip, leaning a little forward; the cast lifts, leans and thrusts it, and its head glows.
-      const pose = staffCastPose(options.throwClock ?? 0);
+      const pose = staffCastPose(casts ? options.throwClock ?? 0 : 0);
       ctx.save();
       ctx.translate(left + width / 2 + pose.forward, heldY + height * STAFF_GRIP - pose.lift);
-      ctx.rotate(STAFF_REST_TILT + pose.tilt + runMotion.rotation);
+      ctx.rotate(STAFF_REST_TILT + pose.tilt + runMotion.rotation + swingTurn);
+      if (swing) drawSwordTrail(ctx, 0, 0, height * STAFF_GRIP, -Math.PI / 2, swing.trail);
       drawLayer(ctx, asset, -width / 2, -height * STAFF_GRIP, width, height, "weapon", true, asset !== held);
       drawStaffTipGlow(ctx, 0, -height * STAFF_GRIP + 9, pose.glow, staffBoltColor(heldItem));
       ctx.restore();
       return;
     }
     ctx.save();
-    ctx.translate(left + width / 2, heldY + height / 2);
+    ctx.translate(left + width / 2 + (cast?.forward ?? 0), heldY + height / 2 - (cast?.lift ?? 0));
     const baseRotation = heldSpritePresentation.handAction === "BOW"
       ? bowHeldRotationRadians({ combatFacing: options.combatFacing, facingLeft, heldInLeftHand })
       : 0;
-    ctx.rotate(baseRotation + runMotion.rotation);
+    ctx.rotate(baseRotation + runMotion.rotation + (cast?.tilt ?? 0) + (swordHeld ? 0 : swingTurn));
+    if (swing && !swordHeld) drawSwordTrail(ctx, 0, 0, Math.max(width, height) / 2, 0, swing.trail);
     ctx.scale(bowAlignment.scaleX, 1);
     if (swordHeld && readyImage(asset)) {
       const alignment = options.alignment?.weapon ?? defaultWeaponAlignment(heldSpritePresentation) ?? { x: 0, y: 0, scale: 1 };
-      const pose = spin ?? swordSwingPose(options.throwClock ?? 0);
+      const pose = swing ?? spin ?? swordSwingPose(0);
       const aim = options.combatFacing == null ? 0 : (facingLeft ? Math.PI - options.combatFacing : options.combatFacing);
       const angle = (alignment.angle ?? -28) + aim / DEGREES_TO_RADIANS + pose.angle + 28;
       const pivotX = -width / 2 + width * (alignment.pivotX ?? .5);
