@@ -1,4 +1,4 @@
-import { formatEquipmentAmount } from "./equipment-stat-format";
+import { appendBagTileContents } from "./bag-item-tile";
 import { itemTier } from "../../shared/item-tier";
 import { appendItemTierLabel } from "./item-tier-label";
 import { appendRefineBadge, withRefineStars } from "./refine-badge";
@@ -11,7 +11,7 @@ import { formatCompactNumber } from "./number-format";
 import { appendPlayerGenderIcon } from "./player-gender";
 import { PLAYER_GENDER_UNSET, type PlayerGender } from "../../shared/player-gender";
 import { isHiddenCosmeticItem } from "../../shared/equipment-appearance";
-import { type ItemSlot, itemDefinition, isCosmeticOnlyItem, itemStats, itemDisplayName, normalizeItemUpgradeLevel } from "../../shared/items";
+import { type ItemSlot, itemDefinition, isCosmeticOnlyItem, itemDisplayName, normalizeItemUpgradeLevel } from "../../shared/items";
 
 import { appendPlayerNameTags, appendPrestigeBadge, playerNamePrefix, playerPrestigeLevel } from "../app/player-name-tags";
 
@@ -411,31 +411,10 @@ export function renderInventoryView(
       button.setAttribute("aria-label", `${withRefineStars(itemDisplayName(itemId), refine)}${copyId ? ", another copy" : ""}. Tap to inspect and equip.`);
       button.dataset.itemId = itemId;
       if (copyId) button.dataset.copyId = String(copyId);
-      const art = document.createElement("span");
-      art.className = "inventory-item-art-wrap";
-      art.innerHTML = itemArt(itemId, true, cosmetics ? actions.lookRefine?.(itemId) ?? 0 : refine);
-      button.append(art);
-      if (!cosmetics) appendItemTierLabel(button, itemId, "above");
-      if (!cosmetics) {
-        const bonuses = document.createElement("span");
-        bonuses.className = "inventory-item-bonuses";
-        const stats = itemStats(itemId, { tier: level, refine });
-        for (const stat of stats) {
-          const match = /^(DAMAGE|MAX HEALTH|REGEN) (\+[\d.]+)(%?)$/.exec(stat);
-          if (!match) continue;
-          const value = document.createElement("span");
-          value.dataset.statKind = match[1] === "DAMAGE" ? "damage" : match[1] === "MAX HEALTH" ? "health" : "regen";
-          value.textContent = `+${formatEquipmentAmount(Number(match[2]))}${match[3]}`;
-          value.title = stat;
-          value.setAttribute("aria-label", stat);
-          bonuses.append(value);
-        }
-        button.append(bonuses);
-      }
       // No +N on a loose item: the number belongs to the slot it goes in, and
       // showing it here made every weapon in the bag claim the weapon slot's
       // tier as its own. A refine is the copy's own, so its ★N does show.
-      appendRefineBadge(button, refine);
+      appendBagTileContents(button, itemId, { refine, tier: level, artRefine: cosmetics ? actions.lookRefine?.(itemId) ?? 0 : refine, plain: cosmetics });
       button.addEventListener("click", () => actions.onInspect(itemId, "BAG", copyId));
     } else {
       button.setAttribute("aria-label", `Empty bag slot ${index + 1}`);
