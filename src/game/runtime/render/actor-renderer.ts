@@ -19,6 +19,7 @@ import { enemyHpNumbersEnabled } from "../../../ui/enemy-hp-setting";
 import { ownNamePlateEnabled } from "../../../ui/name-plate-setting";
 import { headArtTopOffsetY } from "./overhead-plate";
 import { formatCompactNumber } from "../../../../shared/compact-number";
+import { attackPoseItem } from "../../../../shared/equipment-appearance";
 import { healthBarTextY } from "./health-bar-layout";
 import { plateFont, platePixels, plateSize, plateStroke } from "./nameplate-scale";
 
@@ -233,12 +234,14 @@ export function createActorRenderer(options: {
   localDeath: () => PlayerDeathAnimationState | null;
   remoteDeath: (identity: string) => PlayerDeathAnimationState | null;
   /** `gameTime`, when given, holds the idle pose at that moment instead of the frame clock's. */
-  drawPlayerAppearance: (actor: { skinTone?: number; x: number; y: number; facing: number; combatFacing?: number | null; moving?: boolean; gameTime?: number; throwClock?: number; swordSpinClock?: number; identity?: string; id?: string; headItem?: string; chestItem?: string; feetItem?: string; rightHandItem?: string; leftHandItem?: string; itemRefine?: (itemId: string) => number }, alpha: number) => void;
+  drawPlayerAppearance: (actor: { skinTone?: number; x: number; y: number; facing: number; combatFacing?: number | null; moving?: boolean; gameTime?: number; throwClock?: number; swordSpinClock?: number; identity?: string; id?: string; headItem?: string; chestItem?: string; feetItem?: string; rightHandItem?: string; leftHandItem?: string; weaponItem?: string; itemRefine?: (itemId: string) => number }, alpha: number) => void;
   localHeadItem: () => string;
   localChestItem: () => string;
   localFeetItem: () => string;
   localRightHandItem: () => string;
   localLeftHandItem: () => string;
+  /** The weapon the local player fights with; the hand items above may be a look of another kind. */
+  localWeaponItem?: () => string;
   equipmentForIdentity: (identity: string | undefined) => { headItem?: string; chestItem?: string; feetItem?: string; rightHandItem?: string; leftHandItem?: string };
   /** A piece's sprite, in its refine look when `refineLevel` is given (player-appearance.ts equipmentSprite). */
   itemSprite: (itemId: string | undefined, refineLevel?: number) => HTMLImageElement | undefined;
@@ -372,10 +375,15 @@ export function createActorRenderer(options: {
     return canvas;
   }
 
+  /** What the local player's shots look like: the look's own when it is the weapon's kind, else the weapon's. */
+  function localShotItem() {
+    return attackPoseItem(options.localRightHandItem() || options.localLeftHandItem(), options.localWeaponItem?.());
+  }
+
   function webGLProjectileFrame(projectile: Projectile | EnemyShot, enemy = false): StaticWorldSpriteFrame | null {
     const x = screenX(projectile.x);
     const y = screenY(projectile.y);
-    const weaponItem = options.localRightHandItem() || options.localLeftHandItem();
+    const weaponItem = localShotItem();
     const projectileKind = enemy ? undefined : projectileKindForWeapon(weaponItem);
     let source: HTMLCanvasElement | HTMLImageElement | null = null;
     if (projectileKind === "ARROW") source = arrowSprite();
@@ -447,7 +455,7 @@ export function createActorRenderer(options: {
   }
 
   function drawPlayerSprite(
-    actor: { skinTone?: number; x: number; y: number; facing: number; combatFacing?: number | null; moving?: boolean; gameTime?: number; throwClock?: number; swordSpinClock?: number; identity?: string; id?: string; headItem?: string; chestItem?: string; feetItem?: string; rightHandItem?: string; leftHandItem?: string; itemRefine?: (itemId: string) => number },
+    actor: { skinTone?: number; x: number; y: number; facing: number; combatFacing?: number | null; moving?: boolean; gameTime?: number; throwClock?: number; swordSpinClock?: number; identity?: string; id?: string; headItem?: string; chestItem?: string; feetItem?: string; rightHandItem?: string; leftHandItem?: string; weaponItem?: string; itemRefine?: (itemId: string) => number },
     alpha = 1,
   ) {
     options.drawPlayerAppearance(actor, alpha);
@@ -626,6 +634,7 @@ export function createActorRenderer(options: {
       feetItem: options.localFeetItem(),
       rightHandItem: options.localRightHandItem(),
       leftHandItem: options.localLeftHandItem(),
+      weaponItem: options.localWeaponItem?.(),
       itemRefine: localItemRefine,
     };
     const death = options.localDeath();
@@ -669,7 +678,9 @@ export function createActorRenderer(options: {
     const regularEnemyCombat = other.regularEnemyCombat;
     const attack = regularEnemyCombat;
     const attackCritical = regularEnemyCombat?.critical;
-    if (attack && !isMeleeWeapon(equipment.rightHandItem || equipment.leftHandItem) && attack.projectileProgress > 0 && attack.projectileProgress < 1) {
+    // Shots are the weapon's (known while fighting), whatever look is drawn.
+    const shotItem = attackPoseItem(equipment.rightHandItem || equipment.leftHandItem, other.weaponItem);
+    if (attack && !isMeleeWeapon(shotItem) && attack.projectileProgress > 0 && attack.projectileProgress < 1) {
       const dx = attack.targetX - other.x;
       const dy = attack.targetY - other.y;
       const distance = Math.hypot(dx, dy) || 1;
@@ -683,7 +694,7 @@ export function createActorRenderer(options: {
       const projectileX = screenX(startX + (endX - startX) * progress);
       const projectileY = screenY(startY + (endY - startY) * progress);
       const visibleHits = Math.min(5, attack.hits);
-      const weaponItem = equipment.rightHandItem || equipment.leftHandItem;
+      const weaponItem = shotItem;
       const projectileKind = projectileKindForWeapon(weaponItem);
       for (let index = 0; index < visibleHits; index += 1) {
         const offset = (index - (visibleHits - 1) / 2) * 9;
@@ -996,7 +1007,7 @@ export function createActorRenderer(options: {
   function drawProjectile(projectile: Projectile | EnemyShot, enemy = false) {
     const x = screenX(projectile.x);
     const y = screenY(projectile.y);
-    const weaponItem = options.localRightHandItem() || options.localLeftHandItem();
+    const weaponItem = localShotItem();
     const projectileKind = !enemy
       ? projectileKindForWeapon(weaponItem)
       : undefined;

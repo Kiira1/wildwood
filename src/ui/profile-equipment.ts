@@ -5,7 +5,6 @@ import type { PlayerProgress } from "../coop/services/progress";
 import { itemArtMarkup } from "../game/item-presentation";
 import { lookRefine } from "../game/local-item-refines";
 import { isHiddenCosmeticItem } from "../../shared/equipment-appearance";
-import { weaponKind } from "../../shared/equip-best";
 import { cardDefinition, type CardSlot } from "../../shared/cards";
 import { CARD_TYPE_NAMES } from "../../shared/active-cards";
 import {
@@ -67,10 +66,9 @@ export function profileEquipmentPresentation(
   const equippedItemId = slot === "WEAPON"
     ? knownItemId(progress.equippedRightHand) || knownItemId(progress.equippedLeftHand)
     : knownItemId(progress[details.equipped]);
-  // A hand look shows only on a weapon of its own kind, as the character is drawn (shared/equipment-appearance.ts).
-  const fits = (look: string) => isHiddenCosmeticItem(look) || weaponKind(look) === weaponKind(equippedItemId);
+  // A hand look shows on any weapon, as the character is drawn (shared/equipment-appearance.ts).
   const selectedCosmetic = slot === "WEAPON"
-    ? [cosmeticValue(progress.cosmeticRightHand), cosmeticValue(progress.cosmeticLeftHand)].find(look => look && fits(look)) ?? ""
+    ? cosmeticValue(progress.cosmeticRightHand) || cosmeticValue(progress.cosmeticLeftHand)
     : cosmeticValue(progress[details.cosmetic]);
 
   const cosmeticItemId = knownItemId(selectedCosmetic);

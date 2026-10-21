@@ -123,7 +123,8 @@ export type WorldRenderRuntimeOptions = {
   spiderWebRange: number;
   playerAppearanceAssets: PlayerAppearanceAssets;
   skinTone: (identity: string | undefined) => number | undefined;
-  equippedItems: () => { head: string; chest: string; feet: string; rightHand: string; leftHand: string };
+  /** The looks drawn, and `weapon`: the weapon fought with, which may be another kind than the hand's look. */
+  equippedItems: () => { head: string; chest: string; feet: string; rightHand: string; leftHand: string; weapon?: string };
   equipmentForIdentity: (identity: string | undefined) => { headItem?: string; chestItem?: string; feetItem?: string; rightHandItem?: string; leftHandItem?: string };
   enemySprites: Record<string, LoadedEnemySprite>;
   rewardMultiplier: () => number;
@@ -303,6 +304,7 @@ export function createWorldRenderRuntime(options: WorldRenderRuntimeOptions) {
     localFeetItem: () => options.equippedItems().feet,
     localRightHandItem: () => toolInHand() ?? options.equippedItems().rightHand,
     localLeftHandItem: () => toolInHand() ? "" : options.equippedItems().leftHand,
+    localWeaponItem: () => toolInHand() ? "" : options.equippedItems().weapon ?? "",
     equipmentForIdentity: options.equipmentForIdentity,
     itemSprite: (itemId, refineLevel) => equipmentSprite(options.playerAppearanceAssets, itemId, refineLevel),
     enemySprites: options.enemySprites,

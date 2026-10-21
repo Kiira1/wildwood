@@ -4,6 +4,8 @@ export const RELEASE_NOTES: Record<string, string[]> = {
     "Reforge has its own Smith tab: pick which weapon to reforge",
     "New Weapon and Armor Sellers in Town buy and sell gear; the Smith is for crafting, reforging and refining",
     "Slot Upgrades are back at their own station",
+    "Weapon cosmetics show on any weapon",
+    "Doors open when you walk into them",
   ],
   "0.916.19": [
     "Endless bosses now drop six Warden cards, one for every ten maps",

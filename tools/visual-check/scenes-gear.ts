@@ -149,6 +149,21 @@ function attacks(assets: Assets) {
   }));
 }
 
+/** A look of another kind than the weapon: the look's art is held, the weapon's attack is made. */
+function crossKindLooks(assets: Assets) {
+  const rows = [
+    { name: "staff on bow", look: "crude_staff", weapon: STARTER_BOW }, { name: "sword on bow", look: "crude_sword", weapon: STARTER_BOW },
+    { name: "bow on staff", look: "crude_bow", weapon: STARTER_STAFF }, { name: "sword on staff", look: "crude_sword", weapon: STARTER_STAFF },
+    { name: "staff on sword", look: "crude_staff", weapon: WOODEN_SWORD }, { name: "bow on sword", look: "crude_bow", weapon: WOODEN_SWORD },
+  ];
+  const columns = ["idle", "aim", ...SWING_CLOCKS.map(clock => `${Math.round((.42 - clock) * 1000)} ms`)];
+  const view = grid("Looks on another kind of weapon · idle, aiming, then the weapon's attack", columns, rows.map(row => row.name), 96, 100);
+  return () => view.draw((ctx, column, row, x, y) => drawStartingPlayer(ctx, assets, {
+    x, y, facing: 0, combatFacing: column ? 0 : null, moving: false, gameTime: 0, throwClock: column > 1 ? SWING_CLOCKS[column - 2] : 0,
+    rightHandItem: rows[row].look, leftHandItem: "", weaponItem: rows[row].weapon,
+  }));
+}
+
 const TOOL_LEVELS = [0, 2, 4, 6, 8, 10];
 /** Gathering tools in hand at each level, mid-swing; the Smith's painted tools beside them. */
 function tools(assets: Assets) {
@@ -235,7 +250,7 @@ async function deaths(): Promise<() => void> {
 /** One character per grade × refine × class, every other worn piece, and the poses gear is drawn in. */
 export async function gear() {
   const { assets } = await createWorld(document.createElement("canvas").getContext("2d")!, { zoom: 1, viewport: { width: 1, height: 1 } });
-  const draws = [gradedGear(assets), refineThresholds(assets), otherGear(assets), heldWeapons(assets), aim(assets), running(assets), attacks(assets),
+  const draws = [gradedGear(assets), refineThresholds(assets), otherGear(assets), heldWeapons(assets), aim(assets), running(assets), attacks(assets), crossKindLooks(assets),
     tools(assets), finishes(assets), faces(assets), await deaths()];
   await drawUntilStable(() => draws.forEach(draw => draw()));
 }
