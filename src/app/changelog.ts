@@ -3,6 +3,7 @@ export const RELEASE_NOTES: Record<string, string[]> = {
     "The Smith and the Sellers show your items as a grid, with the picked item and its button always on top",
     "Craft and the Sellers always list all gear",
     "Skeleton archers and reapers hold their bows properly",
+    "The Shop shows the Diamond Galaxy set under the Diamond frame",
   ],
   "0.916.27": [
     "Sword swings move the hilt along with the blade",
