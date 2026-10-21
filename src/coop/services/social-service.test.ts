@@ -15,7 +15,7 @@ function harness() {
   let active = connection;
   const service = createSocialService({ reducers: { connection: () => active, protocolBlocked: () => false,
     runWorldReducer: async (fn: () => unknown) => fn(), errorMessage: (error: unknown) => error instanceof Error ? error.message : String(error) } as unknown as ReducerPort,
-    localIdentity: () => alice.toHexString(), notify: vi.fn() });
+    localIdentity: () => alice.toHexString(), notify: vi.fn(), drainPendingProgress: async () => true });
   const row = (id: bigint, channel: string, sender = bob, recipient = alice) => ({ id, channel, guildId: channel === "guild" ? 4n : 0n,
     sender, recipient, senderName: sender.equals(bob) ? "Bob" : "Alice", recipientName: recipient.equals(cara) ? "Cara" : "Alice",
     senderGender: 0, powerLevel: 10, message: "Hello", moderated: false, sentAt: { microsSinceUnixEpoch: 1_000n },

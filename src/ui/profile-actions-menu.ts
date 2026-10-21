@@ -1,10 +1,11 @@
 import { copyText } from "./chat-message-actions";
 
-/** The ⋯ menu on another player's profile: Copy Name, Report and Block, one per row. */
+/** The ⋯ menu on another player's profile: Copy Name, Invite to Guild, Report and Block, one per row. */
 export function createProfileActionsMenu(api: {
   isBlocked: (identity: string) => boolean;
   openSafety: (identity: string, name: string, action: "report" | "block") => void;
   showMessage: (text: string, color: string) => void;
+  guildInvite?: { available: (identity: string) => boolean; send: (identity: string) => Promise<{ ok: boolean; error?: string }> };
 }, doc: Document = document) {
   const dialog = doc.createElement("dialog");
   dialog.className = "profile-actions-menu";
@@ -25,13 +26,17 @@ export function createProfileActionsMenu(api: {
     button.append(mark, text);
     button.addEventListener("click", () => { close(); action(); });
     dialog.append(button);
-    return text;
+    return { button, text };
   }
   row("profileMenuCopyNameBtn", "⧉", "Copy Name", false, () => {
     void copyText(name).then(() => api.showMessage("NAME COPIED", "#c9f5c2"), () => api.showMessage("COULD NOT COPY", "#ff9b91"));
   });
+  const invite = row("profileMenuInviteBtn", "+", "Invite to Guild", false, () => {
+    const invited = name;
+    void api.guildInvite?.send(target).then(result => api.showMessage(result.ok ? `Invited ${invited}` : result.error || "Could Not Invite", result.ok ? "#ffffff" : "#ff9b91"));
+  }).button;
   row("profileMenuReportBtn", "!", "Report", true, () => api.openSafety(target, name, "report"));
-  const blockLabel = row("profileMenuBlockBtn", "⊘", "Block", true, () => api.openSafety(target, name, "block"));
+  const blockLabel = row("profileMenuBlockBtn", "⊘", "Block", true, () => api.openSafety(target, name, "block")).text;
 
   function close() { if (dialog.open) dialog.close(); }
   function open(identity: string, playerName: string) {
@@ -39,6 +44,7 @@ export function createProfileActionsMenu(api: {
     target = identity; name = playerName;
     title.textContent = playerName;
     blockLabel.textContent = api.isBlocked(identity) ? "Unblock" : "Block";
+    invite.hidden = !api.guildInvite?.available(identity);
     dialog.showModal();
   }
   // A tap outside the rows lands on the dialog itself (its backdrop) and closes it.

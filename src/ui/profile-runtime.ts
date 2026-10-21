@@ -92,6 +92,10 @@ export function createProfileRuntime(deps: ProfileRuntimeDeps) {
     isBlocked: coop.isPlayerBlocked,
     openSafety: playerSafety.open,
     guildTag: playerGuildTag, findGuild: guildLookup.find,
+    guildInvite: {
+      available: identity => client?.social?.canInviteToGuild?.() === true && !playerGuildTag(identity),
+      send: async identity => await client?.social?.inviteToGuild?.(identity) ?? { ok: false, error: "Not Connected" },
+    },
     openGuild: id => deps.guildPanel()?.openGuildPreview(id),
     onOwnProfile: (own: boolean) => prestigePanel.refresh(own),
     prestigeLevel: coop.prestigeLevel,

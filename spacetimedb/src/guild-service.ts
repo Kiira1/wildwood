@@ -204,6 +204,8 @@ export function createGuildService(deps: { fighterFor(ctx: Ctx, identity: Identi
       if (guildRequestOnly(ctx, guildId)) fail("This guild requires a join request.");
       joinApproved(ctx, guildId, ctx.sender);
     },
+    /** An officer's invitation is the guild's approval: it skips a request-only guild's queue. */
+    joinInvited(ctx: Ctx, guildId: bigint) { joinApproved(ctx, guildId, ctx.sender); },
     leave(ctx: Ctx) { removeMember(ctx, requireMember(ctx), deps.onMemberRemoved); },
     kick(ctx: Ctx, identity: Identity) {
       const guild = requireLeader(ctx);

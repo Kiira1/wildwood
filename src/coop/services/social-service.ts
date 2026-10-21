@@ -9,6 +9,7 @@ import { parsePlayerDirectory, type PlayerDirectoryEntry } from "../../../shared
 
 type Dependencies = {
   reducers: ReducerPort; localIdentity: () => string; notify: () => void;
+  drainPendingProgress: () => Promise<boolean>;
   rememberSender?: (sender: { identity: string; identityValue: Identity; name: string; isGuest: boolean }) => void;
 };
 type MessageRow = {
@@ -46,8 +47,9 @@ export function createSocialService(deps: Dependencies) {
       }
     } };
   }
-  async function mutate(action: (connection: NonNullable<ReturnType<ReducerPort["connection"]>>) => Promise<unknown>) {
+  async function mutate(action: (connection: NonNullable<ReturnType<ReducerPort["connection"]>>) => Promise<unknown>, drain = false) {
     const current = request();
+    if (drain && !await deps.drainPendingProgress()) throw new Error("Your progress is still syncing. Try again shortly.");
     current.check();
     try { await deps.reducers.runWorldReducer(() => action(current.connection)); current.check(); }
     catch (error) { throw new Error(deps.reducers.errorMessage(error)); }
@@ -115,6 +117,20 @@ export function createSocialService(deps: Dependencies) {
     historyRevision: () => hubRevision,
     revision: () => revision,
     currentGuild: () => snapshot.currentGuild,
+    /** Pending invitations, shown in the inviter's private conversation; none while already in a guild. */
+    guildInvitations: () => snapshot.currentGuild ? [] : snapshot.guildInvitations.filter(invite => invite.inviterIdentity),
+    canInviteToGuild: () => snapshot.canInviteToGuild === true,
+    async inviteToGuild(identity: string) {
+      try { await mutate(connection => connection.reducers.guildInviteAction({ action: "invite", target: identity, invitationId: 0n })); return { ok: true }; }
+      catch (error) { return { ok: false, error: error instanceof Error ? error.message : String(error) }; }
+    },
+    /** Accepting waits until pending progress is saved, as joining always has. */
+    async answerGuildInvite(invitationId: string, accept: boolean) {
+      try {
+        await mutate(connection => connection.reducers.guildInviteAction({ action: accept ? "accept" : "decline", target: "", invitationId: BigInt(invitationId) }), accept);
+        await api.loadSocial(); return { ok: true };
+      } catch (error) { return { ok: false, error: error instanceof Error ? error.message : String(error) }; }
+    },
     snapshot: () => snapshot,
     guildMessages: () => { indexed(); return guildRows; },
     privateMessages: (target: string) => {

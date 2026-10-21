@@ -553,25 +553,31 @@ describe("The Guild window", () => {
     expect(guildHub(cara).battles).toHaveLength(1);
   });
 
-  it("a guild is joined from the list, and an officer answers join requests from guild chat with a note", async () => {
+  it("an invitation arrives as a private chat from its sender and is accepted there, and an officer answers join requests from guild chat with a note", async () => {
     const world = gameWorld();
     const [ann, dan, eve] = ["Ann", "Dan", "Eve"].map(name => world.join(name));
     const moon = foundGuild(world, dan, "Moon");
+    // Moon takes requests only; an invitation is the guild's own approval.
+    dan.call("guildAdmission", { action: "requestOnly", guildId: moon, identity: dan.identity, note: "" });
     ann.disconnect();
     const tab = await playAs(world, "Ann");
     const annNow = tab.network.players.get("Ann")!;
-    const guild = guildWindow(tab), chat = chatPanel(tab);
+    const chat = chatPanel(tab);
     await chat.expand();
-    // She joins Moon from the guild list.
-    await guild.open();
-    await guild.press(`join-${moon}`);
+    await chat.press("Private");
+    dan.call("guildInviteAction", { action: "invite", target: annNow.hex, invitationId: 0n });
+    await tab.play(1_000);
+    const fromDan = chat.panel().querySelector<HTMLButtonElement>(`.chat-conversation-row[data-identity="${dan.hex}"]`);
+    expect(fromDan).not.toBeNull();
+    fromDan!.dispatchEvent(new (tab.window as any).Event("click", { bubbles: true }));
+    await tab.play(500);
+    await chat.press("Accept");
+    await tab.play(1_000);
     expect(world.db.guildMember.identity.find(annNow.identity)?.guildId).toBe(moon);
 
-    // Moon takes requests only; Dan makes Ann Vice President; Eve asks to join.
-    dan.call("guildAdmission", { action: "requestOnly", guildId: moon, identity: dan.identity, note: "" });
+    // Dan makes Ann Vice President; Eve asks to join.
     dan.call("setGuildVicePresident", { identity: annNow.identity, enabled: true });
     eve.call("guildAdmission", { action: "request", guildId: moon, identity: eve.identity, note: "" });
-    await guild.back();
     await chat.press("Guild");
     await chat.press("Requests");
     await tab.play(500);

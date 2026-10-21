@@ -4323,6 +4323,16 @@
 .chat-conversation-row:hover, .chat-conversation-heading:hover { background: rgba(255,255,255,.04); box-shadow: none; }
 .chat-conversations-empty { padding: 16px 8px; color: #aaa; font-size: 13px; }
 .chat-channel-status { padding: 5px 2px 0; color: #d7d2ca; font-size: 11px; line-height: 1.3; }
+/* A guild invitation at the top of the inviter's private conversation. */
+.chat-guild-invites { display: grid; gap: 6px; margin-top: 6px; }
+.chat-guild-invites[hidden] { display: none; }
+.chat-guild-invite { display: grid; gap: 8px; padding: 10px; border: 1px solid rgba(255,255,255,.16); border-radius: 8px; background: rgba(0,0,0,.38); }
+.chat-guild-invite p { margin: 0; color: #fff; font: 800 14px/1.3 var(--font-rounded); -webkit-text-stroke: 0; text-shadow: none; }
+.chat-guild-invite-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+.chat-guild-invite-actions button { min-height: 40px; margin: 0; padding: 0 10px; border: 2px solid var(--ui-outline); border-radius: 8px; background: #3a3a3a; box-shadow: 0 3px 0 var(--ui-outline); color: #fff; font: 900 14px/1 var(--font-rounded); -webkit-text-stroke: 0; text-shadow: none; }
+.chat-guild-invite-actions button.is-primary { background: #f2f2f2; color: #111; }
+.chat-guild-invite-actions button:active:not(:disabled) { transform: translateY(2px); box-shadow: 0 1px 0 var(--ui-outline); }
+.chat-guild-invite-actions button:disabled { opacity: .6; }
 #chatForm { position: relative; }
 #chatForm #chatLatestBtn { position: absolute; right: 4px; bottom: calc(100% + 6px); z-index: 2; display: grid; place-items: center; width: 44px; min-width: 44px; height: 36px; min-height: 36px; padding: 0; border: 0; border-radius: 0; background: transparent; box-shadow: none; color: #fff; font: 22px/1 sans-serif; -webkit-text-stroke: 0; text-shadow: 0 1px 3px #000; }
 #chatForm #chatLatestBtn[hidden] { display: none; }
