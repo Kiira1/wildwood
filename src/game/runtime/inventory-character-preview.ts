@@ -9,7 +9,7 @@ import { equipmentAppearance, type InventoryState } from "../inventory";
 import type { PlayerAppearanceAssets } from "../player-appearance";
 import { drawCharacterPreviewScene } from "./character-preview-scene";
 import { requiredCanvasContext } from "./dom";
-import { localItemRefine, wornItemRefine } from "../local-item-refines";
+import { localItemRefine } from "../local-item-refines";
 
 type InventoryCharacterPreviewOptions = {
   visible: boolean;
@@ -65,7 +65,7 @@ export function createInventoryCharacterPreview(
       appearance,
       scale,
       characterOffsetY,
-      itemRefine: wornItemRefine(inventory, localItemRefine),
+      itemRefine: localItemRefine,
     });
     // Use the same character-space anchor as drawStartingPlayer; leave a small
     // gap above the equipped helmet, including taller headwear.

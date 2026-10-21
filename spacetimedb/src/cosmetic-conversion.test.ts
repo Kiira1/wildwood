@@ -3,6 +3,8 @@ import { STARTER_BOW, STARTER_STONE } from "../../shared/items";
 import { BOSS_REWARD_CLAIM_BITS } from "../../shared/rules";
 import { crystalFixture, server } from "../../tests/helpers/crystal-hollows-fixture";
 import { progressOf } from "../../tests/helpers/progress";
+import { gradeItemId } from "../../shared/grade-equipment";
+import { setRefineLevel } from "./item-refine";
 vi.mock("spacetimedb/server", () => import("../../tests/helpers/spacetime-module"));
 
 function equippedFixture(gems: bigint) {
@@ -62,4 +64,16 @@ it("retains the permanent appearance through prestige, which keeps the item, and
     expect(JSON.parse(progress.inventoryJson).includes(STARTER_BOW)).toBe(keepsItem);
     expect(JSON.parse(progress.cosmeticItemsJson)).toContain(STARTER_BOW);
   }
+});
+
+it("keeps the best refine the item reached as the look's, after the item is gone", () => {
+  const f = equippedFixture(10n), bow = gradeItemId("bow", "rare");
+  f.patch("playerProgress", { inventoryJson: JSON.stringify([STARTER_STONE, STARTER_BOW, bow]) });
+  setRefineLevel(f.ctx, f.ctx.sender, bow, 0n, 12);
+  f.run(server.convertItemToCosmetic, { itemId: bow });
+  const kept = () => [...f.db.playerCosmeticRefine.identity.filter(f.ctx.sender)].map((row: any) => [row.itemId, row.level]);
+  expect(kept()).toEqual([[bow, 12]]);
+  setRefineLevel(f.ctx, f.ctx.sender, bow, 0n, 21);
+  f.run(server.destroyEquipment, { itemId: bow });
+  expect(kept()).toEqual([[bow, 21]]);
 });

@@ -17,7 +17,7 @@ import { createProfileBonusToggles, type ProfileBonusDeps } from "./profile-bonu
 import {
   PROFILE_EQUIPMENT_SLOTS,
   profileEquipmentPresentation,
-  profileEquipmentRefine,
+  profileEquipmentRefine, profileLookRefine,
   profileEquipmentActiveCards,
   renderProfileEquipmentSlot,
   type ProfileEquipmentSlot,
@@ -53,7 +53,7 @@ export function createProfileWindowController(elements: {
   localIdentity: () => string | undefined; localDisplayName: () => string | undefined; profileIcon: (identity?: string) => number; paintIcon: (element: HTMLElement, index: number, identity?: string) => void;
   renderName: (element: HTMLElement, identity: string, name: string, gender?: PlayerGender) => void; isGuest: (identity: string) => boolean; isOnline: (identity: string) => boolean; presenceText: (profile: Profile, online: boolean) => string;
   /** `progress` carries the profile's refines too, so the preview draws worn graded gear in its refine look. */
-  renderCharacter: (identity: string, progress: (Profile["progress"] & { itemRefines?: Readonly<Record<string, number>> }) | null, visible: boolean) => void; skinTone: (identity?: string) => number; setSkinTone: (value: number) => Promise<{ ok?: boolean; error?: string } | undefined>;
+  renderCharacter: (identity: string, progress: (Profile["progress"] & { itemRefines?: Readonly<Record<string, number>>; cosmeticRefines?: Readonly<Record<string, number>> }) | null, visible: boolean) => void; skinTone: (identity?: string) => number; setSkinTone: (value: number) => Promise<{ ok?: boolean; error?: string } | undefined>;
   playerGender: (identity?: string) => PlayerGender; setGender: (value: PlayerGender) => Promise<{ ok?: boolean; error?: string } | undefined>;
   nameColor: (identity?: string) => number; setNameColor: (value: number) => Promise<{ ok?: boolean; error?: string } | undefined>; openIconPicker: () => void;
   renderStats: (profile: Profile, element: HTMLElement) => void; formatPower: (profile: Profile) => string; formatPlayedTime: (seconds: number) => string;
@@ -110,7 +110,7 @@ export function createProfileWindowController(elements: {
 
   function drawPreview() {
     const profile = profileData;
-    const progress = profile && profile.identity === elements.preview.dataset.identity ? { ...profile.progress, itemRefines: profile.itemRefines } : null;
+    const progress = profile && profile.identity === elements.preview.dataset.identity ? { ...profile.progress, itemRefines: profile.itemRefines, cosmeticRefines: profile.cosmeticRefines } : null;
     api.renderCharacter(elements.preview.dataset.identity || "", progress, !elements.window.hidden);
   }
 
@@ -122,6 +122,7 @@ export function createProfileWindowController(elements: {
         presentation,
         profile?.itemUpgradeLevels[slot === "WEAPON" ? "HAND" : slot] ?? 0,
         profileEquipmentRefine(presentation, profile?.itemRefines),
+        profileLookRefine(presentation, profile?.itemRefines, profile?.cosmeticRefines),
       );
     }
   }
@@ -134,6 +135,7 @@ export function createProfileWindowController(elements: {
       itemId: presentation.inspectionItemId,
       upgradeLevel: slotUpgradeLevelFor(profileData.itemUpgradeLevels, presentation.inspectionItemId),
       refine: profileEquipmentRefine(presentation, profileData.itemRefines),
+      lookRefine: profileLookRefine(presentation, profileData.itemRefines, profileData.cosmeticRefines),
       activeCards: profileEquipmentActiveCards(presentation, profileActiveCardIds(profileData)),
       skills: profileData.wornSkill?.itemId === presentation.inspectionItemId ? profileData.wornSkill.roll : undefined,
       context: presentation.context,

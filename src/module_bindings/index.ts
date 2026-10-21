@@ -288,6 +288,7 @@ import MyChatMuteRow from "./my_chat_mute_table";
 import MyChoppedTreesRow from "./my_chopped_trees_table";
 import MyCopyRefinesRow from "./my_copy_refines_table";
 import MyCopySlotsRow from "./my_copy_slots_table";
+import MyCosmeticRefinesRow from "./my_cosmetic_refines_table";
 import MyCraftSkillsRow from "./my_craft_skills_table";
 import MyCutsceneHistoryRow from "./my_cutscene_history_table";
 import MyDailyGemBonusRow from "./my_daily_gem_bonus_table";
@@ -344,6 +345,7 @@ import PlayerAutoFarmPuppetRow from "./player_auto_farm_puppet_table";
 import PlayerBonusToggleRow from "./player_bonus_toggle_table";
 import PlayerChatHeartsRow from "./player_chat_hearts_table";
 import PlayerCombatRatingRow from "./player_combat_rating_table";
+import PlayerCosmeticRefineRow from "./player_cosmetic_refine_table";
 import PlayerCraftLevelRow from "./player_craft_level_table";
 import PlayerDailyQuestRow from "./player_daily_quest_table";
 import PlayerDeathFrameRow from "./player_death_frame_table";
@@ -665,6 +667,20 @@ const tablesSchema = __schema({
       { name: 'player_combat_rating_identity_key', constraint: 'unique', columns: ['identity'] },
     ],
   }, PlayerCombatRatingRow),
+  playerCosmeticRefine: __table({
+    name: 'player_cosmetic_refine',
+    indexes: [
+      { accessor: 'identity', name: 'player_cosmetic_refine_identity_idx_btree', algorithm: 'btree', columns: [
+        'identity',
+      ] },
+      { accessor: 'key', name: 'player_cosmetic_refine_key_idx_btree', algorithm: 'btree', columns: [
+        'key',
+      ] },
+    ],
+    constraints: [
+      { name: 'player_cosmetic_refine_key_key', constraint: 'unique', columns: ['key'] },
+    ],
+  }, PlayerCosmeticRefineRow),
   playerCraftLevel: __table({
     name: 'player_craft_level',
     indexes: [
@@ -1285,6 +1301,13 @@ const tablesSchema = __schema({
     constraints: [
     ],
   }, MyCopySlotsRow),
+  myCosmeticRefines: __table({
+    name: 'my_cosmetic_refines',
+    indexes: [
+    ],
+    constraints: [
+    ],
+  }, MyCosmeticRefinesRow),
   myCraftSkills: __table({
     name: 'my_craft_skills',
     indexes: [

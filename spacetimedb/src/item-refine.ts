@@ -8,6 +8,7 @@ import { TOWN_FEET_OFFSET, TOWN_SMITH_POSITION, TOWN_SMITH_SERVER_REACH } from "
 import { withinStationReach } from "./door-reach";
 import { readPlayerProgress } from "./wide-stats";
 import { luckInPlay } from "./luck-research";
+import { rememberCosmeticRefine } from "./cosmetic-refine";
 
 /**
  * Refining (shared/refine.ts): each item's own level, +0 to +20, and the ores a try costs.
@@ -71,9 +72,10 @@ export function refineLevelFor(ctx: Ctx, identity: Identity, itemId: string, cop
   return row ? normalizeRefineLevel(row.level) : 0;
 }
 
-/** Writes one copy's level; +0 removes its row. */
+/** Writes one copy's level; +0 removes its row. An unlocked look keeps the higher of the two (cosmetic-refine.ts). */
 export function setRefineLevel(ctx: Ctx, identity: Identity, itemId: string, copyId: bigint, level: number) {
   const next = normalizeRefineLevel(level);
+  rememberCosmeticRefine(ctx, identity, itemId, Math.max(next, refineLevelFor(ctx, identity, itemId, copyId)));
   if (copyId === 0n) {
     const key = itemRefineKey(identity, itemId);
     const current = ctx.db.playerItemRefine.key.find(key);
@@ -152,6 +154,9 @@ function rowsOf(handle: any, identity: Identity): any[] {
 
 /** Reset Save and a deleted account take the bag; its refines and the ores go with it. Prestige keeps them. */
 export function removeRefineData(ctx: Ctx, identity: Identity) {
+  for (const row of [...rowsOf(ctx.db.playerItemRefine, identity), ...rowsOf(ctx.db.playerCopyRefine, identity)]) {
+    rememberCosmeticRefine(ctx, identity, row.itemId, row.level);
+  }
   for (const row of rowsOf(ctx.db.playerItemRefine, identity)) ctx.db.playerItemRefine.key.delete(row.key);
   for (const row of rowsOf(ctx.db.playerCopyRefine, identity)) ctx.db.playerCopyRefine.copyId.delete(row.copyId);
   for (const row of rowsOf(ctx.db.playerOre, identity)) ctx.db.playerOre.key.delete(row.key);

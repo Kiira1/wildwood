@@ -1,5 +1,6 @@
 import { isWeaponItem } from "../../shared/items";
 import { equipBestInventory } from "../game/equip-best";
+import { lookRefine } from "../game/local-item-refines";
 import { moveCosmeticInventoryItem, moveInventoryItem, toggleCosmeticEquipmentVisibility, type InventoryState } from "../game/inventory";
 import type { CoopAccess } from "../game/runtime/coop-access";
 import type { createGameBootstrap } from "../game/runtime/game-bootstrap";
@@ -55,6 +56,7 @@ export function createInventoryRuntime(deps: InventoryRuntimeDeps) {
     },
     upgradeLevel: itemId => client?.itemUpgradeLevel?.(itemId) ?? 0,
     refineLevel: (itemId, copyId) => client?.itemRefine?.(itemId, copyId) ?? 0,
+    lookRefine: lookRefine(itemId => client?.itemRefine?.(itemId) ?? 0, itemId => client?.cosmeticRefine?.(itemId) ?? 0),
     ores: () => client?.ores?.() ?? {},
     cards: cardsPort(() => client),
     slotTier: slot => client?.slotUpgradeTier?.(slot) ?? 0,
