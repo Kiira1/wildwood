@@ -79,8 +79,8 @@ describe("connection", () => {
     let overlayAlways = true;
     for (let waited = 0; waited < 180_000; waited += 1_000) {
       await tab.play(1_000);
-      // Reconnecting, never "updating": only a confirmed protocol mismatch shows the update gate.
-      overlayAlways &&= fullOverlay(tab) && !tab.shown("gameUpdateGate");
+      // Reconnecting, never "updating": only a confirmed protocol mismatch shows the update.
+      overlayAlways &&= fullOverlay(tab) && !tab.coop.accountState()?.updating;
     }
     expect(overlayAlways).toBe(true);
     const gaps = network.attempts.slice(1).map((at, i) => at - network.attempts[i]);
@@ -125,7 +125,7 @@ describe("connection", () => {
     expect(tab.playing()).toBe(true);
   }, 60_000);
 
-  it("BOOT-13 a tab back from the background offers Retry at once and Reload after 30 s, never reloading by itself", async () => {
+  it("BOOT-13 a tab back from the background shows Reconnecting, keeps retrying by itself, and never reloads by itself", async () => {
     const { tab, network } = await returningGuest();
     // Back from a minute away, the server cannot be reached.
     tab.setHidden(true);
@@ -133,21 +133,14 @@ describe("connection", () => {
     tab.setHidden(false);
     network.refusing = true;
     tab.connection()!.fake.drop(new Error("server unreachable"));
-    expect(await tab.until(() => tab.shown("reconnectRetryBtn"), 15_000)).toBe(true);
-
-    // Retry now: one more attempt, in place.
+    expect(await tab.until(() => fullOverlay(tab), 15_000)).toBe(true);
     const tries = network.attempts.length;
-    tab.tap("reconnectRetryBtn");
-    await tab.play(1_000);
+    await tab.play(45_000);
     expect(network.attempts.length).toBeGreaterThan(tries);
     expect(tab.navigations).toEqual([]);
-
-    // Thirty seconds on, the same button reloads the page, carrying the session; waiting alone never does.
-    await tab.play(45_000);
+    network.refusing = false;
+    expect(await tab.until(tab.playing, 90_000)).toBe(true);
     expect(tab.navigations).toEqual([]);
-    tab.tap("reconnectRetryBtn");
-    expect(await tab.until(() => tab.navigations.length > 0, 5_000)).toBe(true);
-    expect(new URL(tab.navigations[0].url).searchParams.get("v")).toBeTruthy();
   }, 60_000);
 
   it("BOOT-13 a game canvas the browser lost for good reloads the page once, and never again inside the cooldown", async () => {

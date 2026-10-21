@@ -9,9 +9,11 @@ export type SocialSnapshot = {
   friends: (SocialConversation & { online?: boolean })[];
   incomingRequests: { id: string; identity: string; name: string }[];
   outgoingRequests: { id: string; identity: string; name: string }[];
-  guildInvitations: { id: string; guildId: string; guildName: string; inviterName: string }[];
+  guildInvitations: { id: string; guildId: string; guildName: string; inviterName: string; inviterIdentity?: string }[];
   outgoingGuildInvitations: { id: string; identity: string; name: string; guildId: string }[];
   currentGuild: { id: string; name: string } | null;
+  /** This player is a President or Vice President and may invite others. */
+  canInviteToGuild?: boolean;
 };
 export type SocialAction =
   | { action: "requestFriend"; username: string }

@@ -61,7 +61,7 @@ describe("A new guest's tutorial (TUT-01, TUT-02)", () => {
     expect(lessonRetry(tab)?.hidden).toBe(false);
     expect(ann.progress().damage).toBe(start.damage);
     // Back online, the lesson's Retry saves it: the reward is paid once.
-    if (tab.shown("reconnectRetryBtn")) tab.tap("reconnectRetryBtn");
+    await tab.until(() => !tab.shown("reconnectOverlay"), 20_000);
     await tab.play(2_000);
     tapSelector(tab, ".onboarding-tutorial header button");
     expect(await tab.until(() => ann.step() === 4, 5_000)).toBe(true);

@@ -28,6 +28,7 @@ import {
 
 import { createChatUnreadTracker, formatChatUnreadCount, type ChatUnreadCounts } from "./chat-unread";
 import { createChatHistory, type ChatHistoryPage } from "./chat-history";
+import { conversationsWithInvites, createChatInviteCards, unreadWithInvites, type ChatGuildInvite } from "./chat-guild-invites";
 import { createChatChannelPicker, type ChatChannel, type ChatConversation } from "./chat-channels";
 import type { PlayerDirectoryEntry } from "../../shared/player-search";
 import { createChatInputSizer } from "./chat-input-size";
@@ -77,9 +78,10 @@ type CoopClient = {
     revision: () => number;
     guildMessages: () => ChatMessage[];
     privateMessages: (username: string) => ChatMessage[];
-    friends: () => ChatConversation[];
     privateConversations: () => ChatConversation[];
     currentGuild: () => { id: string | bigint; name: string } | null;
+    guildInvitations?: () => ChatGuildInvite[];
+    answerGuildInvite?: (invitationId: string, accept: boolean) => Promise<{ ok: boolean; error?: string }>;
     loadSocial: () => Promise<unknown>;
     loadPlayerDirectory?: () => Promise<PlayerDirectoryEntry[]>;
     sendGuildMessage: (message: string, replyId?: bigint) => Promise<{ ok: boolean; error?: string }>;
@@ -209,7 +211,7 @@ export function createChatController({ elements, getCoop, showMessage, onOpenRep
     channel = nextChannel;
     privatePeer = username;
     const social = getCoop()?.social;
-    privatePeerIdentity = identity ?? social?.friends().find(person => person.name.toLowerCase() === username.toLowerCase())?.identity
+    privatePeerIdentity = identity
       ?? social?.privateConversations().find(person => person.name.toLowerCase() === username.toLowerCase())?.identity ?? "";
     elements.input.value = drafts.get(conversationKey()) ?? "";
     messageActions.close(false);
@@ -220,6 +222,13 @@ export function createChatController({ elements, getCoop, showMessage, onOpenRep
     if (channel !== "public") void getCoop()?.social?.loadSocial().then(refresh)
       .catch(error => showMessage(error instanceof Error ? error.message : "COULD NOT REFRESH SOCIAL CONTACTS", "#ff9b91"));
   }, onOpenPlayer, { loadPlayers: () => getCoop()?.social?.loadPlayerDirectory?.(), localIdentity: () => getCoop()?.localIdentity?.() ?? "" });
+  const inviteCards = createChatInviteCards(document, async (invite, accept) => {
+    const result = await getCoop()?.social?.answerGuildInvite?.(invite.id, accept);
+    if (result && !result.ok) showMessage(result.error || "Could Not Answer the Invite", "#ff9b91");
+    else if (accept) showMessage(`Joined ${invite.guildName}`, "#ffffff");
+    renderedRevision = ""; refresh();
+  });
+  channelPicker.root.append(inviteCards.root);
 
   const guildRequests = createChatGuildRequests({ document: elements.panel.ownerDocument, api: () => getCoop()?.guild,
     openPlayer: onOpenPlayer, changed: () => { messageActions.close(false); renderedRevision = ""; refresh(); },
@@ -506,10 +515,11 @@ export function createChatController({ elements, getCoop, showMessage, onOpenRep
     const metadata = `${readingLatest}:${conversationKey()}:${coop?.chatRevision?.() ?? -1}:${coop?.social?.revision() ?? -1}:${identity}:${enabled}:${large}`;
     if (metadata !== metadataRevision || renderedRevision === "") {
       metadataRevision = metadata;
-      const conversations = coop?.social?.privateConversations() ?? [];
-      const friends = coop?.social?.friends() ?? [];
+      const invites = coop?.social?.guildInvitations?.() ?? [];
+      const conversations = conversationsWithInvites(coop?.social?.privateConversations() ?? [], invites);
+      inviteCards.show(channel === "private" && privatePeerIdentity ? invites.filter(invite => invite.inviterIdentity === privatePeerIdentity) : []);
       if (privatePeer && !privatePeerIdentity) {
-        privatePeerIdentity = [...friends, ...conversations]
+        privatePeerIdentity = conversations
           .find(person => person.name.toLowerCase() === privatePeer.toLowerCase())?.identity ?? "";
       }
       const readConversation = readingLatest ? channel === "public" ? "world" : channel === "guild" ? "guild"
@@ -531,13 +541,14 @@ export function createChatController({ elements, getCoop, showMessage, onOpenRep
           readConversation,
           eligibleUnread(worldRows).filter(message => shouldShowGlobalChatMessage(message.senderName)));
       }
-      const unreadTotal = unreadCounts.world + unreadCounts.guild + unreadCounts.private;
+      const counts = unreadWithInvites(unreadCounts, invites, readConversation);
+      const unreadTotal = counts.world + counts.guild + counts.private;
       setChatText(unreadBadge, formatChatUnreadCount(unreadTotal));
       setChatHidden(unreadBadge, large || unreadTotal === 0);
       setChatAttribute(unreadBadge, "aria-label", `${unreadTotal} unread messages`);
       const guildName = coop?.social?.currentGuild()?.name ?? "";
-      if (pickerInputs.changed([unreadCounts, friends, conversations, guildName]) || renderedRevision === "") {
-        channelPicker.refresh(friends, conversations, guildName, unreadCounts);
+      if (pickerInputs.changed([counts, conversations, guildName]) || renderedRevision === "") {
+        channelPicker.refresh(conversations, guildName, counts);
       }
     }
     const channelMessages = history.messages(currentMessages());

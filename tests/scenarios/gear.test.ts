@@ -179,8 +179,7 @@ describe("cards", () => {
     // The network drops and the player reconnects: the find it already showed is not shown again.
     const first = tab.connection()!;
     first.fake.drop();
-    await playUntil(tab, () => tab.shown("reconnectRetryBtn"), "the game offers to reconnect");
-    tab.tap("reconnectRetryBtn");
+    await playUntil(tab, () => tab.shown("reconnectOverlay"), "the game shows it is reconnecting");
     await playUntil(tab, () => tab.connection() !== first && tab.coop.isConnected() === true, "the game reconnects", 20_000);
     await tab.play(1_000);
     expect(tab.shown("cardFoundName")).toBe(false);

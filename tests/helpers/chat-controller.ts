@@ -6,14 +6,14 @@ type ChatOptions = Parameters<typeof createChatController>[0];
 type Coop = NonNullable<ReturnType<ChatOptions["getCoop"]>>;
 type Social = NonNullable<Coop["social"]>;
 type Message = ReturnType<NonNullable<Coop["chatMessages"]>>[number];
-type Conversation = ReturnType<Social["friends"]>[number];
+type Conversation = ReturnType<Social["privateConversations"]>[number];
 
 export const LOCAL_IDENTITY = "a".repeat(64);
 const identity = (index: number) => index.toString(16).padStart(64, "0");
 
 /** Realistic client-side volumes: the public view pages 50 rows, the social
- * view 50 guild and 50 direct messages, and a friend list of about 50. */
-export function chatFixture(options: { publicMessages?: number; guildMessages?: number; privateMessages?: number; friends?: number } = {}) {
+ * view 50 guild and 50 direct messages, with about 50 people. */
+export function chatFixture(options: { publicMessages?: number; guildMessages?: number; privateMessages?: number; people?: number } = {}) {
   const now = Date.now();
   let nextId = 1n;
   const message = (sender: string, text: string, ageMs: number): Message => ({
@@ -21,8 +21,8 @@ export function chatFixture(options: { publicMessages?: number; guildMessages?: 
     senderGender: 0 as Message["senderGender"], moderated: false, replyToMessageId: 0n, replyToSenderName: "",
     replyToMessage: "", sentAtMs: Date.now() - ageMs, reactionCountsJson: "{}", guildReplayKey: "",
   });
-  const friends: Conversation[] = Array.from({ length: options.friends ?? 50 }, (_, index) => ({
-    identity: identity(1_000 + index), name: `Friend ${index}`, lastMessage: "hello", lastSentAtMs: now - index * 1_000,
+  const people: Conversation[] = Array.from({ length: options.people ?? 50 }, (_, index) => ({
+    identity: identity(1_000 + index), name: `Person ${index}`, lastMessage: "hello", lastSentAtMs: now - index * 1_000,
   }));
   const publicRows = Array.from({ length: options.publicMessages ?? 50 }, (_, index) =>
     message(identity(index % 40 + 1), `public message ${index}`, (options.publicMessages ?? 50) * 1_000 - index * 1_000));
@@ -30,15 +30,15 @@ export function chatFixture(options: { publicMessages?: number; guildMessages?: 
     message(identity(index % 10 + 1), `guild message ${index}`, 60_000 + index));
   const privateRows = new Map<string, Message[]>();
   for (let index = 0; index < (options.privateMessages ?? 50); index++) {
-    const friend = friends[index % Math.max(1, friends.length)];
-    if (!friend) break;
-    const rows = privateRows.get(friend.identity) ?? [];
-    rows.push(message(friend.identity, `dm ${index}`, 30_000 + index));
-    privateRows.set(friend.identity, rows);
+    const person = people[index % Math.max(1, people.length)];
+    if (!person) break;
+    const rows = privateRows.get(person.identity) ?? [];
+    rows.push(message(person.identity, `dm ${index}`, 30_000 + index));
+    privateRows.set(person.identity, rows);
   }
   const state = {
-    chatRevision: 1, socialRevision: 1, publicRows, guildRows, privateRows, friends,
-    conversations: friends.slice(0, 10) as Conversation[],
+    chatRevision: 1, socialRevision: 1, publicRows, guildRows, privateRows,
+    conversations: people.slice(0, 10) as Conversation[],
   };
   const counts = new Map<string, number>();
   const count = <T extends (...args: never[]) => unknown>(name: string, fn: T) => ((...args: Parameters<T>) => {
@@ -50,7 +50,6 @@ export function chatFixture(options: { publicMessages?: number; guildMessages?: 
     historyRevision: () => 0,
     guildMessages: count("social.guildMessages", () => state.guildRows),
     privateMessages: count("social.privateMessages", (peer: string) => state.privateRows.get(peer) ?? []),
-    friends: count("social.friends", () => state.friends),
     privateConversations: count("social.privateConversations", () => state.conversations),
     currentGuild: () => ({ id: "7", name: "Guild" }),
     loadSocial: async () => ({}),

@@ -1,5 +1,5 @@
 import type { Identity } from "spacetimedb";
-import type { SocialAction, SocialSnapshot, SocialConversation } from "../../../shared/social";
+import type { SocialSnapshot, SocialConversation } from "../../../shared/social";
 import type { ChatReportReason } from "../../../shared/chat-report";
 import { normalizePlayerGender } from "../../../shared/player-gender";
 import type { ChatMessage } from "../contracts";
@@ -29,7 +29,6 @@ export function createSocialService(deps: Dependencies) {
   const messages = new Map<bigint, SocialMessage>();
   let orderedMessages: SocialMessage[] | null = null;
   let generation = 0, revision = 0, hubRevision = 0, snapshotRevision = 0;
-  let pending: symbol | null = null;
   // Private messages that carry a duel result, to the replay they link (social_duel_message).
   const duelReplays = new Map<bigint, bigint>();
   // Player search loads every active name once and filters locally; the server rebuilds it every ten minutes.
@@ -59,18 +58,16 @@ export function createSocialService(deps: Dependencies) {
   let indexRevision = -1, indexIdentity = "";
   let guildRows: SocialMessage[] = [], conversations: SocialConversation[] = [];
   const byIdentity = new Map<string, SocialMessage[]>(), byName = new Map<string, SocialMessage[]>();
-  const friendIds = new Map<string, string>();
+  // The server names each conversation's peer: a reused old username never mixes in.
+  const knownIds = new Map<string, string>();
   const noMessages: SocialMessage[] = [];
   function indexed() {
     const local = deps.localIdentity();
     if (indexRevision === revision && indexIdentity === local) return;
     indexRevision = revision; indexIdentity = local;
-    byIdentity.clear(); byName.clear(); friendIds.clear(); guildRows = [];
-    const friends = new Map(snapshot.friends.map(friend => [friend.identity, friend]));
-    for (const friend of snapshot.friends) {
-      friendIds.set(friend.identity, friend.identity);
-      friendIds.set(friend.name.toLowerCase(), friend.identity);
-    }
+    byIdentity.clear(); byName.clear(); knownIds.clear(); guildRows = [];
+    const known = new Map((snapshot.conversations ?? []).map(person => [person.identity, person]));
+    for (const person of known.values()) { knownIds.set(person.identity, person.identity); knownIds.set(person.name.toLowerCase(), person.identity); }
     const ordered = sorted(), peers = new Map<string, SocialConversation>();
     for (const row of ordered) {
       if (row.channel === "guild" && row.guildId === snapshot.currentGuild?.id) guildRows.push(row);
@@ -86,7 +83,7 @@ export function createSocialService(deps: Dependencies) {
       if (row.channel !== "dm") continue;
       const mine = row.sender === local, identity = mine ? row.recipient : row.sender;
       if (!peers.has(identity)) peers.set(identity, { identity,
-        name: friends.get(identity)?.name ?? (mine ? row.recipientName : row.senderName),
+        name: known.get(identity)?.name ?? (mine ? row.recipientName : row.senderName),
         lastMessage: row.message, lastSentAtMs: row.sentAtMs, lastMessageMine: mine });
     }
     for (const person of snapshot.conversations ?? []) {
@@ -119,14 +116,27 @@ export function createSocialService(deps: Dependencies) {
     },
     historyRevision: () => hubRevision,
     revision: () => revision,
-    friends: () => snapshot.friends,
     currentGuild: () => snapshot.currentGuild,
+    /** Pending invitations, shown in the inviter's private conversation; none while already in a guild. */
+    guildInvitations: () => snapshot.currentGuild ? [] : snapshot.guildInvitations.filter(invite => invite.inviterIdentity),
+    canInviteToGuild: () => snapshot.canInviteToGuild === true,
+    async inviteToGuild(identity: string) {
+      try { await mutate(connection => connection.reducers.guildInviteAction({ action: "invite", target: identity, invitationId: 0n })); return { ok: true }; }
+      catch (error) { return { ok: false, error: error instanceof Error ? error.message : String(error) }; }
+    },
+    /** Accepting waits until pending progress is saved, as joining always has. */
+    async answerGuildInvite(invitationId: string, accept: boolean) {
+      try {
+        await mutate(connection => connection.reducers.guildInviteAction({ action: accept ? "accept" : "decline", target: "", invitationId: BigInt(invitationId) }), accept);
+        await api.loadSocial(); return { ok: true };
+      } catch (error) { return { ok: false, error: error instanceof Error ? error.message : String(error) }; }
+    },
     snapshot: () => snapshot,
     guildMessages: () => { indexed(); return guildRows; },
     privateMessages: (target: string) => {
       indexed();
-      const friend = friendIds.get(target) ?? friendIds.get(target.toLowerCase());
-      if (friend) return byIdentity.get(friend) ?? noMessages;
+      const known = knownIds.get(target) ?? knownIds.get(target.toLowerCase());
+      if (known) return byIdentity.get(known) ?? noMessages;
       if (/^(?:0x)?[a-f0-9]{64}$/i.test(target)) return byIdentity.get(target.replace(/^0x/, "")) ?? noMessages;
       return byName.get(target.toLowerCase()) ?? noMessages;
     },
@@ -151,23 +161,6 @@ export function createSocialService(deps: Dependencies) {
       })().finally(() => { directoryRequest = null; });
       return directoryRequest;
     },
-    async socialAction(action: SocialAction) {
-      if (pending) throw new Error("An action is already being saved.");
-      const token = Symbol("social-action"); pending = token;
-      try {
-        await mutate(async connection => {
-          switch (action.action) {
-            case "requestFriend": return connection.reducers.friendAction({ action: "request", target: action.username });
-            case "acceptFriend": case "declineFriend": case "cancelFriend":
-              return connection.reducers.friendAction({ action: action.action.replace("Friend", ""), target: action.requestId });
-            case "removeFriend": return connection.reducers.friendAction({ action: "remove", target: action.identity });
-            case "inviteGuild": return connection.reducers.guildInviteAction({ action: "invite", target: action.username, invitationId: 0n });
-            default: return connection.reducers.guildInviteAction({ action: action.action.replace("GuildInvite", ""), target: "", invitationId: BigInt(action.invitationId) });
-          }
-        }, action.action === "acceptGuildInvite");
-        await api.loadSocial();
-      } finally { if (pending === token) pending = null; }
-    },
     sendGuildMessage: (message: string, replyToMessageId = 0n) => send("guild", "", message, replyToMessageId),
     sendPrivateMessage: (target: string, message: string, replyToMessageId = 0n) => send("dm", target, message, replyToMessageId),
     async reportMessage(messageId: bigint, reason: ChatReportReason) {
@@ -180,7 +173,7 @@ export function createSocialService(deps: Dependencies) {
       if (row.identity.toHexString() !== deps.localIdentity()) return;
       const next = JSON.parse(row.snapshot) as SocialSnapshot;
       const access = (value: SocialSnapshot) => JSON.stringify([value.identity, value.currentGuild?.id,
-        value.friends.map(person => person.identity).sort(), (value.conversations ?? []).map(person => person.identity).sort()]);
+        (value.conversations ?? []).map(person => person.identity).sort()]);
       if (access(next) !== access(snapshot)) hubRevision++;
       snapshot = next; snapshotRevision++; changed();
     },
@@ -197,6 +190,6 @@ export function createSocialService(deps: Dependencies) {
       if (message && message.replayId !== row.replayId) { messages.set(row.messageId, { ...message, replayId: row.replayId }); orderedMessages = null; changed(); }
     },
     removeDuelLink(row: { messageId: bigint }) { duelReplays.delete(row.messageId); },
-  }, resetSession() { generation++; pending = null; snapshot = emptySnapshot(); messages.clear(); orderedMessages = null; hubRevision++; changed(); } };
+  }, resetSession() { generation++; snapshot = emptySnapshot(); messages.clear(); orderedMessages = null; hubRevision++; changed(); } };
 }
 export type SocialApi = ReturnType<typeof createSocialService>["api"];

@@ -17,15 +17,14 @@ describe("Auto Farm interruptions in the game (FARM-05)", () => {
     expect(await tab.until(ann.farming, 10_000)).toBe(true);
     expect(await tab.until(() => ann.kills() > 0, 75_000)).toBe(true);
 
-    // The server goes out of reach: the game pauses behind the reconnect window. It comes back, Retry, and the farm carries on unasked.
+    // The server goes out of reach: the game pauses behind the reconnect window. It comes back by itself, and the farm carries on unasked.
     ann.network.down = true;
     tab.connection()!.fake.drop(new Error("network"));
     await tab.play(3_000);
     expect(tab.shown("reconnectOverlay")).toBe(true);
     expect(ann.farming()).toBe(false);
     ann.network.down = false;
-    tab.tap("reconnectRetryBtn");
-    expect(await tab.until(ann.farming, 10_000)).toBe(true);
+    expect(await tab.until(ann.farming, 30_000)).toBe(true);
     let before = ann.kills();
     expect(await tab.until(() => ann.kills() > before, 75_000)).toBe(true);
 

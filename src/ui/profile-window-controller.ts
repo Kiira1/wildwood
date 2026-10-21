@@ -75,6 +75,8 @@ export function createProfileWindowController(elements: {
   guildTag: (identity: string) => string;
   findGuild: (name: string) => Promise<KnownGuild | undefined>;
   openGuild: (id: string) => void;
+  /** Invite to Guild, for a President or Vice President looking at a player with no guild. */
+  guildInvite?: { available: (identity: string) => boolean; send: (identity: string) => Promise<{ ok: boolean; error?: string }> };
 }) {
   let identity = "";
   let profileData: Profile | null = null;

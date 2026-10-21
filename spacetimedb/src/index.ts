@@ -3854,7 +3854,7 @@ export const mySocialHub = spacetimedb.view(
   { name: "my_social_hub", public: true }, t.array(socialHubRow),
   ctx => [{ identity: ctx.sender, snapshot: JSON.stringify(socialSnapshot(ctx, !(ctx.db.playerAccountStatus.identity.find(ctx.sender)?.isGuest ?? true))) }],
 );
-const socialService = createSocialService({ joinGuild: (ctx, id) => guildService.join(ctx, id) });
+const socialService = createSocialService({ joinInvited: (ctx, id) => guildService.joinInvited(ctx, id) });
 function requireSocialPlayer(ctx: ModuleReducerCtx) {
   requireControllingPlayer(ctx);
   if (isVirtualPlayer(ctx, ctx.sender)) throw new SenderError("Use your main character connection.");

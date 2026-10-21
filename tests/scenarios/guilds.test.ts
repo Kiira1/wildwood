@@ -508,8 +508,6 @@ describe("Guild join requests", () => {
 });
 
 describe("The Guild window", () => {
-  const nameOf = (world: ScenarioWorld, player: ScenarioPlayer) => world.db.playerProfile.identity.find(player.identity).displayName as string;
-  const socialHub = (player: ScenarioPlayer) => JSON.parse(player.procedure("getSocialHub") as string);
 
   it("the President appoints and removes a Vice President from the roster, each once however often the button is tapped; Back cancels a pending leave; a battle waits for its confirmation", async () => {
     const world = gameWorld();
@@ -555,38 +553,31 @@ describe("The Guild window", () => {
     expect(guildHub(cara).battles).toHaveLength(1);
   });
 
-  it("friend requests are answered and sent from the Friends tab, a guild is joined from the list, and an officer answers join requests from guild chat with a note", async () => {
+  it("an invitation arrives as a private chat from its sender and is accepted there, and an officer answers join requests from guild chat with a note", async () => {
     const world = gameWorld();
-    const [ann, bob, cara, dan, eve] = ["Ann", "Bob", "Cara", "Dan", "Eve"].map(name => world.join(name));
+    const [ann, dan, eve] = ["Ann", "Dan", "Eve"].map(name => world.join(name));
     const moon = foundGuild(world, dan, "Moon");
+    // Moon takes requests only; an invitation is the guild's own approval.
+    dan.call("guildAdmission", { action: "requestOnly", guildId: moon, identity: dan.identity, note: "" });
     ann.disconnect();
-    bob.call("friendAction", { action: "request", target: nameOf(world, ann) });
     const tab = await playAs(world, "Ann");
     const annNow = tab.network.players.get("Ann")!;
-    const guild = guildWindow(tab), chat = chatPanel(tab);
-    // Chat's private messages hold the way to her friends.
+    const chat = chatPanel(tab);
     await chat.expand();
     await chat.press("Private");
-    await chat.press("Manage friends");
-    expect(guild.shown()).toBe(true);
-    const incoming = socialHub(annNow).incomingRequests[0];
-    await guild.press(`accept-${incoming.id}`);
-    expect(socialHub(annNow).friends.map((friend: any) => friend.identity)).toEqual([bob.hex]);
-    expect(guild.has(`message-${bob.hex}`)).toBe(true);
-    // She asks Cara; Cara sees it.
-    await guild.submit("friend", `  ${nameOf(world, cara)}  `);
-    expect(socialHub(cara).incomingRequests.map((request: any) => request.identity)).toEqual([annNow.hex]);
-    // She joins Moon from the guild list.
-    await guild.back();
-    await guild.open();
-    await guild.press(`join-${moon}`);
+    dan.call("guildInviteAction", { action: "invite", target: annNow.hex, invitationId: 0n });
+    await tab.play(1_000);
+    const fromDan = chat.panel().querySelector<HTMLButtonElement>(`.chat-conversation-row[data-identity="${dan.hex}"]`);
+    expect(fromDan).not.toBeNull();
+    fromDan!.dispatchEvent(new (tab.window as any).Event("click", { bubbles: true }));
+    await tab.play(500);
+    await chat.press("Accept");
+    await tab.play(1_000);
     expect(world.db.guildMember.identity.find(annNow.identity)?.guildId).toBe(moon);
 
-    // Moon takes requests only; Dan makes Ann Vice President; Eve asks to join.
-    dan.call("guildAdmission", { action: "requestOnly", guildId: moon, identity: dan.identity, note: "" });
+    // Dan makes Ann Vice President; Eve asks to join.
     dan.call("setGuildVicePresident", { identity: annNow.identity, enabled: true });
     eve.call("guildAdmission", { action: "request", guildId: moon, identity: eve.identity, note: "" });
-    await guild.back();
     await chat.press("Guild");
     await chat.press("Requests");
     await tab.play(500);

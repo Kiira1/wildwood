@@ -9,9 +9,9 @@ import type { PlayerDirectoryEntry } from "../../shared/player-search";
 export type ChatChannel = "public" | "guild" | "private";
 export type ChatConversation = import("../../shared/social").SocialConversation;
 
-export function mergeChatConversations(friends: ChatConversation[], conversations: ChatConversation[]) {
+export function mergeChatConversations(conversations: ChatConversation[]) {
   const names = new Map<string, ChatConversation>();
-  for (const person of [...conversations, ...friends]) {
+  for (const person of conversations) {
     if (person.name.trim()) {
       const key = person.identity || person.name.trim().toLowerCase();
       names.set(key, { ...names.get(key), ...person });
@@ -94,12 +94,7 @@ export function createChatChannelPicker(
     event.preventDefault();
     if (username.value.trim()) select("private", username.value.trim());
   });
-  const manageFriends = document.createElement("button");
-  manageFriends.type = "button";
-  manageFriends.textContent = "Manage friends";
-  manageFriends.className = "chat-manage-friends";
-  manageFriends.addEventListener("click", () => window.dispatchEvent(new CustomEvent("wildwood:open-friends")));
-  picker.append(playerSearch.root, open, manageFriends);
+  picker.append(playerSearch.root, open);
   const status = document.createElement("div");
   status.className = "chat-channel-status";
   status.setAttribute("aria-live", "polite");
@@ -129,8 +124,8 @@ export function createChatChannelPicker(
     onChange(selected, peer, peerIdentity);
   }
   let contactSignature = "";
-  function refresh(friends: ChatConversation[], conversations: ChatConversation[], guildName: string, unread: ChatUnreadCounts) {
-    people = mergeChatConversations(friends, conversations);
+  function refresh(conversations: ChatConversation[], guildName: string, unread: ChatUnreadCounts) {
+    people = mergeChatConversations(conversations);
     peerIdentity ??= people.find(person => person.name.toLowerCase() === peer.toLowerCase())?.identity;
     const currentPeer = people.find(person => person.identity === peerIdentity);
     if (currentPeer && currentPeer.name !== peer) {

@@ -110,7 +110,7 @@ import { MAX_PLAYER_STAT, PLAYER_SPAWN } from "../shared/rules";
     canvas, gameOverEl, deathCountdownEl, hpText, playerHudProfileIcon, playerHudProfileGear, hudGemWallet,
     hudGemBalance, minimapButton, toolbar, settingsBtn, settingsPanel, inventoryPanel, inventoryCharacterCanvas,
     bootUpgradeEl, bootUpgradeClose, joystickEl, stickEl, duelResultEl, watchDuelReplayBtn, cutsceneOverlayEl,
-    playerProfileEl, playerProfileIcon, profileCharacterCanvas, closeProfileIconPickerBtn, gameUpdateGateEl,
+    playerProfileEl, playerProfileIcon, profileCharacterCanvas, closeProfileIconPickerBtn,
   } = gameElements;
   const staticWorldLayer = createWebGLStaticWorldLayer(canvas);
   const canvasRuntime = createCanvasRuntime({
@@ -742,7 +742,7 @@ import { MAX_PLAYER_STAT, PLAYER_SPAWN } from "../shared/rules";
   const { mailbox } = giftsAndMail;
 
   const reconnectOverlay = createReconnectOverlay({
-    coop: coopAccess, e: gameElements, version: GAME_VERSION, hasStarted: () => session.hasStarted(),
+    coop: coopAccess, e: gameElements, hasStarted: () => session.hasStarted(),
     setFarmConnection: connection => { farmConnection = connection; }, refreshAutoFarm: () => autoFarm.refresh(), setGameplayPause,
   });
 
@@ -754,7 +754,7 @@ import { MAX_PLAYER_STAT, PLAYER_SPAWN } from "../shared/rules";
   });
 
   startupCoordinator = createStartupCoordination({
-    coop: coopAccess, version: GAME_VERSION, gameUpdateGate: gameUpdateGateEl, canvas, screen: startupScreen, session, progress,
+    coop: coopAccess, version: GAME_VERSION, updateScreen: reconnectOverlay, canvas, screen: startupScreen, session, progress,
     playerSpriteReady, worldArtReady: assets.worldArtReady, setGameplayPause,
     saveBeforeUpdate: () => { saveProgress(true); coop?.syncMovementState?.(player.x, player.y, 0, 0, "keyboard", true); },
     suspendPlayerVisibility: () => playerVisibility.suspend(),

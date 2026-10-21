@@ -1915,7 +1915,7 @@
   .chat-line { display: grid; grid-template-columns: 29px minmax(0, 1fr) auto; grid-template-rows: auto auto; gap: 2px 6px; align-items: start; overflow-wrap: anywhere; }
   .chat-message-content { min-width: 0; }
   .chat-profile-icon { grid-column: 1; grid-row: 1 / 3; display: block; width: 29px; height: 29px; margin: 0; border: 1px solid var(--ui-outline); border-radius: 4px; background-color: #fff; background-repeat: no-repeat; background-size: var(--profile-portrait-sheet-size) var(--profile-portrait-sheet-size); background-clip: padding-box; cursor: pointer; -webkit-text-stroke: 0; text-shadow: none; }
-  .chat-profile-icon:focus-visible, canvas.leaderboard-profile-icon:focus-visible { outline: 2px solid var(--green); outline-offset: 1px; }
+  .chat-profile-icon:focus-visible, canvas.leaderboard-profile-icon:focus-visible { outline: 2px solid #fff; outline-offset: 1px; }
   .chat-time { grid-column: 3; grid-row: 1; color: var(--muted); font-size: 10px; line-height: 1.25; text-align: right; white-space: nowrap; }
   .chat-name { grid-column: 2; grid-row: 1; display: flex; align-items: center; gap: 4px; min-width: 0; margin: 0; padding: 0; overflow: hidden; border: 0; border-radius: 0; background: transparent; color: var(--gold); font-family: var(--player-name-font); font-size: 11.25px; font-weight: 900; line-height: 1.25; text-align: left; white-space: nowrap; cursor: default; }
   .player-identity-core, .chat-name-core { display: inline-flex; align-items: center; gap: 2px; min-width: 0; overflow: hidden; white-space: nowrap; }
@@ -1939,7 +1939,7 @@
   .chat-reply-composer-copy span { overflow: hidden; color: rgba(235,232,226,.52); font-size: 10px; line-height: 1.15; text-overflow: ellipsis; white-space: nowrap; -webkit-text-stroke: 0; text-shadow: none; }
   #chatReplyCancelBtn { width: 44px; min-width: 44px; height: 44px; min-height: 44px; padding: 0; border: 0; border-radius: 0; background: transparent; color: rgba(255,255,255,.72); font-size: 19px; box-shadow: none; }
 
-  #chatForm #chatSendBtn { flex: 0 0 53px; width: 53px; margin: 0; border-color: #18371b; background: linear-gradient(#63ad5c, #347536); box-shadow: 0 3px 0 #18371b; }
+  #chatForm #chatSendBtn { flex: 0 0 53px; width: 53px; margin: 0; border-color: var(--ui-outline); background: #f2f2f2; box-shadow: 0 3px 0 var(--ui-outline); color: #111; -webkit-text-stroke: 0; text-shadow: none; }
   #chatBackBtn[hidden] { display: none; }
 
   .window-back-footer { display: grid; flex: 0 0 auto; place-items: center; min-height: 60px; padding: 7px max(10px, env(safe-area-inset-right)) var(--window-back-bottom-gap) max(10px, env(safe-area-inset-left)); }
@@ -1982,7 +1982,7 @@
   /* Muted: grey and inert, keeping the countdown text, until the mute ends. */
   #chatForm #chatSendBtn.is-muted,
   #chatForm #chatSendBtn.is-muted:hover,
-  #chatForm #chatSendBtn.is-muted:active { border-color: #2d2d2d; background: linear-gradient(#5d6a61, #3e3e3e); box-shadow: none; color: rgba(236,240,236,.62); filter: none; opacity: 1; transform: none; cursor: not-allowed; }
+  #chatForm #chatSendBtn.is-muted:active { border-color: #2d2d2d; background: #3e3e3e; box-shadow: none; color: rgba(236,240,236,.62); filter: none; opacity: 1; transform: none; cursor: not-allowed; }
   .pickup {
     justify-self: center;
     max-width: 100%;
@@ -2061,8 +2061,7 @@
     z-index: 5;
   }
 
-  #start,
-  #gameUpdateGate {
+  #start {
     top: -2px;
     right: 0;
     bottom: auto;
@@ -2172,22 +2171,6 @@
   #accountChoicePanel[hidden] ~ .signin-install-button,
   #accountChoicePanel[hidden] ~ .signin-install-hint { display: none; }
 
-  #gameUpdateGate {
-    position: fixed;
-    top: -2px;
-    right: 0;
-    bottom: auto;
-    left: 0;
-    width: 100vw;
-    height: calc(100vh + 30px);
-    height: calc(100lvh + 30px);
-    z-index: 30;
-    display: grid;
-    place-items: center;
-  }
-
-  #gameUpdateGate[hidden] { display: none; }
-
   #reconnectOverlay {
     position: fixed;
     inset: 0;
@@ -2202,6 +2185,8 @@
   }
 
   #reconnectOverlay[hidden] { display: none; }
+  /* Updates sit above every window, as the reload follows. */
+  #reconnectOverlay.is-updating { z-index: 100000; }
   /* Still full-screen and still catching taps: an action sent mid-reconnect
      reaches a server that has no session for it yet. Only the look is small. */
   #reconnectOverlay.is-quiet {
@@ -2211,8 +2196,7 @@
     font-size: 13px;
   }
   #reconnectOverlay.is-quiet .reconnect-content { width: auto; padding: 7px 14px; border-radius: 999px; background: rgba(0, 0, 0, .62); }
-  #reconnectOverlay.is-quiet #reconnectDetail,
-  #reconnectOverlay.is-quiet #reconnectRetryBtn { display: none; }
+  #reconnectOverlay.is-quiet #reconnectDetail { display: none; }
   .reconnect-content {
     display: grid;
     width: min(360px, calc(100vw - 40px));
@@ -2226,13 +2210,10 @@
     font: 700 13px/1.35 var(--font-rounded);
     letter-spacing: .02em;
   }
-  #reconnectRetryBtn,
   #connectionRetryBtn {
     width: min(220px, 100%);
   }
-  #reconnectRetryBtn { margin: 4px 0 0; }
   #connectionRetryBtn { margin: 12px auto 0; }
-  #reconnectRetryBtn[hidden],
   #connectionRetryBtn[hidden] { display: none; }
   .reconnect-ellipsis::after { content: "..."; display: inline-block; width: 0; overflow: hidden; vertical-align: bottom; animation: reconnect-ellipsis 1s steps(4, end) infinite; }
 
@@ -2258,7 +2239,6 @@
   @media (prefers-reduced-motion: reduce) {
     .respawn-ad-video-icon,
     #connectionPanel .wildstat-wordmark-title,
-    #gameUpdateGate .wildstat-wordmark-title,
     #accountChoicePanel .wildstat-wordmark-title,
     .claim-card,
     .claim-art::before,
@@ -2266,18 +2246,6 @@
     .claim-overlay.is-claimed .claim-art img { animation: none; }
     .chat-message-actions-backdrop,
     .chat-message-action-sheet { transition: none; }
-  }
-
-  .modal.game-update-modal { width: min(430px, calc(100vw - 28px)); }
-  .game-update-modal h2 { margin: 8px 0 3px; color: #fff; font-size: clamp(22px, 6vw, 30px); }
-  .game-update-modal p { color: #fff; font-size: 10px; letter-spacing: .07em; }
-  .game-update-modal .loading-detail { color: #fff !important; }
-  .update-wait-track { height: 10px; margin: 14px 0 10px; overflow: hidden; border: 2px solid var(--ui-outline); border-radius: 6px; background: #161616; }
-  .update-wait-track span { display: block; width: 34%; height: 100%; border-radius: inherit; background: linear-gradient(90deg, #34be39, #86f45d); animation: update-wait 1.25s ease-in-out infinite; }
-
-  @keyframes update-wait {
-    from { transform: translateX(-110%); }
-    to { transform: translateX(300%); }
   }
 
   #gameOver {
@@ -2332,8 +2300,7 @@
   #connectionPanel[hidden], #accountChoicePanel[hidden], #legalGatePanel[hidden], #newPlayerPanel[hidden] { display: none; }
 
   .modal.connection-modal,
-  .modal.account-choice-modal,
-  .modal.game-update-modal {
+  .modal.account-choice-modal {
     position: fixed;
     top: 50vh;
     top: 50lvh;
@@ -2352,13 +2319,13 @@
 
   /* A large landscape screen grows the startup panels with its height, so the logo and loading bar keep their size against it. */
   @media (min-aspect-ratio: 4/3) and (min-height: 900px) {
-    .modal.connection-modal, .modal.account-choice-modal, .modal.game-update-modal { transform: translate(-50%, -50%) scale(1.25); }
+    .modal.connection-modal, .modal.account-choice-modal { transform: translate(-50%, -50%) scale(1.25); }
   }
   @media (min-aspect-ratio: 4/3) and (min-height: 1200px) {
-    .modal.connection-modal, .modal.account-choice-modal, .modal.game-update-modal { transform: translate(-50%, -50%) scale(1.6); }
+    .modal.connection-modal, .modal.account-choice-modal { transform: translate(-50%, -50%) scale(1.6); }
   }
   @media (min-aspect-ratio: 4/3) and (min-height: 1600px) {
-    .modal.connection-modal, .modal.account-choice-modal, .modal.game-update-modal { transform: translate(-50%, -50%) scale(2.1); }
+    .modal.connection-modal, .modal.account-choice-modal { transform: translate(-50%, -50%) scale(2.1); }
   }
 
 
@@ -2587,7 +2554,6 @@
   }
 
   #connectionPanel .wildstat-wordmark-title,
-  #gameUpdateGate .wildstat-wordmark-title,
   #accountChoicePanel .wildstat-wordmark-title {
     position: absolute;
     top: 20px;
@@ -2601,8 +2567,7 @@
   }
 
   .modal.connection-modal,
-  .modal.account-choice-modal,
-  .modal.game-update-modal {
+  .modal.account-choice-modal {
     padding-top: calc(30px + min(390px, calc(100vw - 36px)) / 3);
   }
 
@@ -2871,8 +2836,7 @@
     margin: 0 0 12px;
   }
 
-  .loading-content .loading-track,
-  .loading-content .update-wait-track { height: 12px; margin: 0; }
+  .loading-content .loading-track { height: 12px; margin: 0; }
 
   .loading-status { padding-top: 8px; }
 
@@ -4036,8 +4000,7 @@
   }
 
   #connectionPanel,
-  #accountChoicePanel,
-  #gameUpdateGate .game-update-modal {
+  #accountChoicePanel {
     border: 0;
     border-radius: 0;
     background: transparent;
@@ -4164,7 +4127,6 @@
   #chatPanel:not(.is-large) .chat-text,
   #chatPanel:not(.is-large) .chat-line.has-replay .chat-text,
   .chat-time,
-  .game-update-modal p,
   .signin-version,
   .tech-tree-active,
   .tech-tree-node strong,
@@ -4230,7 +4192,6 @@
 
   .item-inspection-copy p,
   .chat-text,
-  .game-update-modal p,
   .loading-detail,
   .session-takeover-note {
     line-height: var(--line-height-readable);
@@ -4311,7 +4272,8 @@
 .chat-private-picker { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 5px; margin-top: 6px; }
 .chat-private-picker[hidden] { display: none; }
 .chat-private-picker input { min-width: 0; min-height: 40px; padding: 7px; border: 1px solid #73667c; border-radius: 6px; background: #29252d; color: #fff; font-size: 14px; }
-.chat-private-picker button { min-height: 40px; margin: 0; font-size: 12px; }
+.chat-private-picker > button { min-height: 40px; margin: 0; padding: 0 14px; border: 2px solid var(--ui-outline); border-radius: 8px; background: #f2f2f2; box-shadow: 0 3px 0 var(--ui-outline); color: #111; font: 900 14px/1 var(--font-rounded); -webkit-text-stroke: 0; text-shadow: none; }
+.chat-private-picker > button:active { transform: translateY(2px); box-shadow: 0 1px 0 var(--ui-outline); }
 /* Player search: the recipient field in private chat and the leaderboard's magnifier. Names come from one load and filter as they are typed. */
 .player-search { position: relative; min-width: 0; }
 .player-search-field { position: relative; display: flex; align-items: center; min-width: 0; }
@@ -4321,7 +4283,7 @@
 .player-search .player-search-input { width: 100%; min-width: 0; min-height: 40px; padding: 7px 10px 7px 34px; border: 1px solid #73667c; border-radius: 8px; background: #29252d; color: #fff; font: 700 14px var(--font-rounded); appearance: none; }
 .player-search-input::-webkit-search-cancel-button { display: none; }
 .player-search-input::placeholder { color: #a99fb2; }
-.player-search-input:focus { outline: none; border-color: var(--green); }
+.player-search-input:focus { outline: none; border-color: #fff; }
 .player-search-results { position: absolute; z-index: 30; top: calc(100% + 4px); left: 0; right: 0; max-height: min(300px, 46vh); margin: 0; padding: 4px; overflow-y: auto; overscroll-behavior: contain; list-style: none; border: 2px solid rgba(255,255,255,.2); border-radius: 10px; background: rgba(29,26,32,.97); box-shadow: 0 10px 22px rgba(0,0,0,.55); }
 .player-search-results[hidden] { display: none; }
 .player-search-option { display: flex; align-items: center; min-height: 40px; padding: 0 11px; border-radius: 7px; color: #fff; font: 800 14px var(--font-rounded); cursor: pointer; }
@@ -4361,11 +4323,20 @@
 .chat-conversation-row:hover, .chat-conversation-heading:hover { background: rgba(255,255,255,.04); box-shadow: none; }
 .chat-conversations-empty { padding: 16px 8px; color: #aaa; font-size: 13px; }
 .chat-channel-status { padding: 5px 2px 0; color: #d7d2ca; font-size: 11px; line-height: 1.3; }
+/* A guild invitation at the top of the inviter's private conversation. */
+.chat-guild-invites { display: grid; gap: 6px; margin-top: 6px; }
+.chat-guild-invites[hidden] { display: none; }
+.chat-guild-invite { display: grid; gap: 8px; padding: 10px; border: 1px solid rgba(255,255,255,.16); border-radius: 8px; background: rgba(0,0,0,.38); }
+.chat-guild-invite p { margin: 0; color: #fff; font: 800 14px/1.3 var(--font-rounded); -webkit-text-stroke: 0; text-shadow: none; }
+.chat-guild-invite-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+.chat-guild-invite-actions button { min-height: 40px; margin: 0; padding: 0 10px; border: 2px solid var(--ui-outline); border-radius: 8px; background: #3a3a3a; box-shadow: 0 3px 0 var(--ui-outline); color: #fff; font: 900 14px/1 var(--font-rounded); -webkit-text-stroke: 0; text-shadow: none; }
+.chat-guild-invite-actions button.is-primary { background: #f2f2f2; color: #111; }
+.chat-guild-invite-actions button:active:not(:disabled) { transform: translateY(2px); box-shadow: 0 1px 0 var(--ui-outline); }
+.chat-guild-invite-actions button:disabled { opacity: .6; }
 #chatForm { position: relative; }
 #chatForm #chatLatestBtn { position: absolute; right: 4px; bottom: calc(100% + 6px); z-index: 2; display: grid; place-items: center; width: 44px; min-width: 44px; height: 36px; min-height: 36px; padding: 0; border: 0; border-radius: 0; background: transparent; box-shadow: none; color: #fff; font: 22px/1 sans-serif; -webkit-text-stroke: 0; text-shadow: 0 1px 3px #000; }
 #chatForm #chatLatestBtn[hidden] { display: none; }
 
-.chat-manage-friends { grid-column: 1 / -1; }
 
   /* Shop shares the fullscreen game-window bounds. */
   .gem-shop {
@@ -4564,10 +4535,6 @@
 }
 .scheduled-update[hidden] { display: none; }
 .scheduled-update > span { text-shadow: inherit; }
-#gameUpdateGate[data-scheduled-update] {
-  display: grid;
-  z-index: 100000;
-}
 
 
 .player-visibility-toggle { position: relative; }
@@ -4950,8 +4917,8 @@
 .guild-request-online::before, .guild-request-offline::before { content: ""; display: inline-block; width: 6px; height: 6px; margin-right: 5px; border-radius: 50%; background: currentColor; vertical-align: 1px; }
 
 .guild-request-actions .window-back-button { width: auto; min-width: 0; margin: 0; }
-.guild-request-actions .guild-request-accept { border-color: #18371b; background: linear-gradient(#63ad5c, #347536); box-shadow: 0 3px 0 #18371b; }
-.guild-request-actions .guild-request-deny { border-color: #594515; background: linear-gradient(#e0bd55, #ac812c); box-shadow: 0 3px 0 #594515; }
+.guild-request-actions .guild-request-accept { border-color: var(--ui-outline); background: #f2f2f2; box-shadow: 0 3px 0 var(--ui-outline); color: #111; -webkit-text-stroke: 0; text-shadow: none; }
+.guild-request-actions .guild-request-deny { border-color: var(--ui-outline); background: #3a3a3a; box-shadow: 0 3px 0 var(--ui-outline); }
 
 .chat-conversation-heading[role="button"] { cursor: pointer; }
 .chat-conversation-heading[role="button"]:focus-visible,

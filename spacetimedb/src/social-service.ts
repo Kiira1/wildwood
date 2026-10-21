@@ -6,6 +6,7 @@ import type { ModuleReducerCtx, ModuleViewCtx } from "./index";
 import { SOCIAL_FRIEND_LIMIT, SOCIAL_REQUEST_LIMIT, SOCIAL_MESSAGE_LIMIT, SOCIAL_MESSAGE_RETENTION_DAYS, type SocialConversation, type SocialSnapshot } from "../../shared/social";
 import { moderatePublicChatMessage, chatModerationReason, MODERATION_RULE_VERSION } from "./chat-moderation";
 import { chatPage } from "../../shared/chat-page";
+import { GUILD_MEMBER_LIMIT } from "../../shared/guilds";
 import { assertChatNotMuted, recordChatStrike } from "./chat-mute";
 type Ctx = ModuleReducerCtx;
 /** Shared by reducer/procedure/view contexts; this service's read functions never mutate. */
@@ -28,7 +29,7 @@ function target(ctx: SocialReadCtx, value: string) {
   }
   // Existing profiles have no name index; reject ambiguous display names rather than choosing an arbitrary account.
   const matches = [...ctx.db.playerProfile.iter()].filter(row => hex(row.identity).toLowerCase() === needle || row.displayName.normalize("NFKC").toLowerCase() === needle);
-  if (matches.length !== 1) return fail(matches.length ? "That username is ambiguous. Choose the player from your friends list." : "Player not found.");
+  if (matches.length !== 1) return fail(matches.length ? "That username is ambiguous. Choose the player from search." : "Player not found.");
   if (same(matches[0].identity, ctx.sender)) fail("Choose another player.");
   return matches[0];
 }
@@ -37,6 +38,12 @@ function rowId(value: string) { if (!/^\d{1,20}$/.test(value)) fail("Invalid req
 function requests(ctx: SocialReadCtx, who: Identity) { return [...ctx.db.socialRequest.sender.filter(who), ...ctx.db.socialRequest.recipient.filter(who)]; }
 function assertFriendSpace(ctx: SocialReadCtx, who: Identity) {
   if ([...ctx.db.socialFriend.owner.filter(who)].length >= SOCIAL_FRIEND_LIMIT) fail("Friend list is full.");
+}
+/** The guild whose President or Vice President this player is: the guild they can invite to. */
+function officerGuild(ctx: SocialReadCtx, who: Identity) {
+  const member = ctx.db.guildMember.identity.find(who);
+  const guild = member ? ctx.db.guild.id.find(member.guildId) : null;
+  return guild && (same(guild.leader, who) || member!.vicePresident) ? guild : null;
 }
 function assertContact(ctx: SocialReadCtx, who: Identity) { if (blocked(ctx, ctx.sender, who)) fail("This interaction is unavailable."); }
 function addFriend(ctx: Ctx, a: Identity, b: Identity) {
@@ -97,14 +104,16 @@ export function socialSnapshot(ctx: SocialReadCtx, signedIn = true): SocialSnaps
     incomingRequests: [...ctx.db.socialRequest.recipient.filter(ctx.sender)].filter(row => !blocked(ctx, row.sender, row.recipient)).map(row => ({ id: String(row.id), identity: hex(row.sender), name: name(ctx, row.sender) })),
     outgoingRequests: [...ctx.db.socialRequest.sender.filter(ctx.sender)].filter(row => !blocked(ctx, row.sender, row.recipient)).map(row => ({ id: String(row.id), identity: hex(row.recipient), name: name(ctx, row.recipient) })),
     guildInvitations: [...ctx.db.socialGuildInvite.recipient.filter(ctx.sender)].flatMap(row => {
-      const invitedGuild = ctx.db.guild.id.find(row.guildId);
-      return invitedGuild && same(invitedGuild.leader, row.sender) && !blocked(ctx, row.sender, row.recipient) ? [{ id: String(row.id), guildId: String(row.guildId), guildName: invitedGuild.name, inviterName: name(ctx, row.sender) }] : [];
+      const invitedGuild = officerGuild(ctx, row.sender);
+      return invitedGuild && invitedGuild.id === row.guildId && !blocked(ctx, row.sender, row.recipient)
+        ? [{ id: String(row.id), guildId: String(row.guildId), guildName: invitedGuild.name, inviterName: name(ctx, row.sender), inviterIdentity: hex(row.sender) }] : [];
     }),
     outgoingGuildInvitations: guild && same(guild.leader, ctx.sender) ? [...ctx.db.socialGuildInvite.guildId.filter(guild.id)].map(row => ({ id: String(row.id), identity: hex(row.recipient), name: name(ctx, row.recipient), guildId: String(row.guildId) })) : [],
     currentGuild: guild ? { id: String(guild.id), name: guild.name } : null,
+    canInviteToGuild: Boolean(officerGuild(ctx, ctx.sender)),
   };
 }
-export function createSocialService(deps: { joinGuild(ctx: Ctx, guildId: bigint): void }) {
+export function createSocialService(deps: { joinInvited(ctx: Ctx, guildId: bigint): void }) {
   return {
     friendAction(ctx: Ctx, action: string, value: string) {
       if (action === "accept" || action === "decline" || action === "cancel") {
@@ -123,16 +132,25 @@ export function createSocialService(deps: { joinGuild(ctx: Ctx, guildId: bigint)
       if (own.length >= SOCIAL_REQUEST_LIMIT || theirs.length >= SOCIAL_REQUEST_LIMIT) fail("Too many pending friend requests.");
       ctx.db.socialRequest.insert({ id: 0n, sender: ctx.sender, recipient: peer });
     },
-    guildInviteAction(ctx: Ctx, action: string, _value: string, invitationId: bigint) {
-      if (action === "invite") fail("Guild invitations have been replaced by join requests.");
+    guildInviteAction(ctx: Ctx, action: string, value: string, invitationId: bigint) {
+      if (action === "invite") {
+        const guild = officerGuild(ctx, ctx.sender) ?? fail("Only the President or Vice President can invite players.");
+        if (guild.members >= GUILD_MEMBER_LIMIT) fail("This guild is full.");
+        const peer = target(ctx, value).identity; assertContact(ctx, peer);
+        if (ctx.db.guildMember.identity.find(peer)) fail("That player already belongs to a guild.");
+        const pending = [...ctx.db.socialGuildInvite.guildId.filter(guild.id)];
+        if (pending.some(row => same(row.recipient, peer))) fail("That player is already invited.");
+        if (pending.length >= SOCIAL_REQUEST_LIMIT || [...ctx.db.socialGuildInvite.recipient.filter(peer)].length >= SOCIAL_REQUEST_LIMIT) fail("Too many pending guild invitations.");
+        ctx.db.socialGuildInvite.insert({ id: 0n, guildId: guild.id, sender: ctx.sender, recipient: peer }); return;
+      }
       if (!["accept", "decline", "revoke"].includes(action)) fail("Unknown invitation action.");
       const row = ctx.db.socialGuildInvite.id.find(invitationId) ?? fail("Invitation no longer exists.");
       const guild = ctx.db.guild.id.find(row.guildId);
       if (action === "revoke") { if (!guild || !same(guild.leader, ctx.sender)) fail("Only the guild President can revoke invitations."); }
       else if (!same(row.recipient, ctx.sender)) fail("This invitation is not yours.");
       if (action === "accept") {
-        if (!guild || !same(guild.leader, row.sender)) fail("This invitation is no longer valid.");
-        assertContact(ctx, row.sender); deps.joinGuild(ctx, row.guildId);
+        if (!guild || officerGuild(ctx, row.sender)?.id !== guild.id) fail("This invitation is no longer valid.");
+        assertContact(ctx, row.sender); deps.joinInvited(ctx, row.guildId);
         for (const invite of ctx.db.socialGuildInvite.recipient.filter(ctx.sender)) ctx.db.socialGuildInvite.id.delete(invite.id);
       } else ctx.db.socialGuildInvite.id.delete(row.id);
     },
