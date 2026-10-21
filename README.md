@@ -10,7 +10,7 @@ Fight monsters, find better gear, and build your stats as you explore forests, d
 
 Built for phones. Playable on desktop.
 
-WildStat is in in alpha / early-beta.
+WildStat is early-access.
 
 Found a bug? Use `/bug` in game or [open an issue](https://github.com/Tydoskus/wildwood/issues).
 
