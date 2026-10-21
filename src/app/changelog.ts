@@ -1,4 +1,7 @@
 export const RELEASE_NOTES: Record<string, string[]> = {
+  "0.916.17": [
+    "Fixed chat portraits not loading until you opened a profile",
+  ],
   "0.916.16": [
     "Name plates are back to nearly their old size, with sharper names and numbers",
     "New stat popups push older ones up instead of stacking down the screen",
@@ -3748,6 +3751,7 @@ const RELEASE_DATES: Record<string, string> = {
 };
 
 export const RELEASE_DAYS: Record<string, string> = {
+  "0.916.17": "2026-10-20",
   "0.916.16": "2026-10-20",
   "0.916.15": "2026-10-20",
   "0.916.14": "2026-10-20",
