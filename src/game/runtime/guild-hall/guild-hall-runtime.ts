@@ -17,6 +17,8 @@ const FEET_OFFSET = GUILD_HALL_FEET_OFFSET;
 const FEET_RADIUS = 12;
 /** The door swings open while feet are this near its sill. */
 const DOOR_PUSH_REACH = 20;
+/** How far past the sill feet may be and still count as at the door; anything further is behind the hall. */
+const DOOR_SILL_DEPTH = 16;
 /** Going through: a few steps into the doorway while the screen goes dark. */
 const DOORWAY_STEP = 22, DOORWAY_MS = 240;
 /** Feet this near the upgrade board open it. */
@@ -123,11 +125,12 @@ export function createGuildHallRuntime(deps: {
   function checkDoor() {
     const { player } = deps;
     const feetX = player.x, feetY = player.y + FEET_OFFSET;
-    guildHallDoorState.open = player.hp > 0 && Math.abs(feetX - GUILD_HALL_DOOR.x) < GUILD_HALL_DOOR.half
-      && feetY < GUILD_HALL_DOOR.enter + FEET_RADIUS + DOOR_PUSH_REACH;
+    const atSill = (reach: number) => Math.abs(feetX - GUILD_HALL_DOOR.x) < GUILD_HALL_DOOR.half
+      && feetY > GUILD_HALL_DOOR.enter - DOOR_SILL_DEPTH && feetY < GUILD_HALL_DOOR.enter + FEET_RADIUS + reach;
+    guildHallDoorState.open = player.hp > 0 && atSill(DOOR_PUSH_REACH);
     if (player.hp <= 0) return;
     const heading = Number.isFinite(lastY) ? player.y - lastY : 0;
-    if (guildHallDoorState.open && heading < 0 && Math.abs(feetX - GUILD_HALL_DOOR.x) < GUILD_HALL_DOOR.half && feetY < GUILD_HALL_DOOR.enter + FEET_RADIUS + 8) {
+    if (guildHallDoorState.open && heading < 0 && atSill(8)) {
       startDoorway(true);
       return;
     }
