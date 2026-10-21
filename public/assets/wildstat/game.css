@@ -3165,7 +3165,8 @@
   #sceneFade {
     position: fixed;
     inset: 0;
-    z-index: 20;
+    /* Over the world and HUD, under open windows: a portal fade never blacks out the bag. */
+    z-index: 9;
     background: #000;
     opacity: 0;
     pointer-events: none;

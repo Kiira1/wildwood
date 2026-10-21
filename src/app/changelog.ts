@@ -1,5 +1,6 @@
 export const RELEASE_NOTES: Record<string, string[]> = {
   "0.916.25": [
+    "Walking through a portal no longer blacks out an open inventory or window",
     "Quests appear once you've visited the quest board in Town",
     "The Starter Chest shows the Crude Sword's real damage bonus",
     "Tapping Research Ready takes you straight to the Research building",
