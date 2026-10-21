@@ -590,6 +590,10 @@
       "regen:u64",
       "speed:u64"
     ],
+    "my_server_boost_trigger": [
+      "identity:identity",
+      "lastTriggeredAtMs:f64"
+    ],
     "my_social_hub": [
       "identity:identity",
       "snapshot:string"
@@ -1117,6 +1121,12 @@
     "release_notice": [
       "id:u32",
       "releaseJson:string"
+    ],
+    "server_boost": [
+      "id:u8",
+      "endsAtMs:f64",
+      "supporterName:string",
+      "startedAtMs:f64"
     ],
     "social_duel_message": [
       "messageId:u64",

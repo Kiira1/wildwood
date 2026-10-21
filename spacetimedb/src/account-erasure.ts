@@ -210,6 +210,7 @@ export const ERASURE_TARGETS: readonly ErasureTarget[] = [
   { table: "regularEnemyStream", columns: ["identity"], pk: "key", mode: "index", index: "identity" },
   { table: "releaseAcknowledgement", columns: ["identity"], pk: "identity", mode: "key" },
   { table: "researchCompletionSchedule", columns: ["identity"], pk: "scheduled_id", mode: "scan" },
+  { table: "serverBoostTrigger", columns: ["identity"], pk: "identity", mode: "key" },
   { table: "socialFriend", columns: ["owner","peer"], pk: "key", mode: "index", index: "owner" },
   { table: "socialGuildInvite", columns: ["sender","recipient"], pk: "id", mode: "index", index: "sender" },
   { table: "socialMessage", columns: ["sender","recipient","reply_sender"], pk: "id", mode: "index", index: "sender" },

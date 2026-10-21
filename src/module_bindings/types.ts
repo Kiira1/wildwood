@@ -1091,6 +1091,9 @@ export type MyResearchRanks = __Infer<typeof MyResearchRanks>;
 export const MyRewardKills = __t.object("MyRewardKills", {});
 export type MyRewardKills = __Infer<typeof MyRewardKills>;
 
+export const MyServerBoostTrigger = __t.object("MyServerBoostTrigger", {});
+export type MyServerBoostTrigger = __Infer<typeof MyServerBoostTrigger>;
+
 export const MySocialHub = __t.object("MySocialHub", {});
 export type MySocialHub = __Infer<typeof MySocialHub>;
 
@@ -2474,6 +2477,20 @@ export const ResearchCompletionSchedule = __t.object("ResearchCompletionSchedule
   completesAtMicros: __t.u64(),
 });
 export type ResearchCompletionSchedule = __Infer<typeof ResearchCompletionSchedule>;
+
+export const ServerBoost = __t.object("ServerBoost", {
+  id: __t.u8(),
+  endsAtMs: __t.f64(),
+  supporterName: __t.string(),
+  startedAtMs: __t.f64(),
+});
+export type ServerBoost = __Infer<typeof ServerBoost>;
+
+export const ServerBoostTrigger = __t.object("ServerBoostTrigger", {
+  identity: __t.identity(),
+  lastTriggeredAtMs: __t.f64(),
+});
+export type ServerBoostTrigger = __Infer<typeof ServerBoostTrigger>;
 
 export const ShardCoordinatorConnection = __t.object("ShardCoordinatorConnection", {
   id: __t.u32(),

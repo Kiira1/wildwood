@@ -31,6 +31,7 @@ const VIEWPORTS = {
   wordmark: [{ width: 390, height: 844, full: false }, { width: 1280, height: 800, full: false }],
   shops: [{ width: 390, height: 844, full: true }, { width: 1280, height: 800, full: true }],
   "gem-shop": [{ width: 390, height: 844, full: true }],
+  "server-boost": [{ width: 390, height: 844, full: true }],
   "profile-own": [{ width: 390, height: 844, full: false }],
   "profile-other": [{ width: 390, height: 844, full: false }],
 };

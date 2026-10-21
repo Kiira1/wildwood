@@ -15,6 +15,7 @@ import { renderProfileGuild } from "../../src/ui/profile-guild";
 import { createProfileActionsMenu } from "../../src/ui/profile-actions-menu";
 import { createGemShopController } from "../../src/ui/gem-shop-controller";
 import { createDiamondLookDrawer } from "../../src/game/runtime/diamond-look-preview";
+import { installServerBoostHud } from "../../src/ui/server-boost-hud";
 import { settleFrames, settleImages } from "./determinism";
 import { GROUND, playerAppearance } from "./world";
 
@@ -240,5 +241,36 @@ async function profileWindow(own: boolean) {
   await settleCssImages();
 }
 
-export const DOM_SCENES: Record<string, () => Promise<void>> = { icons, hud, wordmark, shops, "gem-shop": gemShop,
+/**
+ * The Server Boost: its timer at the top of the column under the minimap, and the Shop's row three ways
+ * (a supporter on cooldown during a boost, a supporter ready, a non-supporter), stacked at phone width.
+ */
+async function serverBoost() {
+  await hud();
+  const column = document.createElement("div");
+  column.className = "hud-timer-column";
+  document.querySelector(".minimap-meta")!.append(column);
+  installServerBoostHud(() => 14 * 60_000 + 32_000);
+  const unpin = document.createElement("style");
+  unpin.textContent = `
+    html, body { position: static !important; height: auto !important; overflow: visible !important; }
+    dialog.gem-shop[open] { position: relative !important; inset: auto !important; height: auto !important; margin: 12px auto !important; }
+    dialog.gem-shop .gem-shop-scroll { overflow: visible !important; max-height: none !important; }
+  `;
+  document.head.append(unpin);
+  const done = async () => ({ ok: true });
+  const views = [
+    { serverBoost: () => ({ remainingMs: 14 * 60_000 + 32_000, supporterName: "Moss", cooldownMs: 22 * 3_600_000 + 5 * 60_000 }), supporterTier: () => "gold" },
+    { serverBoost: () => ({ remainingMs: 0, supporterName: "", cooldownMs: 0 }), supporterTier: () => "silver" },
+    { serverBoost: () => ({ remainingMs: 0, supporterName: "", cooldownMs: 0 }), supporterTier: () => "none" },
+  ];
+  for (const view of views) {
+    const button = document.createElement("button");
+    document.body.append(button);
+    createGemShopController({ button, setOpen: () => {}, serverBoost: { ...view, triggerServerBoost: done, localIdentity: () => "p-local" } }).open();
+  }
+  await settleCssImages();
+}
+
+export const DOM_SCENES: Record<string, () => Promise<void>> = { icons, hud, wordmark, shops, "gem-shop": gemShop, "server-boost": serverBoost,
   "profile-own": () => profileWindow(true), "profile-other": () => profileWindow(false) };

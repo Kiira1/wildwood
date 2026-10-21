@@ -6,6 +6,7 @@ import { cardStatFactors, type CardTotals } from "../../shared/card-effects";
 import { luckMultiplier } from "../../shared/luck-research";
 import { activeCardTotalsFor } from "./active-cards";
 import { luckInPlay } from "./luck-research";
+import { serverBoostRewardMultiplier } from "./server-boost-tables";
 
 /** Each player's gold (shared/gold.ts). Private; the player reads their own through my_gold. */
 export const playerGold = table({ name: "player_gold", public: false }, {
@@ -43,12 +44,13 @@ export function goldChanceMultiplier(ctx: Ctx, identity: Identity, cards?: CardT
 }
 
 /**
- * An accepted kill report's gold: a roll per regular kill, and a boss's first clear in the run. A boss clear is the
+ * An accepted kill report's gold: a roll per regular kill, and a boss's first clear in the run, doubled during a Server Boost. A boss clear is the
  * client's claim, so a repeat pays nothing.
  */
 export function awardKillGold(ctx: Ctx, identity: Identity, kills: number, firstBossClear: boolean, cards?: CardTotals) {
   const chance = kills > 0 ? goldChanceMultiplier(ctx, identity, cards) : 1;
-  addGold(ctx, identity, rollKillGold(kills, () => ctx.random(), chance) + (firstBossClear ? rollBossGold(() => ctx.random()) : 0));
+  const gold = rollKillGold(kills, () => ctx.random(), chance) + (firstBossClear ? rollBossGold(() => ctx.random()) : 0);
+  addGold(ctx, identity, gold * serverBoostRewardMultiplier(ctx));
 }
 
 /** Offline kills pay half the in-play rate, without rolling. */

@@ -28,6 +28,7 @@ Picked by URL hash in `visual-check.html`:
 | `profile-own`, `profile-other` | The profile window's header: your own with the pencil and gear, another player's with the guild row and the ⋯ menu open |
 | `shops` | The Smith on Craft, Reforge and Refine, the Weapon Seller on Sell and the Armor Seller on Buy, each at its real size with its pinned detail and grid, stacked, at phone and desktop width |
 | `gem-shop` | The gem Shop at phone width: the Patreon rows and the dev note's Silver, Gold and Diamond frames, with the Diamond Galaxy set under Diamond |
+| `server-boost` | The Server Boost's timer under the minimap, and the Shop's Server Boost row for a supporter on cooldown during a boost, a supporter ready, and a non-supporter |
 
 `world`, `town` and `bosses` build a map the way the game does (`game-world.ts`: the bootstrap state,
 the map's layout, camps and boss, `createWorldRendering`) with no server; workers are off so ground

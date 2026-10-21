@@ -14,6 +14,7 @@ import { armorDamageReduction } from "../../shared/combat";
 import { criticalDamageMultiplier } from "../../shared/critical-damage";
 import { cardStatFactors, type CardTotals } from "../../shared/card-effects";
 import { activeCardTotalsFor } from "./active-cards";
+import { serverBoostRewardMultiplier } from "./server-boost-tables";
 import { soulStatsFor, withSoulStats } from "./soul-dimension";
 import { bowSkillRollFor } from "./bow-skills";
 import { bowSkillReachMultiplier, isSkillBow } from "../../shared/bow-skills";
@@ -115,7 +116,9 @@ export function createCombatReport(deps: CombatReportDeps) {
       const saved = readPlayerProgress(ctx, ctx.sender);
       const research = ctx.db.playerResearch.identity.find(ctx.sender);
       // The active cards, read once for the report (syncCardAttackCap) rather than again by each helper.
-      const statMultiplier = statRewardMultiplierFor(ctx, ctx.sender, worn);
+      // A running Server Boost doubles what this report earns, and the bound counts the stronger player that makes.
+      const stat = statRewardMultiplierFor(ctx, ctx.sender, worn), boost = serverBoostRewardMultiplier(ctx);
+      const statMultiplier = (type: string) => stat(type) * boost;
       // Soul stats add to the run's in every fight; the saved row and the earned rewards stay the run's alone.
       const soul = soulStatsFor(ctx, ctx.sender);
       const cards = worn ?? activeCardTotalsFor(ctx, ctx.sender);

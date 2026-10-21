@@ -1,0 +1,56 @@
+import { tables, type DbConnection } from "../../module_bindings";
+import { serverBoostCooldownMs, serverBoostMultiplier, serverBoostRemainingMs, type ServerBoostState } from "../../../shared/server-boost";
+import { reducerErrorMessage } from "./reducer-errors";
+
+type Target = { connection: DbConnection; isCurrent: () => boolean };
+
+/**
+ * The Server Boost row everyone shares, this account's last start (for the
+ * cooldown), and the start_server_boost reducer. `nowMs` is the server clock.
+ */
+export function createServerBoostRows(notify: () => void, nowMs: () => number) {
+  let target: Target | null = null;
+  let boost: ServerBoostState | null = null;
+  let lastTriggeredAtMs: number | undefined;
+
+  function watch(connection: DbConnection, isCurrent: () => boolean) {
+    target = { connection, isCurrent };
+    boost = null; lastTriggeredAtMs = undefined;
+    const read = () => {
+      if (!isCurrent()) return;
+      const [row] = [...connection.db.serverBoost.iter()];
+      boost = row ? { endsAtMs: row.endsAtMs, supporterName: row.supporterName } : null;
+      lastTriggeredAtMs = [...connection.db.myServerBoostTrigger.iter()][0]?.lastTriggeredAtMs;
+      notify();
+    };
+    for (const table of [connection.db.serverBoost, connection.db.myServerBoostTrigger]) {
+      table.onInsert(read); table.onUpdate(read); table.onDelete(read);
+    }
+    connection.subscriptionBuilder().onApplied(read).subscribe([tables.serverBoost, tables.myServerBoostTrigger]);
+  }
+
+  async function triggerServerBoost(): Promise<{ ok: boolean; error?: string }> {
+    const current = target;
+    if (!current || !current.isCurrent() || !current.connection.isActive) return { ok: false, error: "Not connected." };
+    try {
+      await current.connection.reducers.startServerBoost({});
+      return { ok: true };
+    } catch (error) {
+      return { ok: false, error: reducerErrorMessage(error) };
+    }
+  }
+
+  return {
+    watch,
+    api: {
+      /** Time the boost has left (0 when none runs), who started it, and this account's wait for its next one. */
+      serverBoost: () => {
+        const now = nowMs(), remainingMs = boost ? serverBoostRemainingMs(boost.endsAtMs, now) : 0;
+        return { remainingMs, supporterName: remainingMs > 0 ? boost!.supporterName : "", cooldownMs: serverBoostCooldownMs(lastTriggeredAtMs, now) };
+      },
+      /** What kill stat rewards are multiplied by now, as the server pays them. */
+      serverBoostMultiplier: () => serverBoostMultiplier(boost?.endsAtMs, nowMs()),
+      triggerServerBoost,
+    },
+  };
+}

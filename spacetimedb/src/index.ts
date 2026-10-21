@@ -81,6 +81,8 @@ import { gemPurchaseTables } from "./gem-purchase-tables";
 import { patreonTables } from "./patreon-tables";
 import { beginPatreonLink as beginSupporterLink, refreshPatreon, sweepPatreonLinks, ensurePatreonSweep, PATREON_SWEEP_INTERVAL_MICROS, patreonStatus, lentLooksFor, unlinkPatreon, patreonCallback } from "./patreon";
 import { requestPatreonSupport } from "./patreon-support";
+import { triggerServerBoost, registerServerBoost } from "./server-boost";
+import { serverBoostTables } from "./server-boost-tables";
 import { allowedAvatarFrame, isAvatarFrame } from "../../shared/avatar-frames";
 import { createGemPurchaseService } from "./gem-purchase-service";
 import { HOME_EXTERIOR_MAP_ID } from "../../shared/home";
@@ -1395,7 +1397,7 @@ const spacetimedb = schema({
   ...proceduralMapTables,
   ...leaderboardPageTables,
   ...gemPurchaseTables,
-  ...patreonTables,
+  ...patreonTables, ...serverBoostTables,
   homeReturnLocation,
   ...guildTables,
   ...socialTables,
@@ -4282,6 +4284,8 @@ export const setAvatarFrame = spacetimedb.reducer({ frame: t.string() }, (ctx, {
   if (row && row.frame !== frame) ctx.db.patreonLink.identity.update({ ...row, frame });
 });
 export const disconnectPatreon = spacetimedb.reducer(ctx => unlinkPatreon(ctx));
+export const startServerBoost = spacetimedb.reducer(ctx => triggerServerBoost(ctx));
+export const { myServerBoostTrigger } = registerServerBoost(spacetimedb);
 export const requestPatreonHelp = spacetimedb.reducer({ email: t.string() }, (ctx, { email }) => {
   requireControllingPlayer(ctx);
   requestPatreonSupport(ctx, email);

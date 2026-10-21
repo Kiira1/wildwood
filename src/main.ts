@@ -406,6 +406,7 @@ import { MAX_PLAYER_STAT, PLAYER_SPAWN } from "../shared/rules";
   const research = createResearchController({
     prestigeLevel: () => coop?.prestigeStatGainInPlay?.() === false ? 0 : coopAccess.prestigeLevel(),
     guildQuestBonus: () => coop?.weeklyQuests?.()?.bonus ?? 1,
+    serverBoost: () => coop?.serverBoostMultiplier?.() ?? 1,
     prestigePerks: () => coop?.prestigePerks?.(), cards: () => coop?.activeCardStats?.(), equippedFeet: () => inventory.equippedFeet,
     itemLevel: coopAccess.itemLevel,
     player,

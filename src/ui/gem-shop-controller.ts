@@ -5,6 +5,7 @@ import { PATREON_PAGE, avatarFrameAsset } from '../../shared/avatar-frames';
 import { createAvatarFrameGlow } from '../app/avatar-frame-glow';
 import { applyProfileIcon } from '../app/profile-icons';
 import type { SupporterActions } from './avatar-frame-picker';
+import { createServerBoostShopRow, type ServerBoostShopActions } from './server-boost-shop';
 
 /** Fullscreen catalog. Checkout stays disabled until verified fulfillment exists. */
 export function createGemShopController(options: {
@@ -14,6 +15,7 @@ export function createGemShopController(options: {
   supporter?: Pick<SupporterActions, 'patreonStatus' | 'beginPatreonLink'>;
   /** Draws a player wearing the Diamond Galaxy set, shown under the Diamond frame. */
   drawDiamondLook?: (canvas: HTMLCanvasElement) => void;
+  serverBoost?: ServerBoostShopActions | null;
 }) {
   const dialog = document.createElement('dialog');
   dialog.id = 'gemShop';
@@ -117,6 +119,7 @@ export function createGemShopController(options: {
     }
     const patreonRows = dialog.querySelectorAll('.shop-patreon-button, .shop-patreon-connect, .shop-patreon-status');
     patreonRows[patreonRows.length - 1].after(note);
+    if (options.serverBoost) note.before(createServerBoostShopRow(options.serverBoost));
   }
   let loadTestProducts = async () => {};
   if (nativeShop) {
