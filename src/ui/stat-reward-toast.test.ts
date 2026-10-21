@@ -3,14 +3,14 @@ import { formatStatRewardToastAmount, statRewardToastModel } from "./stat-reward
 
 describe("stat reward toast", () => {
   it.each([
-    ["+4.88m DAMAGE", "+4.88m", "Damage", "⚔️"],
-    ["+4.88m Damage", "+4.88m", "Damage", "⚔️"],
-    ["+8.50k MAX HEALTH", "+8.50k", "Max Health", "♥"],
-    ["+150 ARMOR", "+150", "Armor", "🛡️"],
-    ["+0.25 ATK/SEC", "+0.25", "Attack Speed", "⚡"],
-    ["+12 HP/SEC", "+12", "Regeneration", "✚"],
-  ])("presents %s as a labeled stat increase", (text, amount, label, icon) => {
-    expect(statRewardToastModel(text)).toMatchObject({ amount, label, icon });
+    ["+4.88m DAMAGE", "+4.88m", "Damage"],
+    ["+4.88m Damage", "+4.88m", "Damage"],
+    ["+8.50k MAX HEALTH", "+8.50k", "Max Health"],
+    ["+150 ARMOR", "+150", "Armor"],
+    ["+0.25 ATK/SEC", "+0.25", "Attack Speed"],
+    ["+12 HP/SEC", "+12", "Regeneration"],
+  ])("presents %s as a labeled stat increase", (text, amount, label) => {
+    expect(statRewardToastModel(text)).toMatchObject({ amount, label });
   });
 
   it("parses compact amounts so repeated rewards can be accumulated", () => {

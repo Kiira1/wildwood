@@ -2,7 +2,6 @@ import { attackCapInterval, attackSpeedLabel, type AttackCapArg } from "../../sh
 import { formatCompactNumber } from "./number-format";
 
 type StatRewardPresentation = {
-  icon: string;
   label: string;
 };
 
@@ -14,20 +13,20 @@ export type StatRewardToastModel = StatRewardPresentation & {
 };
 
 const STAT_REWARD_PRESENTATION: Readonly<Record<string, StatRewardPresentation>> = {
-  DAMAGE: { icon: "⚔️", label: "Damage" },
-  "MAX HEALTH": { icon: "♥", label: "Max Health" },
-  ARMOR: { icon: "🛡️", label: "Armor" },
-  "ATK/SEC": { icon: "⚡", label: "Attack Speed" },
-  "ATTACK SPEED": { icon: "⚡", label: "Attack Speed" },
-  "CRIT DAMAGE": { icon: "✦", label: "Crit Damage" },
-  "HP/SEC": { icon: "✚", label: "Regeneration" },
+  DAMAGE: { label: "Damage" },
+  "MAX HEALTH": { label: "Max Health" },
+  ARMOR: { label: "Armor" },
+  "ATK/SEC": { label: "Attack Speed" },
+  "ATTACK SPEED": { label: "Attack Speed" },
+  "CRIT DAMAGE": { label: "Crit Damage" },
+  "HP/SEC": { label: "Regeneration" },
   // Soul kills (soul-dimension-runtime.ts): shown as stat gains, kept apart from the run's own so totals never mix.
-  "SOUL DAMAGE": { icon: "⚔️", label: "Soul Damage" },
-  "SOUL HEALTH": { icon: "♥", label: "Soul Health" },
-  "SOUL ARMOR": { icon: "🛡️", label: "Soul Armor" },
-  "SOUL REGEN": { icon: "✚", label: "Soul Regen" },
-  "SOUL ATTACK SPEED": { icon: "⚡", label: "Soul Attack Speed" },
-  "SOUL CRIT DAMAGE": { icon: "✦", label: "Soul Crit Damage" },
+  "SOUL DAMAGE": { label: "Soul Damage" },
+  "SOUL HEALTH": { label: "Soul Health" },
+  "SOUL ARMOR": { label: "Soul Armor" },
+  "SOUL REGEN": { label: "Soul Regen" },
+  "SOUL ATTACK SPEED": { label: "Soul Attack Speed" },
+  "SOUL CRIT DAMAGE": { label: "Soul Crit Damage" },
 };
 /** Stats whose gains read as a percentage (+0.2%): none since crit damage became a rating (0.901.47). */
 const PERCENT_STATS = new Set<string>();
@@ -123,15 +122,9 @@ export function createStatRewardToast(text: string, color: string, attackSpeedCa
   }
 
   entry.classList.add("stat-reward-toast");
-  entry.classList.toggle("is-capped", model.capped);
   entry.style.setProperty("--stat-reward-accent", color);
   entry.setAttribute("role", "status");
   entry.setAttribute("aria-label", `${model.label} ${model.amount}`);
-
-  const icon = document.createElement("span");
-  icon.className = "stat-reward-icon";
-  icon.setAttribute("aria-hidden", "true");
-  icon.textContent = model.icon;
 
   const label = document.createElement("span");
   label.className = "stat-reward-label";
@@ -141,11 +134,7 @@ export function createStatRewardToast(text: string, color: string, attackSpeedCa
   amount.className = "stat-reward-value";
   amount.textContent = model.amount;
 
-  const arrow = document.createElement("span");
-  arrow.className = "stat-reward-arrow";
-  arrow.setAttribute("aria-hidden", "true");
-
-  entry.append(icon, label, amount, arrow);
+  entry.append(label, amount);
   return entry;
 }
 

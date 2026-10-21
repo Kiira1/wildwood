@@ -150,7 +150,6 @@ export function createRuntimeHudController(dependencies: RuntimeHudDependencies)
     if (model && active && active.entry.parentElement === elements.pickupLog) {
       active.total = model.capped ? 0 : active.total + model.value;
       const amount = model.capped ? model.amount : formatStatRewardToastAmount(model.stat, active.total);
-      active.entry.classList.toggle("is-capped", model.capped);
       active.entry.querySelector<HTMLElement>(".stat-reward-value")!.textContent = amount;
       active.entry.setAttribute("aria-label", `${model.label} ${amount}`);
       refreshStatRewardLifetime(model.stat, active);

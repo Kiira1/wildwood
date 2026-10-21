@@ -154,7 +154,6 @@ describe("runtime reward notifications", () => {
     expect(pickupLog.children).toHaveLength(1);
     expect(entry.querySelector(".stat-reward-value")?.textContent).toBe("Capped");
     expect(entry.getAttribute("aria-label")).toBe("Attack Speed Capped");
-    expect(entry.classList.contains("is-capped")).toBe(true);
     controller.logPickup("+1 DAMAGE", "#fff");
     expect(pickupLog.children[1].querySelector(".stat-reward-value")?.textContent).toBe("+1");
   });
