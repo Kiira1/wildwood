@@ -7,7 +7,7 @@ import { fileURLToPath } from "node:url";
  * sprite aligner pages (served by `npm run art:align` from public/ itself) and
  * the SVG sources of sheets the game loads as WebP
  * (scripts/rasterize-vector-sprites.mjs). Vite copies all of public/ into the
- * build, so they were deployed to both sites. This takes them back out.
+ * build, so they would be deployed to both sites. This takes them back out.
  */
 export const DEVELOPER_ONLY_FILES = [
   "enemy-sprite-aligner.html", "enemy-sprite-aligner.js", "sprite-aligner.html",

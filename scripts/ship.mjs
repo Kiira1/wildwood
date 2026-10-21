@@ -15,15 +15,14 @@
  *   this waits until both sites serve it, then publishes. Open tabs play on the
  *   old server meanwhile, and the publish sends everyone straight to a client
  *   that is already live (a refused tab looks for a new build every 5 seconds).
- *   Published first, every player waited the whole deploy (0.907.0).
+ *   Published first, every player would wait out the whole deploy.
  *
  * Once a new client is live, open tabs are told so (announce_client_update):
  * they save, reload onto it and pick Auto Farm back up. A tab otherwise waits
- * for its next version check, and a hidden one never checks; after 0.908.0,
- * three in four players were still on the old client an hour later.
+ * for its next version check, and a hidden one never checks.
  *
- * Nothing ships until the checks pass: check:release (the 0.907.0 deploy
- * failed on it; it includes the code-health ratchets), both typechecks, the server bindings against a fresh
+ * Nothing ships until the checks pass: check:release (it includes the
+ * code-health ratchets), both typechecks, the server bindings against a fresh
  * generate, and the unit tests (--quick leaves those to GitHub Actions).
  *
  * Nor while the live balance is not the repo's (balanceVerdict): there is one

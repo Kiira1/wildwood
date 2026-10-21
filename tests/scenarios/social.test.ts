@@ -423,7 +423,7 @@ describe("names", () => {
     const guild = guildOf(world, "SOUP", founder, [rude]);
     expect(guild).toBeTruthy();
 
-    // An old bad name, from before the filter caught it, on the board, in the guild, in chat and in a duel.
+    // A stored bad name the filter missed, on the board, in the guild, in chat and in a duel.
     const bad = "A naked little boy";
     rude.patch("playerProfile", { displayName: bad });
     rude.patch("playerProgress", { desertUnlocked: true });

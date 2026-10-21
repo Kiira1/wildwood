@@ -32,10 +32,8 @@ function run(command, args, label) {
 }
 
 /**
- * What used to go wrong: the script published whatever bundle.js was on disk,
- * built from whatever was checked out. It now publishes only main, with no
- * uncommitted server changes, typechecked and freshly built, and records the
- * commit it published.
+ * Publishes only main, with no uncommitted server changes, typechecked and
+ * freshly built, and records the commit it published.
  */
 function verifyAndBuild() {
   const branch = run("git", ["branch", "--show-current"], "Reading the branch");
@@ -84,8 +82,8 @@ async function loadProgram(path, label) {
 }
 
 async function main() {
-  // The credential lives in a table whose name predates the single-database
-  // model; it is the deployment credential, nothing more.
+  // The credential's table name is historical; it is the deployment credential,
+  // nothing more.
   const source = verifyAndBuild();
   const token = readOperatorToken();
   const program = await loadProgram("spacetimedb/dist/bundle.js", "Server");

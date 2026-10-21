@@ -1,7 +1,7 @@
 /**
  * Writes src/game/runtime/soul/soul-water-cells.ts: which 32-pixel cells of the village's water and shore masks
- * hold any water or foam. The river's light (soul-water.ts) only works on those, and used to find them by reading
- * every pixel of both masks back on the main thread the first time the Town was drawn. Run after re-baking the masks.
+ * hold any water or foam. The river's light (soul-water.ts) only works on those, so the game never reads the masks'
+ * pixels back on the main thread. Run after re-baking the masks.
  */
 import { writeFileSync } from "node:fs";
 import { resolve } from "node:path";

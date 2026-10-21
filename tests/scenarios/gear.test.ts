@@ -614,7 +614,7 @@ describe("builds", () => {
     const world = scenarioWorld();
     const ann = world.join("Ann");
     world.setup(ctx => addCard(ctx as never, ann.identity, "needle_card", 1));
-    // A build saved before cards were kept by type names three Needles; two weapon slots are in play.
+    // An older saved build names three Needles; two weapon slots are in play.
     world.setup(ctx => {
       ctx.db.playerBuild.insert({ key: `${ann.hex}:2`, identity: ann.identity, slot: 2, gearJson: JSON.stringify({ HAND: "", HEAD: "", CHEST: "", FEET: "" }),
         cardsJson: JSON.stringify({ any_bow: ["needle_card", "needle_card", "needle_card"] }), savedAt: ctx.timestamp });

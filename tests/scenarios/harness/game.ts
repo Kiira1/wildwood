@@ -27,7 +27,7 @@ type Callback = (...args: any[]) => void;
 /**
  * Modules that only lay out constants when they load (the hills' rocks, the
  * grove's trees) and keep no state: every page shares one copy instead of
- * laying them out again, which was a sixth of a booted scenario's time.
+ * laying them out again, which costs a sixth of a booted scenario's time.
  */
 const KEPT_MODULES = [/\/shared\/mining\.ts$/, /\/shared\/woodcutting\.ts$/];
 

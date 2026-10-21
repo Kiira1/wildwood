@@ -41,7 +41,7 @@ const rows = result.maps.map((map, index) => {
   const previousMap = result.maps[index - 1];
   const there = arrival && previousMap ? arrivalChecks(config, previousMap.mapId as BalanceMapId, arrival) : null;
   const best = (enemies: { combatPowerPerMinute: number }[] | undefined) => Math.max(0, ...(enemies ?? []).map(enemy => enemy.combatPowerPerMinute));
-  // Regulars of the original five roles: the attack speed and crit camps (0.901.47) copy the damage camp's hit.
+  // Regulars of the original five roles: the attack speed and crit camps copy the damage camp's hit.
   const original = (type: string) => type !== "speed" && type !== "crit";
   const regularHits = (here?.enemies ?? []).filter(enemy => !enemy.elite && original(enemy.rewardType)).map(enemy => enemy.hitPercentOfHealth);
   const balance = resolveMapBalance(map.mapId, structuredClone(settings), 1);
@@ -61,7 +61,7 @@ const rows = result.maps.map((map, index) => {
     bossBeatsArrival: here?.bossOutcome ? here.bossOutcome.diedAt !== null : null,
     bossFightMinutes: here?.bossFightSeconds == null ? null : here.bossFightSeconds / 60,
     heavyOverRegular: Number.isFinite(heavy) && regularDamage > 0 ? heavy / regularDamage : null,
-    // The rating stats (0.901.47): what the arriving build has, and the camp kills made on the map.
+    // The rating stats: what the arriving build has, and the camp kills made on the map.
     attacksPerSecond: arrival ? 1 / arrival.stats.attackRate : null,
     critMultiplier: arrival ? criticalDamageMultiplier({ researchRank: arrival.research.criticalDamage, rating: arrival.stats.critRating, capRank: arrival.research.critCap }) : null,
     speedKills: map.statProgression.find(stat => stat.stat === "attackSpeed")?.rewardEventsMedian ?? null,

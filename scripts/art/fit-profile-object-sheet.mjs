@@ -7,8 +7,7 @@
  * object's bounds, which go in src/app/profile-icon-crops.ts.
  *
  * The sheet keeps the source's transparency, so a player's chosen White or
- * Black backdrop shows behind the object; `--flatten` puts it on white as the
- * first sheets were.
+ * Black backdrop shows behind the object; `--flatten` puts it on white.
  *
  *   node scripts/art/fit-profile-object-sheet.mjs <generated.png> public/assets/wildstat/profile-objects-grid-vN-alpha.webp [--flatten]
  */

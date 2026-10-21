@@ -138,7 +138,7 @@ describe("content-addressed client build", () => {
       if (hashed.has(path)) expect(cacheControl(rules, path), path).toBe(IMMUTABLE);
       else if (path.startsWith("assets/")) expect(cacheControl(rules, path), path).toBe(REVALIDATE);
     }
-    // Runtime art next to hashed files used to be left on the host default.
+    // Runtime art next to hashed files revalidates rather than keeping the host default.
     for (const path of ["assets/wildstat/icons/Icon_AutoFarm.svg", "assets/wildstat/fonts/ui.woff2",
       "assets/wildstat/signin/background.webp", "assets/wildstat/audio/forest.mp3", "assets/tile-worker-AbC123.js"]) {
       expect(cacheControl(rules, path), path).toBe(REVALIDATE);

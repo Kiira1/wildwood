@@ -60,9 +60,9 @@ function below(name, actual, limit, unit) {
   atMost(`${at}: adds no long lines, so the line ratchet cannot be dodged by packing`, main.linesOver300, MAX_LINES_OVER_300, "lines over 300 characters");
   atMost(`${at}: never grows past its byte budget`, main.bytes, MAX_BYTES, "bytes");
 
-  // A callback that takes fewer arguments still type-checks. Dropping the
-  // attacker here left Reflect dead against every melee enemy from 0.823 to
-  // 0.829. Goes once scenario COMBAT-12 covers Reflect in a running game.
+  // A callback that takes fewer arguments still type-checks, so dropping the
+  // attacker here would leave Reflect dead against every melee enemy.
+  // Goes once scenario COMBAT-12 covers Reflect in a running game.
   check("game composition wiring (src/main.ts): hands the enemy that struck to the player's damage, so Reflect can answer it",
     /\(amount, source\) => playerCombat\.damagePlayer\(amount, source\)/.test(main.source),
     "expected src/main.ts to contain (amount, source) => playerCombat.damagePlayer(amount, source)");
@@ -84,11 +84,7 @@ function below(name, actual, limit, unit) {
 
 // spacetimedb/src/index.ts is the module entry: every reducer, procedure, view
 // and table declaration has to live here, because they are the published
-// schema and the test fixtures address them by name. Nothing else has to. On
-// 2026-09-20 the file was 11,576 lines; five extractions moved the shared-boss
-// combat, guest claiming and identity removal, one-time migrations, presence
-// and motion sync, and duels into their own modules, leaving 6,846. The
-// 2026-10-12 cleanup took it to 4,658.
+// schema and the test fixtures address them by name. Nothing else has to.
 //
 // What must remain is the schema surface: 173 reducers, 25 procedures, 27
 // views and 89 tables, the schema registration and the imports. Written as
@@ -98,10 +94,6 @@ function below(name, actual, limit, unit) {
 // Raising MAX_LINES means a declaration genuinely had to be added to the schema
 // surface, and the raise is that declaration alone. Growth without an
 // extraction first is the drift this guard stops.
-// 4_658 (2026-10-12): session guards, progress and equipment helpers, research,
-// power, item upgrades, the gem wallet, the leaderboard refresh, display names,
-// chat, maintenance, character reset, map travel and twelve reducer bodies
-// moved to their own modules.
 {
   const MAX_LINES = 4_625;
   const TARGET_LINES = 3_500;

@@ -7,7 +7,6 @@
  * could have been farming: an honest player who also took breaks shows
  * lower, never higher, so a span rate above honest play needs a look. A day
  * with more kills than honest play fits in 24 hours cannot be honest at all.
- * (Before 2026-10-15 the ledger kept a row per 1,200 kills; those are gone.)
  *
  * Alongside it, the moderation lines the server writes by itself:
  * sustained_kill_rate (paid kills above honest play for a stretch) and

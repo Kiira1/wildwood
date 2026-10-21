@@ -1,15 +1,14 @@
 #!/usr/bin/env node
-// Guards the client's generated table bindings against the failure that
-// stranded 0.797 tabs on 2026-09-23: a column added to a table the client
-// reads, with PROTOCOL_VERSION unchanged. Old bundles passed registerProtocol,
-// then could not decode the subscription snapshot and retried for hours.
+// Guards the client's generated table bindings against a column added to a
+// table the client reads with PROTOCOL_VERSION unchanged: old bundles pass
+// registerProtocol, then cannot decode the subscription snapshot and retry.
 //
 //   node scripts/subscribed-schema.mjs            check (part of check:release)
 //   node scripts/subscribed-schema.mjs --stamp    record the current columns
 //
 // Each column is stamped as "name:type" (type as the bindings declare it, minus
 // key and wire-name markers), so a changed type is caught as well as a changed
-// list. An entry stamped before types were recorded compares by name alone.
+// list. An entry stamped without a type compares by name alone.
 //
 // A changed column list on an existing table needs a PROTOCOL_VERSION bump
 // (old clients are then turned away at registerProtocol and reload). New or

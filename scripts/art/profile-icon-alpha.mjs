@@ -68,9 +68,8 @@ const POCKET_RING = 4;
  * handle, a key's bow, the gap between a braid and a neck.
  *
  * The gaps between cells join every cell's background to the outer edge.
- * Seeding from each cell's own border instead floods white that merely crosses
- * a cell line: the cloud under objects sheet 1's rainbow and a white braid in the
- * varied people sheet were eaten that way.
+ * Seeding from each cell's own border instead would flood white that merely crosses
+ * a cell line, eating art such as the cloud under objects sheet 1's rainbow.
  */
 export function backgroundMask(rgb, width, height, { tolerance = BACKGROUND_TOLERANCE, pockets = true } = {}) {
   const size = width * height, mask = new Uint8Array(size), stack = new Int32Array(size);

@@ -4,8 +4,8 @@ export function createReleaseApi({ host, database, token, fetchImpl = fetch, all
   if (!token || !database) throw new Error("Set WILDSTAT_ROOT_DATABASE and WILDSTAT_SHARD_OPERATOR_TOKEN.");
   const endpoint = name => `${host}/v1/database/${encodeURIComponent(name)}`;
   // A publish uploads a five-megabyte bundle twice (check, then publish), and
-  // the gateway sheds one now and then: a 502 here came back 200 on a direct
-  // retry seconds later. Retry the host's own failures (5xx, timeouts) with
+  // the gateway sheds one now and then, and a direct retry seconds later
+  // succeeds. Retry the host's own failures (5xx, timeouts) with
   // room to ride out a busy spell; a 4xx is the module's considered answer and
   // will not change on a second ask.
   async function request(name, suffix, init = {}, attempts = 5) {

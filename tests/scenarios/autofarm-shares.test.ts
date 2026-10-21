@@ -33,7 +33,7 @@ describe("Auto Farm's stat shares (FARM-02)", () => {
   it("reads sliders saved by an old version: a stat left at 0% stays off, the rest are farmed by their weight", async () => {
     // Strong enough for the Forest's camps: this is about the sliders, not difficulty.
     const sim = simPlayer({ seed: 2, base: savedBuild(10, 200) });
-    // The 0-200% sliders of before: damage at 200, health at 50, three stats at 0 (speed was never moved, so 100).
+    // Older 0-200% sliders: damage at 200, health at 50, three stats at 0 (speed was never moved, so 100).
     sim.parts.storage.setItem(AUTO_FARM_WEIGHTS_KEY, JSON.stringify({ auto: false, weights: { "stat:damage": 200, "stat:health": 50, "stat:armor": 0, "stat:regen": 0, "stat:crit": 0 } }));
     const farm = sim.parts.autoFarm();
     farm.start(farm.savedShares());

@@ -26,7 +26,7 @@ for (let index = 2; index < process.argv.length; index += 1) {
   else wanted.push(process.argv[index]);
 }
 
-// The same green key the game used to apply when it loaded these sheets.
+// The green key, removed here so the game loads the sheets as they are.
 const pixelModule = ts.transpileModule(readFileSync(join(root, "src/game/runtime/render/sprite-pixels.ts"), "utf8"), {
   compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.ES2022 },
 }).outputText;
