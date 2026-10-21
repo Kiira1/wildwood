@@ -1,4 +1,9 @@
 export const RELEASE_NOTES: Record<string, string[]> = {
+  "0.916.19": [
+    "Endless bosses now drop six Warden cards, one for every ten maps",
+    "Oak and Elder Trees drop two new woodcutting cards",
+    "The Warden II card carries you to the next map when you beat the boss that opens it",
+  ],
   "0.916.18": [
     "Enemy health bars and reward labels are sharper",
   ],
