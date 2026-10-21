@@ -11,7 +11,8 @@ import { TUTORIAL_FOREST_MAP_ID, type MapId, type WorldDecor } from "./world";
  * night trees, so only the forest itself converts. The layout's petals (pale specks) are left out here.
  */
 const TREE_FRAMES = [...PROP_FRAMES.tree.frames, ...PROP_FRAMES.birch.frames, ...PROP_FRAMES.smallTree.frames];
-const GRASS_FRAMES = PROP_FRAMES.grass.frames;
+/** Only the pack's shorter tufts (38 units at most): its tallest stand twice a player's height. */
+const GRASS_FRAMES = PROP_FRAMES.grass.frames.slice(0, 7);
 /** The forest's trees stood 154 units at s 1; the pack's are 106 to 201 (most about 160), so its own scale carries over. */
 const TREE_SCALE = 1;
 

@@ -1,6 +1,6 @@
 export const RELEASE_NOTES: Record<string, string[]> = {
   "0.916.23": [
-    "The white specks on Tutorial Forest's grass are gone",
+    "Tutorial Forest grass is tidier and the white specks are gone",
   ],
   "0.916.22": [
     "While You Were Away shows the gold you earned",
