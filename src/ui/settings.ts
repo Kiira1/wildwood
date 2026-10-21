@@ -73,9 +73,9 @@ export function renderAccountStatus(
   account: { signedIn: boolean; notice: string; hasAccountToken?: boolean },
 ) {
   const accountStored = accountButtonAction(account) === "sign-out";
-  // A guest registers here, any time: the guest save moves onto the new account.
-  setText(button, accountStored ? "Sign Out" : "Save Your Progress");
-  const text = account.notice || (accountStored ? "Signed In · Account Save" : "Guest · Saved on This Device Only");
+  // A guest signs in here, any time: an existing account loads; a new one takes the guest save.
+  setText(button, accountStored ? "Sign Out" : "Sign In");
+  const text = account.notice || (accountStored ? "Signed In · Account Save" : "Guest · Sign In to Load Your Account or Keep This Save");
   setText(status, text);
   const error = /FAILED|WAIT|CHECK|NOT MOVED|STILL OPEN/.test(text);
   if (status.classList.contains("is-signed-in") !== account.signedIn) status.classList.toggle("is-signed-in", account.signedIn);

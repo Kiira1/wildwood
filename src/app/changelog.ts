@@ -6,6 +6,7 @@ export const RELEASE_NOTES: Record<string, string[]> = {
     "Slot Upgrades are back at their own station",
     "Weapon cosmetics show on any weapon",
     "Doors open when you walk into them",
+    "Guests can sign in to an existing account from Settings → Account",
   ],
   "0.916.19": [
     "Endless bosses now drop six Warden cards, one for every ten maps",
