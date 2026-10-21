@@ -185,7 +185,7 @@ import { MAINTENANCE_INTERVAL_MICROS, VIRTUAL_PLAYER_RUN_LIFETIME_MICROS, adjust
 import { autoEquip } from "./player-power";
 import { publishPlayerDeathFrame, resetProgressToDefaults, resetWholeSave, startFreshRun, respawnWithProgress, transitionPlayerMap } from "./character-reset";
 import { saveSubmittedProgress } from "./progress-save";
-import { WORLD, VALID_MAP_IDS, canonicalMapId, MAP_ARRIVALS, changePlayerMap, hasEndlessTravelAccess } from "./map-travel";
+import { WORLD, VALID_MAP_IDS, canonicalMapId, MAP_ARRIVALS, changePlayerMap, hasEndlessTravelAccess, travelOnward } from "./map-travel";
 import { startItemUpgradeFor } from "./item-upgrade-runtime";
 import { devResetDailyBonus, devCopyCombatStats, devUpdateSave } from "./dev-save-tools";
 import { setMotionInterest, setPlayerSpeed } from "./movement-requests";
@@ -3282,7 +3282,8 @@ function recordEnemyDefeatsFor(ctx: any, batch: EnemyDefeatBatch, clocks?: Defea
     enforce();
     if (!accepted.restrict && gate) {
       recordAnalyticsMilestone(ctx, "boss");
-      prestige.completeChallengeIfMet(ctx);
+      // A challenge won here moves the player itself; otherwise Onward (Warden II card) takes them to the map just opened.
+      if (!prestige.completeChallengeIfMet(ctx)) travelOnward(ctx, batch.mapId, worn);
     }
 }
 // The throttle comes before any other read; throttleKillReports says why.

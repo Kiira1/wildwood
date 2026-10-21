@@ -147,6 +147,8 @@ export function createAutoFarmController(options: {
   nextPortal?: () => (Position & { destination: string }) | null;
   /** The portal back to the previous map. */
   previousPortal?: () => (Position & { destination: string }) | null;
+  /** The server has moved the player to another map (Onward after a boss win) that the page is yet to show: no walk to a portal. */
+  serverMovePending?: () => boolean;
   /** Whether beating this map's boss opens a locked way forward. */
   bossUnlocksNext?: () => boolean;
   /** The map that way forward leads to, while it is locked: the boss is fought once Move On would be ready for it. */
@@ -782,6 +784,11 @@ export function createAutoFarmController(options: {
     }
     if (!active || options.paused()) return manual;
     choosePhase(dt);
+    // The server's move replaces Move On's walk.
+    if (phase === 'portal' && options.serverMovePending?.()) {
+      status = 'Moving On'; route = []; lastGoal = null; routeClock = 0; holding = true; target = null;
+      return idle();
+    }
     if (phase !== 'boss' && playerBossFight()) {
       status = 'Your boss fight'; route = []; lastGoal = null; routeClock = 0; holding = true; target = null;
       return idle();

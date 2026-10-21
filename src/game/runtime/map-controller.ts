@@ -63,6 +63,8 @@ export type MapController = {
   updatePortal: (dt: number) => void;
   loadMap: (mapId: MapId, x: number, y: number, facing?: number) => void;
   reconcileMapFromServer: () => void;
+  /** The server has the player on another map (a move it made itself, as Onward does) that this page has yet to follow. */
+  serverMovePending: () => boolean;
   queuePortalReveal: (mapId: MapId) => void;
   startProceduralPortalCutscene: () => boolean;
   startDragonPortalCutscene: () => boolean;
@@ -134,6 +136,8 @@ export function createMapController(options: {
   bosses: BossStates;
   bossHazards: BossHazards;
   onCutsceneFinished: () => void;
+  /** Told when the server moved the player from one map to another; true to show the departure shimmer (Onward's cue). */
+  onServerMove?: (from: MapId, to: string) => boolean;
 }): MapController {
   const {
     mapConfig, tutorialMapId, desertMapId, snowMapId, lavaMapId, infernalMapId, waterMapId, dragonCutsceneSeenKey, snowlandsCutsceneSeenKey, lavaCutsceneSeenKey, infernalCutsceneSeenKey, waterCutsceneSeenKey, samuraiCutsceneSeenKey,
@@ -441,13 +445,26 @@ export function createMapController(options: {
     }, goBack);
   }
 
-  function reconcileMapFromServer() {
-    if (!running() || mapTransitioning || arrivalPending || isDueling()) return;
+  /** A first-time portal cutscene showing, or about to start now the server opened its portal. */
+  function cutsceneDue() {
+    return portalCutscene.active || Boolean(pendingPortalReveal && pendingPortalReveal.mapId === getCurrentMapId()
+      && player.hp > 0 && mapUnlocked(pendingPortalReveal.portal.destination));
+  }
+
+  function serverMovePending() {
+    if (!running() || arrivalPending || isDueling()) return false;
     const state = localMapState();
-    if (!state || state.mapId === getCurrentMapId()) return;
-    if (!(state.mapId in mapConfig)) return;
+    return Boolean(state && state.mapId !== getCurrentMapId() && state.mapId in mapConfig);
+  }
+
+  /** Follows a move the server made: after any portal cutscene, it fades to the server's map and spot. */
+  function reconcileMapFromServer() {
+    if (mapTransitioning || cutsceneDue() || !serverMovePending()) return;
+    const state = localMapState()!;
     mapTransitioning = true;
     const attempt = mapLoadGeneration;
+    const shimmer = options.onServerMove?.(getCurrentMapId(), state.mapId) ?? false;
+    if (shimmer) { keys.clear(); stopTouchMove(); player.moving = false; beginTownTeleport(); }
     void withMapDeadline(options.prepareMapAssets(state.mapId as MapId)).then(() => {
       if (attempt !== mapLoadGeneration) return;
       fadeToMap(() => {
@@ -455,10 +472,13 @@ export function createMapController(options: {
         loadMap(state.mapId as MapId, state.x, state.y, state.facing);
         snapCameraToPlayer(camera, player, viewport());
         resetPresentationState();
+        if (shimmer) beginTownTeleport(true);
         mapTransitioning = false;
       });
     }).catch(() => {
-      if (attempt === mapLoadGeneration) mapTransitioning = false;
+      if (attempt !== mapLoadGeneration) return;
+      if (shimmer) endTownTeleport();
+      mapTransitioning = false;
     });
   }
 
@@ -520,6 +540,8 @@ export function createMapController(options: {
     resizeViewport();
     if (portalCutsceneSeenKey) options.markPortalCutsceneSeen(portalCutsceneSeenKey);
     onCutsceneFinished();
+    // A move the server made meanwhile (Onward) waited for the cutscene.
+    reconcileMapFromServer();
     return false;
   }
 
@@ -546,6 +568,7 @@ export function createMapController(options: {
     updatePortal,
     loadMap,
     reconcileMapFromServer,
+    serverMovePending,
     queuePortalReveal: (mapId) => {
       if (mapId !== getCurrentMapId()) return;
       const portal = mapConfig[mapId].secondaryPortal;

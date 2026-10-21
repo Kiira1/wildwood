@@ -97,6 +97,8 @@ import { createDuplicateLoginRuntime, createGameOverlays, createPrestigeUnlockRu
 import { formatGemAmount } from "./ui/number-format";
 import { refreshGoldCounter } from "./ui/gold-counter";
 import { createRewardDisplay } from "./game/runtime/reward-display";
+import { onwardCue } from "./game/runtime/onward-cue";
+import { bossPortalCutscenes } from "./game/runtime/boss/boss-portal-cutscenes";
 import { MAX_PLAYER_STAT, PLAYER_SPAWN } from "../shared/rules";
 
 (() => {
@@ -505,6 +507,7 @@ import { MAX_PLAYER_STAT, PLAYER_SPAWN } from "../shared/rules";
     bosses,
     bossHazards,
     onCutsceneFinished: () => bossController.onPortalCutsceneFinished(),
+    onServerMove: (from, to) => onwardCue(coop?.activeCardStats?.().onward, from, to, showMessage),
   });
   const { questTracker, quests, travel, soulDimension, guildHall } = createWorldPlaces({
     coop: coopAccess, world: bootstrap, currentMapId: () => currentMapId, spawnFromSite, mapController, playerInput, playerCombat,
@@ -528,14 +531,7 @@ import { MAX_PLAYER_STAT, PLAYER_SPAWN } from "../shared/rules";
     running: () => session.isRunning(),
     currentMapId: () => currentMapId,
     portalCutsceneActive: () => mapController.isCutsceneActive(),
-    portalCutscenes: {
-      dragon: { seen: worldProgression.hasSeenDragonPortalCutscene, start: mapController.startDragonPortalCutscene },
-      spider: { seen: worldProgression.hasSeenSnowlandsPortalCutscene, start: mapController.startSnowlandsPortalCutscene },
-      frostclaw: { seen: worldProgression.hasSeenLavaPortalCutscene, start: mapController.startLavaPortalCutscene },
-      magmalisk: { seen: worldProgression.hasSeenInfernalPortalCutscene, start: mapController.startInfernalPortalCutscene },
-      gloomroot: { seen: worldProgression.hasSeenWaterPortalCutscene, start: mapController.startWaterPortalCutscene },
-      tidewyrm: { seen: worldProgression.hasSeenSamuraiPortalCutscene, start: mapController.startSamuraiPortalCutscene },
-    },
+    portalCutscenes: bossPortalCutscenes(worldProgression, mapController),
     spawnBurst,
     damagePlayer: (amount) => playerCombat.damagePlayerFromBoss(amount),
     damageEnemies: (attack, amount, inside) => playerCombat.damageEnemiesFromBoss(attack, amount, inside),
