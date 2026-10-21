@@ -1,4 +1,9 @@
 export const RELEASE_NOTES: Record<string, string[]> = {
+  "0.916.16": [
+    "Name plates are back to nearly their old size, with sharper names and numbers",
+    "New stat popups push older ones up instead of stacking down the screen",
+    "Stat popups show just the stat and the amount",
+  ],
   "0.916.15": [
     "Signed-in players go straight into the game, and new players see the Terms once loading finishes",
     "Faster loading: profile pictures and other players' gear load after you enter the world",
@@ -3743,6 +3748,7 @@ const RELEASE_DATES: Record<string, string> = {
 };
 
 export const RELEASE_DAYS: Record<string, string> = {
+  "0.916.16": "2026-10-20",
   "0.916.15": "2026-10-20",
   "0.916.14": "2026-10-20",
   "0.916.13": "2026-10-20",
