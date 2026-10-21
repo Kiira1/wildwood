@@ -144,7 +144,7 @@
     --game-window-width: min(420px, calc(100vw - 24px));
     --inventory-toolbar-color: #543822;
     --hud-surface: rgba(24, 24, 24, .60);
-    --ui-outline: #1c1c1c;
+    --ui-outline: #0f0f0f;
     --ui-shadow: 0 2px 0 var(--ui-outline);
     --ui-seam: 2px solid var(--ui-outline);
     --hud-frame: var(--ui-outline);

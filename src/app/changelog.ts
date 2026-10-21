@@ -1,4 +1,7 @@
 export const RELEASE_NOTES: Record<string, string[]> = {
+  "0.916.24": [
+    "Interface outlines are a little darker again",
+  ],
   "0.916.23": [
     "Small balancing",
     "Skipping the tutorial gives the same starting stats as finishing it",
@@ -3790,6 +3793,7 @@ const RELEASE_DATES: Record<string, string> = {
 };
 
 export const RELEASE_DAYS: Record<string, string> = {
+  "0.916.24": "2026-10-21",
   "0.916.23": "2026-10-21",
   "0.916.22": "2026-10-21",
   "0.916.21": "2026-10-21",
