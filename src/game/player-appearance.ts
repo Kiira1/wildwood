@@ -598,6 +598,8 @@ export function drawStartingPlayer(
   // Another kind's art swung as the sword is, or lifted and leaned as the staff is, around its own grip.
   const swing = swings ? spin ?? swordSwingPose(options.throwClock ?? 0) : undefined;
   const swingTurn = swing && !swordHeld ? (swing.angle + 28) * DEGREES_TO_RADIANS : 0;
+  // The chop carries the hand along its arc, not only the blade around the grip.
+  const gripX = swing?.gripX ?? 0, gripY = swing?.gripY ?? 0;
   const cast = casts && !staffHeld ? staffCastPose(options.throwClock ?? 0) : undefined;
   const drawHeldItem = () => {
     if (!heldItem || !heldSpritePresentation || !heldVisible) return;
@@ -611,7 +613,7 @@ export function drawStartingPlayer(
       // Held upright at its grip, leaning a little forward; the cast lifts, leans and thrusts it, and its head glows.
       const pose = staffCastPose(casts ? options.throwClock ?? 0 : 0);
       ctx.save();
-      ctx.translate(left + width / 2 + pose.forward, heldY + height * STAFF_GRIP - pose.lift);
+      ctx.translate(left + width / 2 + pose.forward + gripX, heldY + height * STAFF_GRIP - pose.lift + gripY);
       ctx.rotate(STAFF_REST_TILT + pose.tilt + runMotion.rotation + swingTurn);
       if (swing) drawSwordTrail(ctx, 0, 0, height * STAFF_GRIP, -Math.PI / 2, swing.trail);
       drawLayer(ctx, asset, -width / 2, -height * STAFF_GRIP, width, height, "weapon", true, asset !== held);
@@ -620,7 +622,7 @@ export function drawStartingPlayer(
       return;
     }
     ctx.save();
-    ctx.translate(left + width / 2 + (cast?.forward ?? 0), heldY + height / 2 - (cast?.lift ?? 0));
+    ctx.translate(left + width / 2 + (cast?.forward ?? 0) + gripX, heldY + height / 2 - (cast?.lift ?? 0) + gripY);
     const baseRotation = heldSpritePresentation.handAction === "BOW"
       ? bowHeldRotationRadians({ combatFacing: options.combatFacing, facingLeft, heldInLeftHand })
       : 0;
@@ -665,6 +667,9 @@ export function drawStartingPlayer(
     if (bodyCanvas) ctx.drawImage(bodyCanvas, 0, 0, PLAYER_BODY_WIDTH, PLAYER_BODY_HEIGHT);
     else draw(ctx);
   };
+  // Raised over the head at the start of a chop, the weapon is behind the head.
+  const heldBehind = swing?.behind === true;
+  if (heldBehind) drawHeldItem();
   const liveChest = chestSpriteDrawn && itemHasGalaxyFinish(options.chestItem);
   const liveHead = itemHasGalaxyFinish(headItem);
   if (!bodyAssetsReady) drawBody(ctx);
@@ -687,6 +692,6 @@ export function drawStartingPlayer(
     ctx.save(); ctx.globalAlpha = 0; drawBody(ctx, true); ctx.restore();
   }
   // Keep weapons readable above armor from every facing and hand position.
-  drawHeldItem();
+  if (!heldBehind) drawHeldItem();
   ctx.restore();
 }

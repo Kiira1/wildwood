@@ -1,4 +1,7 @@
 export const RELEASE_NOTES: Record<string, string[]> = {
+  "0.916.27": [
+    "Swords swing overhead",
+  ],
   "0.916.26": [
     "Profiles show Attack Speed as attacks per second and Crit Damage as a multiplier",
   ],

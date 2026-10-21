@@ -139,13 +139,14 @@ function running(assets: Assets) {
   }));
 }
 
-const SWING_CLOCKS = [.42, .36, .3, .2, .05];
+const SWING_CLOCKS = [.42, .39, .36, .33, .3, .27, .2, .05];
 /** The attack: a throw, a swing, a cast and a shot, sampled from wind-up to follow-through. */
 function attacks(assets: Assets) {
-  const rows = HELD.slice(0, 4);
+  const rows = [...HELD.slice(0, 4).map(row => ({ ...row, facing: 0 })),
+    { name: "sword ←", item: WOODEN_SWORD, facing: Math.PI }, { name: "mythic sword", item: "mythic_sword", facing: 0 }];
   const view = grid("Attacks · throw / swing / cast / shot from wind-up to follow-through", SWING_CLOCKS.map(clock => `${Math.round((.42 - clock) * 1000)} ms`), rows.map(row => row.name), 96, 100);
   return () => view.draw((ctx, column, row, x, y) => drawStartingPlayer(ctx, assets, {
-    x, y, facing: 0, combatFacing: 0, moving: false, gameTime: 0, throwClock: SWING_CLOCKS[column], rightHandItem: rows[row].item, leftHandItem: "",
+    x, y, facing: rows[row].facing, combatFacing: rows[row].facing, moving: false, gameTime: 0, throwClock: SWING_CLOCKS[column], rightHandItem: rows[row].item, leftHandItem: "",
   }));
 }
 
