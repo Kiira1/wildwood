@@ -4,6 +4,7 @@ export const RELEASE_NOTES: Record<string, string[]> = {
     "Guild tags are hidden by default; turn them on in Settings",
     "Profiles show the player's guild",
     "Report and Block moved into the ⋯ menu on other players' profiles",
+    "The Smith's and the sellers' windows close when you walk away from them",
   ],
   "0.916.21": [
     "The game loads a little faster",

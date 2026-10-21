@@ -7,6 +7,11 @@ import { bindTownTeleportButton } from "../../ui/town-teleport-button";
 import type { createInventoryController } from "../../ui/inventory-controller";
 import { createOxShopRuntime } from "../../ui/ox-shop-controller";
 import { createSlotUpgradesController } from "../../ui/slot-upgrades-controller";
+import { closeStationsOutOfReach } from "../../ui/station-reach";
+import {
+  TOWN_ARMOR_SELLER_POSITION, TOWN_CARD_SELLER_POSITION, TOWN_CARD_SELLER_SERVER_REACH, TOWN_GEAR_SELLER_SERVER_REACH, TOWN_SMITH_POSITION,
+  TOWN_SMITH_SERVER_REACH, TOWN_WEAPON_SELLER_POSITION,
+} from "../../../shared/town";
 import { TUTORIAL_FOREST_MAP_ID, SLOT_UPGRADES_POSITION, type MapId } from "../world";
 import type { CoopAccess } from "./coop-access";
 import type { createGameBootstrap } from "./game-bootstrap";
@@ -140,6 +145,12 @@ export function createTownRuntimes(deps: TownRuntimeDeps) {
     /** Opens a station the player walked up to, and moves the Starter Chest's prompt. */
     update() {
       updateHomeStations();
+      closeStationsOutOfReach(player, inTown() && !deps.isMapTransitioning(), [
+        [smith, TOWN_SMITH_POSITION, TOWN_SMITH_SERVER_REACH],
+        [cardSeller, TOWN_CARD_SELLER_POSITION, TOWN_CARD_SELLER_SERVER_REACH],
+        [gearSellers.sellers.weapons, TOWN_WEAPON_SELLER_POSITION, TOWN_GEAR_SELLER_SERVER_REACH],
+        [gearSellers.sellers.armor, TOWN_ARMOR_SELLER_POSITION, TOWN_GEAR_SELLER_SERVER_REACH],
+      ]);
       starterChest.update();
     },
   };

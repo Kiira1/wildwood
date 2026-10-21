@@ -1,10 +1,11 @@
 import {
-  STARTER_CHEST_POSITION, STARTER_CHEST_REACH, STARTER_WEAPON_CHOICES, starterWeaponId, type StarterWeaponKind,
+  STARTER_CHEST_POSITION, STARTER_CHEST_REACH, STARTER_CHEST_SERVER_REACH, STARTER_WEAPON_CHOICES, starterWeaponId, type StarterWeaponKind,
 } from "../../shared/starter-chest";
 import { TOWN_FEET_OFFSET } from "../../shared/town";
 import { WEAPON_SCHOOL_NAMES } from "../../shared/weapon-mastery";
 import { itemArtMarkup } from "../game/item-presentation";
 import { starterChestScene } from "../game/runtime/render/starter-chest-renderer";
+import { closeStationsOutOfReach } from "./station-reach";
 
 type Result = { ok: boolean; error?: string };
 
@@ -116,8 +117,8 @@ export function createStarterChestRuntime(deps: {
     const atChest = here && Math.hypot(deps.player.x - STARTER_CHEST_POSITION.x, deps.player.y + TOWN_FEET_OFFSET - STARTER_CHEST_POSITION.y) < STARTER_CHEST_REACH;
     if (atChest && !touching) chest.open();
     touching = atChest;
-    // Opened from another tab: the window has nothing left to offer.
-    if (!waiting && chest.isOpen()) chest.close();
+    // Opened from another tab, or walked away from: the window has nothing left to offer.
+    closeStationsOutOfReach(deps.player, here, [[chest, STARTER_CHEST_POSITION, STARTER_CHEST_SERVER_REACH]]);
   }
   return { update, close: chest.close, isOpen: chest.isOpen };
 }
