@@ -15,13 +15,14 @@ const copyKey = (itemId: string, copyId: bigint) => `${itemId}:${copyId}`;
 const isOreId = (value: string): value is OreId => Object.prototype.hasOwnProperty.call(REFINE_ORES, value);
 
 /**
- * This account's refines, ores and last refine try, from the caller-scoped my_item_refines, my_copy_refines,
- * my_ores and my_refine_result views, and the refine_item / destroy_ore reducers. The server rolls every try
+ * This account's refines, looks' kept refines, ores and last refine try, from the caller-scoped my_item_refines,
+ * my_copy_refines, my_cosmetic_refines, my_ores and my_refine_result views, and the refine_item / destroy_ore reducers. The server rolls every try
  * and owns every level; this only carries rows and requests.
  */
 export function createItemRefineRows(notify: () => void, slotTierFor: (itemId: string) => number = () => 0) {
   let target: Target | null = null;
   let levels = new Map<string, number>();
+  let cosmeticLevels = new Map<string, number>();
   let ores: Partial<Record<OreId, number>> = {};
   let result: RefineResult | null = null;
   let resultListener: ((result: RefineResult) => void) | null = null;
@@ -29,6 +30,7 @@ export function createItemRefineRows(notify: () => void, slotTierFor: (itemId: s
   function watch(connection: DbConnection, isCurrent: () => boolean) {
     target = { connection, isCurrent };
     levels = new Map();
+    cosmeticLevels = new Map();
     ores = {};
     result = null;
     // The standing row on connect is an old try, not one to announce.
@@ -39,6 +41,11 @@ export function createItemRefineRows(notify: () => void, slotTierFor: (itemId: s
       for (const row of connection.db.myItemRefines.iter()) next.set(copyKey(row.itemId, 0n), normalizeRefineLevel(row.level));
       for (const row of connection.db.myCopyRefines.iter()) next.set(copyKey(row.itemId, row.copyId), normalizeRefineLevel(row.level));
       levels = next;
+      notify();
+    };
+    const readCosmeticLevels = () => {
+      if (!isCurrent()) return;
+      cosmeticLevels = new Map([...connection.db.myCosmeticRefines.iter()].map(row => [row.itemId, normalizeRefineLevel(row.level)]));
       notify();
     };
     const readOres = () => {
@@ -62,11 +69,13 @@ export function createItemRefineRows(notify: () => void, slotTierFor: (itemId: s
     for (const view of [connection.db.myItemRefines, connection.db.myCopyRefines]) {
       view.onInsert(readLevels); view.onUpdate(readLevels); view.onDelete(readLevels);
     }
+    const looks = connection.db.myCosmeticRefines;
+    looks.onInsert(readCosmeticLevels); looks.onUpdate(readCosmeticLevels); looks.onDelete(readCosmeticLevels);
     connection.db.myOres.onInsert(readOres); connection.db.myOres.onUpdate(readOres); connection.db.myOres.onDelete(readOres);
     connection.db.myRefineResult.onInsert(readResult); connection.db.myRefineResult.onUpdate(readResult); connection.db.myRefineResult.onDelete(readResult);
     connection.subscriptionBuilder()
-      .onApplied(() => { readLevels(); readOres(); readResult(); hydrated = true; })
-      .subscribe([tables.myItemRefines, tables.myCopyRefines, tables.myOres, tables.myRefineResult]);
+      .onApplied(() => { readLevels(); readCosmeticLevels(); readOres(); readResult(); hydrated = true; })
+      .subscribe([tables.myItemRefines, tables.myCopyRefines, tables.myCosmeticRefines, tables.myOres, tables.myRefineResult]);
   }
 
   return {
@@ -74,6 +83,8 @@ export function createItemRefineRows(notify: () => void, slotTierFor: (itemId: s
     api: {
       /** One copy's refine level: copy id 0 is the first copy, the one a slot holds. */
       itemRefine: (itemId: string, copyId = 0n) => levels.get(copyKey(itemId, copyId)) ?? 0,
+      /** The best refine an unlocked cosmetic's item was kept at: the look keeps its ★10/★20 art. Never stats. */
+      cosmeticRefine: (itemId: string) => cosmeticLevels.get(itemId) ?? 0,
       /**
        * What one of our items' stats stand on (items.ts ItemLevel): its slot's tier and the first copy's refine, the
        * copy a slot holds. Everything that works stats out reads this; the +N label still reads the tier alone.

@@ -3,6 +3,7 @@ import { appendItemTierLabel } from "./item-tier-label";
 import { appendRefineBadge, withRefineStars } from "./refine-badge";
 import type { PlayerProgress } from "../coop/services/progress";
 import { itemArtMarkup } from "../game/item-presentation";
+import { lookRefine } from "../game/local-item-refines";
 import { isHiddenCosmeticItem } from "../../shared/equipment-appearance";
 import { weaponKind } from "../../shared/equip-best";
 import { cardDefinition, type CardSlot } from "../../shared/cards";
@@ -120,6 +121,16 @@ export function profileEquipmentRefine(presentation: ProfileEquipmentPresentatio
   return wearsGear(presentation) ? itemRefines?.[presentation.inspectionItemId] ?? 0 : 0;
 }
 
+/** A look's art refine: its item's first copy or its kept cosmetic refine, whichever is higher. Gear shows its own. */
+export function profileLookRefine(
+  presentation: ProfileEquipmentPresentation,
+  itemRefines: Readonly<Record<string, number>> | undefined,
+  cosmeticRefines: Readonly<Record<string, number>> | undefined,
+) {
+  if (presentation.kind !== "COSMETIC") return 0;
+  return lookRefine(itemId => itemRefines?.[itemId] ?? 0, itemId => cosmeticRefines?.[itemId] ?? 0)(presentation.displayItemId);
+}
+
 /** A slot with real gear in it, shown as itself or under a look. */
 const wearsGear = (presentation: ProfileEquipmentPresentation) =>
   presentation.kind !== "COSMETIC" || presentation.inspectionItemId !== presentation.displayItemId;
@@ -138,6 +149,7 @@ export function renderProfileEquipmentSlot(
   presentation: ProfileEquipmentPresentation,
   upgradeLevel: number,
   refineLevel = 0,
+  lookRefineLevel = 0,
 ) {
   const item = itemDefinition(presentation.displayItemId);
   const inspectionItem = itemDefinition(presentation.inspectionItemId);
@@ -165,8 +177,8 @@ export function renderProfileEquipmentSlot(
   label.textContent = presentation.label;
   const art = document.createElement("span");
   art.className = "equipment-slot-art";
-  // Worn graded gear in its refine look; a look shows its base.
-  if (item) art.innerHTML = itemArtMarkup(item.id, false, refine);
+  // Worn graded gear in its refine look; a look in the refine its cosmetic kept.
+  if (item) art.innerHTML = itemArtMarkup(item.id, false, cosmetic ? lookRefineLevel : refine);
   else if (hidden) {
     const hiddenIcon = document.createElement("span");
     hiddenIcon.className = "cosmetic-hidden-icon";

@@ -26,6 +26,7 @@ import { mergeSwordSkills, removeSwordSkills } from "./sword-skills";
 import { mergeStaffSkills, removeStaffSkills } from "./staff-skills";
 import { mergeEquipmentCopies, mergeItemCollection } from "./equipment-copies";
 import { mergeRefineData } from "./item-refine";
+import { mergeCosmeticRefines } from "./cosmetic-refine";
 import { mergeCardData } from "./gear-cards";
 import { mergeCardShopPurchases } from "./card-shop";
 import { mergeMiningData } from "./mining";
@@ -149,6 +150,7 @@ const PLAYER_STATE_TABLES: ReadonlySet<string> = new Set([
   "homeReturnLocation", "leaderboardDirty", "leaderboardPosition", "leaderboardPrestigePosition", "leaderboardStanding", "loginMove",
   "offlineProgress", "patreonPreview", "playerAggroChallenge", "playerAggroChallengeParked", "playerBonusToggle", "playerNameColor",
   "playerMining", "playerMinedNode", "playerMiningLevel", "playerWoodcutting", "playerChoppedTree", "playerWoodcuttingLevel", "playerLuckResearch", "playerResearchRank", "playerCardShopPurchase", "playerWeaponMastery", "playerMasteryLevel", "playerGold", "oldGearPayout", "playerStarterWeapon", "playerCraftSkill", "playerCraftLevel", "playerTool",
+  "playerCosmeticRefine",
   "playerDailyQuest", "playerEndlessRebaseBackup", "playerFreeRespec",
   "playerOfflinePreference", "playerPrestige", "playerPrestigeChallenge",
   "playerPrestigeChallengeParked", "playerPrestigeExpansionPerk", "playerPrestigeCardPerk", "playerPrestigePerk", "playerQuestWeekTotal",
@@ -258,6 +260,7 @@ export function createAccountLifecycle(deps: AccountLifecycleDeps) {
     mergeEquipmentCopies(ctx, link.guest, ctx.sender);
     mergeItemCollection(ctx, link.guest, ctx.sender);
     mergeRefineData(ctx, link.guest, ctx.sender);
+    mergeCosmeticRefines(ctx, link.guest, ctx.sender);
     mergeCardData(ctx, link.guest, ctx.sender);
     mergeCardShopPurchases(ctx, link.guest, ctx.sender);
     mergeMiningData(ctx, link.guest, ctx.sender);

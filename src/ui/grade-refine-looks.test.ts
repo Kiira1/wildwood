@@ -2,9 +2,9 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { parseHTML } from "linkedom";
 import { createInventoryController } from "./inventory-controller";
 import { createItemInspectionController } from "./item-inspection-controller";
-import { profileEquipmentPresentation, profileEquipmentRefine, renderProfileEquipmentSlot, type ProfileEquipmentProgress } from "./profile-equipment";
+import { profileEquipmentPresentation, profileEquipmentRefine, profileLookRefine, renderProfileEquipmentSlot, type ProfileEquipmentProgress } from "./profile-equipment";
 import { STARTER_STONE } from "../game/inventory";
-import { wornItemRefine } from "../game/local-item-refines";
+import { lookRefine } from "../game/local-item-refines";
 afterEach(() => vi.unstubAllGlobals());
 
 // Graded gear shows its refine look wherever it is drawn: base below ★10, then the ★10 and ★20 looks.
@@ -56,24 +56,26 @@ describe("graded gear refine looks on a profile", () => {
     cosmeticHead: "", cosmeticChest: "", cosmeticFeet: "", cosmeticRightHand: "", cosmeticLeftHand: "", ...overrides,
   });
 
-  it("draws worn gear in its refine look and a look over it in the look's base", () => {
+  it("draws worn gear in its refine look and a look over it in the refine its cosmetic kept", () => {
     const { document } = parseHTML("<html><body></body></html>");
     vi.stubGlobal("document", document);
-    const refines = { mythic_staff: 15, mythic_magic_helmet: 22, rare_magic_helmet: 30 };
-    const slot = (progress: ProfileEquipmentProgress, which: "HEAD" | "WEAPON") => {
+    const refines = { mythic_staff: 15, mythic_magic_helmet: 22 };
+    const slot = (progress: ProfileEquipmentProgress, which: "HEAD" | "WEAPON", kept: Record<string, number> = {}) => {
       const presentation = profileEquipmentPresentation(progress, which);
       const element = document.createElement("button") as unknown as HTMLButtonElement;
-      renderProfileEquipmentSlot(element, presentation, 0, profileEquipmentRefine(presentation, refines));
+      renderProfileEquipmentSlot(element, presentation, 0, profileEquipmentRefine(presentation, refines), profileLookRefine(presentation, refines, kept));
       return art(element);
     };
     expect(slot(equipment(), "WEAPON")).toContain(`${PARTS}/mythic-staff-r10.webp`);
     expect(slot(equipment(), "HEAD")).toContain(`${PARTS}/mythic-magic-helmet-r20.webp`);
     expect(slot(equipment({ cosmeticHead: "rare_magic_helmet" }), "HEAD")).toContain(`${PARTS}/rare-magic-helmet.webp`);
+    expect(slot(equipment({ cosmeticHead: "rare_magic_helmet" }), "HEAD", { rare_magic_helmet: 12 })).toContain(`${PARTS}/rare-magic-helmet-r10.webp`);
   });
 
-  it("gives the character preview the worn pieces' refines only", () => {
-    const refines: Record<string, number> = { mythic_staff: 15, rare_magic_helmet: 30 };
-    const refine = wornItemRefine(equipment({ cosmeticHead: "rare_magic_helmet" }), itemId => refines[itemId] ?? 0);
-    expect([refine("mythic_staff"), refine("rare_magic_helmet"), refine("")]).toEqual([15, 0, 0]);
+  it("draws a piece at its own refine or its cosmetic's kept one, whichever is higher", () => {
+    const refines: Record<string, number> = { mythic_staff: 15, rare_magic_helmet: 4 };
+    const kept: Record<string, number> = { rare_magic_helmet: 20, mythic_staff: 3 };
+    const refine = lookRefine(itemId => refines[itemId] ?? 0, itemId => kept[itemId] ?? 0);
+    expect([refine("mythic_staff"), refine("rare_magic_helmet"), refine("")]).toEqual([15, 20, 0]);
   });
 });

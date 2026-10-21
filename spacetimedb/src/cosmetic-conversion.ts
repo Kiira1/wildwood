@@ -3,6 +3,7 @@ import { STARTER_BOW, WOODEN_ARMOR, canonicalItemId } from "../../shared/items";
 import { COSMETIC_CONVERSION_GEM_COST, canConvertToCosmetic, cosmeticUnlocks } from "../../shared/cosmetic-conversion";
 import { OX_SHOP_GEM_PRICE, isOxShopItem } from "../../shared/ox-shop";
 import { readPlayerProgress } from "./wide-stats";
+import { bestHeldRefine, rememberCosmeticRefine } from "./cosmetic-refine";
 
 /** A Gem purchase unlocks an appearance while retaining the original item. */
 export function createCosmeticConversion(deps: {
@@ -43,6 +44,8 @@ export function createCosmeticConversion(deps: {
     deps.writeProgressAndPresentation(ctx, {
       ...progress, cosmeticItemsJson: JSON.stringify([...unlocked, canonical]),
     });
+    // The look keeps the item's best refine art (★10, ★20) after the item itself is gone.
+    rememberCosmeticRefine(ctx, ctx.sender, canonical, bestHeldRefine(ctx, ctx.sender, canonical), true);
   }
 
   /** Ox sells each Galaxy piece once; the Gems and the look change hands in one transaction. */

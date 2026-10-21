@@ -238,6 +238,7 @@ function renderEquipmentSlot(
   upgradeLevel: (itemId: string) => number,
   slotTier?: (slot: "HAND" | "HEAD" | "CHEST") => number,
   refineLevel?: (itemId: string) => number,
+  lookRefine?: (itemId: string) => number,
 ) {
   const itemId = equipmentItemId(inventory, destination, mode);
   const item = itemsById[itemId];
@@ -274,7 +275,7 @@ function renderEquipmentSlot(
   const art = document.createElement("span");
   art.className = "equipment-slot-art";
   // Graded gear shows its refine look: the worn piece's, or the gear under an empty look's.
-  if (item) art.innerHTML = itemArt(itemId, false, refine);
+  if (item) art.innerHTML = itemArt(itemId, false, mode === "COSMETICS" ? lookRefine?.(itemId) ?? 0 : refine);
   else if (cosmeticHidden) {
     const hidden = document.createElement("span");
     hidden.className = "cosmetic-hidden-icon";
@@ -352,6 +353,8 @@ export function renderInventoryView(
     slotTier?: (slot: "HAND" | "HEAD" | "CHEST") => number;
     /** One copy's refine (★N); `copyId` 0n is the first copy, the one a slot holds. */
     refineLevel?: (itemId: string, copyId?: bigint) => number;
+    /** The refine a look's art is drawn at (local-item-refines.ts lookRefine): no stars, only the ★10/★20 art. */
+    lookRefine?: (itemId: string) => number;
     slotCapacity: number;
     filter?: ItemSlot | "ORE";
     nextSlotCost?: bigint;
@@ -377,10 +380,10 @@ export function renderInventoryView(
   const oreStacks = cosmetics ? [] : oreKindsHeld(actions.ores ?? {});
   elements.count.textContent = `${bagStacks.length + oreStacks.length} / ${slotCapacity} ${cosmetics ? "Cosmetics" : "Items"}`;
   const wornRefine = actions.refineLevel && ((itemId: string) => actions.refineLevel!(itemId, 0n));
-  renderEquipmentSlot(elements.equippedHead, inventory, "HEAD", "HEAD", mode, actions.upgradeLevel, actions.slotTier, wornRefine);
-  renderEquipmentSlot(elements.equippedChest, inventory, "CHEST", "ARMOR", mode, actions.upgradeLevel, actions.slotTier, wornRefine);
-  renderEquipmentSlot(elements.equippedRightHand, inventory, inventoryWeaponSlot(inventory, mode), "WEAPON", mode, actions.upgradeLevel, actions.slotTier, wornRefine);
-  renderEquipmentSlot(elements.equippedFeet, inventory, "FEET", "BOOTS", mode, actions.upgradeLevel, actions.slotTier, wornRefine);
+  renderEquipmentSlot(elements.equippedHead, inventory, "HEAD", "HEAD", mode, actions.upgradeLevel, actions.slotTier, wornRefine, actions.lookRefine);
+  renderEquipmentSlot(elements.equippedChest, inventory, "CHEST", "ARMOR", mode, actions.upgradeLevel, actions.slotTier, wornRefine, actions.lookRefine);
+  renderEquipmentSlot(elements.equippedRightHand, inventory, inventoryWeaponSlot(inventory, mode), "WEAPON", mode, actions.upgradeLevel, actions.slotTier, wornRefine, actions.lookRefine);
+  renderEquipmentSlot(elements.equippedFeet, inventory, "FEET", "BOOTS", mode, actions.upgradeLevel, actions.slotTier, wornRefine, actions.lookRefine);
 
   const visibleStacks = actions.filter ? bagStacks.filter(stack => itemDefinition(stack.itemId)?.slot === actions.filter) : bagStacks;
   const visibleOres = !actions.filter || actions.filter === "ORE" ? oreStacks : [];
@@ -411,7 +414,7 @@ export function renderInventoryView(
       if (copyId) button.dataset.copyId = String(copyId);
       const art = document.createElement("span");
       art.className = "inventory-item-art-wrap";
-      art.innerHTML = itemArt(itemId, true, refine);
+      art.innerHTML = itemArt(itemId, true, cosmetics ? actions.lookRefine?.(itemId) ?? 0 : refine);
       button.append(art);
       if (!cosmetics) appendItemTierLabel(button, itemId, "above");
       if (!cosmetics) {

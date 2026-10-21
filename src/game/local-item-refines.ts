@@ -1,6 +1,7 @@
 /**
- * The local player's refines (★N by item id, the first copy's: the one a slot holds), so the character is drawn in
- * its graded gear's refine looks. The game reads them from the coop client (claimCoopClient); until then all is +0.
+ * The local player's refine looks (★N by item id), so the character is drawn in its graded gear's ★10/★20 art:
+ * the first copy's refine (the one a slot holds), or the best an unlocked cosmetic kept (lookRefine).
+ * The game reads them from the coop client (claimCoopClient); until then all is +0.
  */
 let read: (itemId: string) => number = () => 0;
 
@@ -10,11 +11,10 @@ export function setLocalItemRefineSource(source: (itemId: string) => number) {
 
 export const localItemRefine = (itemId: string) => read(itemId);
 
-/** Refines for a worn look: an equipped piece's own, and none for a cosmetic look shown over it. */
-export function wornItemRefine(
-  equipped: { equippedHead?: string; equippedChest?: string; equippedRightHand?: string; equippedLeftHand?: string },
-  refine: (itemId: string) => number,
+/** The refine an item is drawn at: its first copy's, or its cosmetic's kept refine (player_cosmetic_refine) when higher. */
+export function lookRefine(
+  itemRefine: (itemId: string) => number,
+  cosmeticRefine: (itemId: string) => number,
 ) {
-  const worn = [equipped.equippedHead, equipped.equippedChest, equipped.equippedRightHand, equipped.equippedLeftHand];
-  return (itemId: string) => (itemId && worn.includes(itemId) ? refine(itemId) : 0);
+  return (itemId: string) => (itemId ? Math.max(itemRefine(itemId), cosmeticRefine(itemId)) : 0);
 }

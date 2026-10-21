@@ -15,6 +15,7 @@ type ExpectedApiKey =
   | "guild"
   | "acceptLegalTerms"
   | "itemRefine"
+  | "cosmeticRefine"
   | "ores"
   | "destroyOre"
   | "lastRefineResult"

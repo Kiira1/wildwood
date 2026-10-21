@@ -992,6 +992,9 @@ export type MyCopyRefines = __Infer<typeof MyCopyRefines>;
 export const MyCopySlots = __t.object("MyCopySlots", {});
 export type MyCopySlots = __Infer<typeof MyCopySlots>;
 
+export const MyCosmeticRefines = __t.object("MyCosmeticRefines", {});
+export type MyCosmeticRefines = __Infer<typeof MyCosmeticRefines>;
+
 export const MyCraftSkills = __t.object("MyCraftSkills", {});
 export type MyCraftSkills = __Infer<typeof MyCraftSkills>;
 
@@ -1505,6 +1508,14 @@ export const PlayerCopySlots = __t.object("PlayerCopySlots", {
   cards: __t.array(__t.string()),
 });
 export type PlayerCopySlots = __Infer<typeof PlayerCopySlots>;
+
+export const PlayerCosmeticRefine = __t.object("PlayerCosmeticRefine", {
+  key: __t.string(),
+  identity: __t.identity(),
+  itemId: __t.string(),
+  level: __t.u8(),
+});
+export type PlayerCosmeticRefine = __Infer<typeof PlayerCosmeticRefine>;
 
 export const PlayerCraftLevel = __t.object("PlayerCraftLevel", {
   key: __t.string(),

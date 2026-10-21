@@ -3,7 +3,7 @@ import type { PlayerAppearanceAssets } from "../player-appearance";
 import { BASIC_PAPER_HAT, equipmentAppearance } from "../inventory";
 import { drawCharacterPreviewScene } from "./character-preview-scene";
 import { requiredCanvasContext } from "./dom";
-import { wornItemRefine } from "../local-item-refines";
+import { lookRefine } from "../local-item-refines";
 
 type ProfilePreviewProgress = {
   equippedHead?: string;
@@ -18,6 +18,8 @@ type ProfilePreviewProgress = {
   cosmeticLeftHand?: string;
   /** Their first copies' refines (player_item_refine), so their worn graded gear shows its refine look. */
   itemRefines?: Readonly<Record<string, number>>;
+  /** Their unlocked looks' kept refines (player_cosmetic_refine), so a look keeps its ★10/★20 art. */
+  cosmeticRefines?: Readonly<Record<string, number>>;
 } | null;
 
 type DrawProfileCharacterPreviewOptions = {
@@ -71,7 +73,7 @@ export function createProfileCharacterPreview(
       appearance,
       scale: Math.min(.72, widthScale),
       characterOffsetY: 14,
-      itemRefine: progress ? wornItemRefine(progress, itemId => progress.itemRefines?.[itemId] ?? 0) : undefined,
+      itemRefine: progress ? lookRefine(itemId => progress.itemRefines?.[itemId] ?? 0, itemId => progress.cosmeticRefines?.[itemId] ?? 0) : undefined,
     });
   }
 

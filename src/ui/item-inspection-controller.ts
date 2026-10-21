@@ -36,6 +36,8 @@ export type ItemInspectionRequest = {
   upgradeLevel?: number;
   /** The inspected copy's refine: a gold ★N after its name, and counted in its stats. */
   refine?: number;
+  /** The refine the art is drawn at when it is not the copy's own: a look's kept ★10/★20 (player_cosmetic_refine). */
+  lookRefine?: number;
   context?: string;
   description?: string;
   actions?: readonly ItemInspectionAction[];
@@ -212,8 +214,9 @@ export function createItemInspectionController(elements: ItemInspectionElements)
     }
     const icon = document.createElement("div");
     icon.className = "item-inspection-icon";
-    // A graded piece in the inspected copy's refine look.
-    const source = itemPresentation(item.id, refine)?.inventory.source;
+    // A graded piece in the inspected copy's refine look, or the look's kept one.
+    const look = normalizeRefineLevel(request.lookRefine ?? refine);
+    const source = itemPresentation(item.id, look)?.inventory.source;
     // A finished piece is a masked CSS layer stack, not a plain image.
     if (source && !itemHasGalaxyFinish(item.id)) {
       const image = document.createElement("img");
@@ -224,7 +227,7 @@ export function createItemInspectionController(elements: ItemInspectionElements)
       icon.append(image);
     } else {
       if (!source) icon.classList.add("has-fallback-art");
-      icon.innerHTML = itemArtMarkup(item.id, false, refine);
+      icon.innerHTML = itemArtMarkup(item.id, false, look);
     }
     const preview = document.createElement("div");
     preview.className = "item-inspection-preview";

@@ -69,6 +69,7 @@ import { playerNameColor, registerProfileLookReducers } from "./profile-look";
 import { playerPrestige, playerPrestigePerk, prestigeExpansion, playerPrestigeExpansionPerk, playerPrestigeCardPerk, playerFreeRespec } from "./prestige-expansion";
 import { earlierTimestamp } from "./timestamp-utils";
 import { createCosmeticConversion } from "./cosmetic-conversion";
+import { playerCosmeticRefine, registerCosmeticRefine } from "./cosmetic-refine";
 import { publicChatCursor, readPublicChatPage } from "./public-chat-history";
 import { createKillGems, gemKillDaily, gemLedgerTrim } from "./kill-gems";
 import { createPrestige, statRewardMultiplierFor } from "./prestige";
@@ -1413,7 +1414,7 @@ const spacetimedb = schema({
   playerMotionDetailFrame,
   playerMapFrame,
   playerDeathFrame,
-  playerProfile, playerProfileSnapshot,
+  playerProfile, playerProfileSnapshot, playerCosmeticRefine,
   playerGemWallet,
   gemTransaction,
   dailyGemBonus,
@@ -3774,6 +3775,7 @@ export const { createGuild, joinGuild, leaveGuild, transferGuildLeadership, setG
   { guildService, requireGuildPlayer, requireGuildConnection, effectivePowerForProgress, isPublicDisplayNameAllowed });
 // Refining (item-refine.ts, shared/refine.ts).
 export const { refineItem, destroyOre, myItemRefines, myCopyRefines, myOres, myRefineResult } = registerItemRefine(spacetimedb, { requireControllingPlayer, activeDuelFor, inventoryForProgress, writeProgressAndPresentation });
+export const { myCosmeticRefines } = registerCosmeticRefine(spacetimedb);
 // Mining in the Copper Hills (mining.ts, shared/mining.ts).
 export const { claimPickaxe, mineNode, reportMining, myMining, myMinedNodes } = registerMining(spacetimedb, { requireControllingPlayer, activeDuelFor, inventoryForProgress });
 export const { claimHatchet, chopTree, reportChopping, myWoodcutting, myChoppedTrees } = registerWoodcutting(spacetimedb, { requireControllingPlayer, activeDuelFor, inventoryForProgress });

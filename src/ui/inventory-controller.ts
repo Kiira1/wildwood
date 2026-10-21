@@ -58,6 +58,8 @@ type InventoryDependencies = {
   slotTier?: (slot: "HAND" | "HEAD" | "CHEST") => number;
   /** One copy's refine (★N); `copyId` 0n is the first copy, the one a slot holds. */
   refineLevel?: (itemId: string, copyId?: bigint) => number;
+  /** The refine a look's art is drawn at: the item's own or its cosmetic's kept ★10/★20 (local-item-refines.ts). */
+  lookRefine?: (itemId: string) => number;
   /** Ores held, by kind (mined in the Copper Hills, spent at the Smith): a stack in one bag slot each. */
   ores?: () => Readonly<Partial<Record<OreId, number>>>;
   /** The Cards tab: cards owned and active, the odds at each, and switching them on and off. */
@@ -333,7 +335,7 @@ export function createInventoryController(dependencies: InventoryDependencies) {
     dependencies.itemInspection.open({
       itemId,
       upgradeLevel: dependencies.upgradeLevel(itemId),
-      ...(mode === "EQUIPMENT" ? { refine: dependencies.refineLevel?.(itemId, copyId) ?? 0 } : {}),
+      ...(mode === "EQUIPMENT" ? { refine: dependencies.refineLevel?.(itemId, copyId) ?? 0 } : { lookRefine: dependencies.lookRefine?.(itemId) ?? 0 }),
       ownItem: mode === "EQUIPMENT",
       ...(mode === "EQUIPMENT" ? { worn: dependencies.inventory } : {}),
       ...(kept.length ? { context: `Copy ${copy ? kept.indexOf(copy) + 2 : 1} of ${kept.length + 1}` } : {}),
@@ -474,7 +476,8 @@ export function createInventoryController(dependencies: InventoryDependencies) {
     const held = dependencies.ores?.() ?? {};
     const nextState = JSON.stringify([cardsShown, buildsShown, mode, filter, inventory, held, inventory.itemIds.map(id => dependencies.equipmentLocked?.(id)), dependencies.inventorySlotsUnlocked(), dependencies.researchBagSlots?.() ?? 0, dependencies.toolLevels?.() ?? {}, unlockingSlot,
       ["HEAD", "CHEST", "HAND"].map(slot => dependencies.slotTier?.(slot as "HEAD" | "CHEST" | "HAND")), inventory.itemIds.map(itemId => `${dependencies.upgradeLevel(itemId)}:${dependencies.refineLevel?.(itemId, 0n)}`),
-      copies.map(copy => `${copy.id}:${copy.itemId}:${dependencies.equipmentLocked?.(copy.itemId, copy.id)}:${dependencies.refineLevel?.(copy.itemId, copy.id)}`)]);
+      copies.map(copy => `${copy.id}:${copy.itemId}:${dependencies.equipmentLocked?.(copy.itemId, copy.id)}:${dependencies.refineLevel?.(copy.itemId, copy.id)}`),
+      (inventory.cosmeticItemIds ?? []).map(itemId => dependencies.lookRefine?.(itemId) ?? 0)]);
     if (nextState === renderedState) return;
     renderedState = nextState;
     const cosmeticsActive = mode === "COSMETICS";
@@ -512,6 +515,7 @@ export function createInventoryController(dependencies: InventoryDependencies) {
         upgradeLevel: dependencies.upgradeLevel,
         slotTier: dependencies.slotTier,
         refineLevel: dependencies.refineLevel,
+        lookRefine: dependencies.lookRefine,
         slotCapacity,
         nextSlotCost: boughtCapacity < MAX_INVENTORY_SLOT_CAPACITY
           ? inventorySlotUnlockCost(slotsUnlocked)
