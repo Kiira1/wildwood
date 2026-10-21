@@ -1,6 +1,6 @@
 import { expect, it, vi } from "vitest";
 import { createCanvasAtlas, drawAtlasImage } from "./canvas-atlas";
-import { createEnemyStatusPlates, type StatusPlateLabel } from "../enemies/enemy-status-plate";
+import { createEnemyStatusPlates } from "../enemies/enemy-status-plate";
 
 function fakeCanvas() {
   const calls: string[] = [];
@@ -56,19 +56,16 @@ it("draws into a region clipped and translated to it, and draws an image from it
   expect(target.calls).toEqual(["drawImage(canvas,32,0,20,10,1,2,3,4)", "drawImage(canvas,1,2,3,4)"]);
 });
 
-it("puts every enemy kind's plate on the same shared page rather than a canvas each", () => {
+it("puts every enemy bar's plate on the same shared page rather than a canvas each", () => {
   const made: ReturnType<typeof fakeCanvas>[] = [];
   const create = () => { const canvas = fakeCanvas(); made.push(canvas); return canvas.canvas; };
   const atlas = createCanvasAtlas({ createCanvas: create });
   const plates = createEnemyStatusPlates({ pixelRatio: () => 2, createCanvas: create, atlas });
-  const label = (): StatusPlateLabel => ({ canvas: Object.assign(fakeCanvas().canvas, { width: 1024, height: 1024 }), sx: 0, sy: 0, sw: 180, sh: 57, width: 60, height: 19, anchorY: 16 });
-  const first = plates.plate(label(), 80, 5, true);
-  for (let kind = 0; kind < 40; kind++) plates.plate(label(), 80, 5, kind % 2 === 0);
+  const first = plates.plate(80, 5, true);
+  for (let width = 0; width < 40; width++) plates.plate(60 + width, 5, width % 2 === 0);
   expect(made).toHaveLength(1);
   expect(first.canvas).toBe(made[0].canvas);
   expect(first.sw).toBe(Math.ceil(first.width * 2));
-  // The plate's name is copied from its label's own rectangle.
-  expect(made[0].calls.some(call => call.startsWith("drawImage(canvas,0,0,180,57,"))).toBe(true);
 });
 
 it("lets every page go on release, and tells whoever cached a region to drop it", () => {

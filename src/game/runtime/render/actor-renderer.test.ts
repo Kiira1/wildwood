@@ -155,7 +155,7 @@ describe("layered enemy rendering", () => {
     }
   });
 
-  it("draws an enemy's name once while its reward text changes, and starts the label pages over on a new map", () => {
+  it("draws an enemy's name as text over its bar, each reward label once, and starts the label pages over on a new map", () => {
     const texts: string[] = [];
     const context = () => new Proxy({} as Record<string, unknown>, {
       get(target, key: string) {
@@ -171,23 +171,26 @@ describe("layered enemy rendering", () => {
     try {
       let multiplier = 1;
       let mapId = "moonfen";
+      const outlinedText = vi.fn();
       const renderer = createActorRenderer({
         ctx: context(), camera: { x: 0, y: 0, zoom: 1 }, viewport: () => ({ width: 800, height: 800 }),
         devicePixelRatio: () => 1, gameTime: () => 0, player: { x: 200, y: 100 }, enemySprites: {},
-        drawShadow: vi.fn(), pixelCircle: vi.fn(), outlinedText: vi.fn(), enemyTextVisible: () => true, rewardMultiplier: () => multiplier, mapId: () => mapId,
+        drawShadow: vi.fn(), pixelCircle: vi.fn(), outlinedText, enemyTextVisible: () => true, rewardMultiplier: () => multiplier, mapId: () => mapId,
       } as unknown as Parameters<typeof createActorRenderer>[0]);
       const enemy = { type: "Spitter", x: 100, y: 100, vx: 0, vy: 0, r: 20, phase: 0, facingX: 1, engaged: false, hurt: 0,
         hp: 10, maxHp: 10, reward: { type: "damage", amount: 3 } } as unknown as EnemyState;
       for (multiplier = 1; multiplier <= 5; multiplier++) renderer.drawEnemy(enemy);
-      expect(texts.filter(text => text === "Spitter")).toHaveLength(1);
+      // The name is plate text (cached as a sprite in canvas.ts), not a label page.
+      expect(texts.filter(text => text === "Spitter")).toHaveLength(0);
+      expect(outlinedText.mock.calls.filter(([text]) => text === "Spitter")).toHaveLength(5);
       expect(texts.filter(text => text.startsWith("+"))).toHaveLength(5);
       const firstPages = pages.filter(page => page.width === 1024);
       mapId = "verdant_catacombs";
       renderer.drawEnemy(enemy);
-      // The last map's pages are let go; the name is drawn onto a fresh one.
+      // The last map's pages are let go; the reward is drawn onto a fresh one.
       expect(firstPages.length).toBeGreaterThan(0);
       expect(firstPages.every(page => page.width === 0)).toBe(true);
-      expect(texts.filter(text => text === "Spitter")).toHaveLength(2);
+      expect(texts.filter(text => text.startsWith("+"))).toHaveLength(6);
     } finally {
       vi.unstubAllGlobals();
     }

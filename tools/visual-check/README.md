@@ -26,10 +26,12 @@ code are identical (0 changed pixels).
 
 ## Capture
 
-    npm run visual:capture -- --out <dir> [--scenes plates,gear] [--dpr 1,2]
+    npm run visual:capture -- --out <dir> [--scenes plates,gear] [--dpr 1,2] [--cap 2|3]
 
 Builds the harness, serves it on `127.0.0.1:4517` with `public/` behind it, runs headless Chrome
 with DevTools on port `9351`, and writes `<scene>-<width>w@<dpr>x.png` plus `manifest.json`.
+The game canvas is capped at the game's own pixel ratio, 2 unless `--cap 3` (Settings > High
+Resolution), so `--dpr 3` shows a 3× phone as players see it: the canvas stretched 1.5×.
 `--no-build` reuses the last build; `--port` / `--cdp-port` move the ports (never 3000 or 8000).
 
 To capture another commit, check it out in a temporary worktree, copy `tools/visual-check/` and

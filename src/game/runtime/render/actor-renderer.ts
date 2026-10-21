@@ -10,7 +10,7 @@ import { clamp } from "../../math";
 import type { RemotePlayer } from "../../../wildstat-coop";
 import type { PlayerGender } from "../../../../shared/player-gender";
 import type { Camera } from "./camera";
-import { ENEMY_HEALTH_BAR_HEIGHT, ENEMY_HEALTH_FILL, createEnemyStatusPlates, fillPill } from "../enemies/enemy-status-plate";
+import { ENEMY_HEALTH_BAR_HEIGHT, ENEMY_HEALTH_FILL, ENEMY_NAME_GAP, createEnemyStatusPlates, fillPill } from "../enemies/enemy-status-plate";
 import { createCanvasAtlas, drawAtlasImage, type AtlasImage } from "./canvas-atlas";
 import { liveRewardText, soulRewardCapped, type RewardLabelContext } from "../reward-labels";
 import { enemyHpNumbersEnabled } from "../../../ui/enemy-hp-setting";
@@ -18,7 +18,7 @@ import { ownNamePlateEnabled } from "../../../ui/name-plate-setting";
 import { headArtTopOffsetY } from "./overhead-plate";
 import { formatCompactNumber } from "../../../../shared/compact-number";
 import { healthBarTextY } from "./health-bar-layout";
-import { NAMEPLATE_SCALE, plateFont, platePixels, plateSize, plateStroke } from "./nameplate-scale";
+import { plateFont, platePixels, plateSize, plateStroke } from "./nameplate-scale";
 
 /** The health numbers on a bar, when Settings asks for them. */
 const ENEMY_HP_FONT = plateFont(10);
@@ -290,6 +290,21 @@ export function createActorRenderer(options: {
   // Rewards under an enemy at full size; names over its bar at plate scale (nameplate-scale.ts).
   const rewardLabelFont = '900 11px "Arial Rounded MT Bold", "Arial Rounded MT", Arial, sans-serif';
   const nameLabelFont = plateFont(11);
+  const nameStroke = plateStroke(4);
+  /** How far the names' alphabetic baseline sits above the bottom of their em box, where they used to stand. */
+  let nameBaselineLift: number | undefined;
+  function nameLift() {
+    if (nameBaselineLift !== undefined) return nameBaselineLift;
+    if (labelMeasure === undefined) labelMeasure = document.createElement("canvas").getContext("2d");
+    if (!labelMeasure) return 0;
+    labelMeasure.font = nameLabelFont;
+    labelMeasure.textBaseline = "bottom";
+    const fromBottom = labelMeasure.measureText("H").actualBoundingBoxDescent;
+    labelMeasure.textBaseline = "alphabetic";
+    const fromBaseline = labelMeasure.measureText("H").actualBoundingBoxDescent;
+    const lift = fromBaseline - fromBottom;
+    return nameBaselineLift = Number.isFinite(lift) && lift >= 0 ? lift : 0;
+  }
   const projectileCircleSprites = new Map<string, HTMLCanvasElement>();
   let arrowProjectileSprite: HTMLCanvasElement | null | undefined;
 
@@ -367,20 +382,18 @@ export function createActorRenderer(options: {
     return { source, left: x - width / 2, top: y - height / 2, width, height, rotation };
   }
 
-  /** `plate`: a name over the bar, drawn at plate scale. */
-  function createLabelBitmap(segments: LabelSegment[], baseline: CanvasTextBaseline, plate = false): LabelBitmap {
+  function createLabelBitmap(segments: LabelSegment[], baseline: CanvasTextBaseline): LabelBitmap {
     const scale = 3;
-    const size = plate ? NAMEPLATE_SCALE : 1;
-    const enemyLabelFont = plate ? nameLabelFont : rewardLabelFont;
-    const paddingX = 5 * size;
-    const paddingY = 3 * size;
+    const enemyLabelFont = rewardLabelFont;
+    const paddingX = 5;
+    const paddingY = 3;
     if (labelMeasure === undefined) labelMeasure = document.createElement("canvas").getContext("2d");
     const measure = labelMeasure;
     if (!measure) return { canvas: document.createElement("canvas"), width: 0, height: 0, anchorY: 0 };
     measure.font = enemyLabelFont;
     const textWidth = segments.reduce((width, segment) => width + measure.measureText(segment.text).width, 0);
     const width = Math.ceil(textWidth + paddingX * 2);
-    const height = Math.ceil(19 * size);
+    const height = 19;
     const y = baseline === "top" ? paddingY : height - paddingY;
     const paint = (labelCtx: CanvasRenderingContext2D) => {
       labelCtx.transform(scale, 0, 0, scale, 0, 0);
@@ -388,7 +401,7 @@ export function createActorRenderer(options: {
       labelCtx.textAlign = "left";
       labelCtx.textBaseline = baseline;
       labelCtx.lineJoin = "round";
-      labelCtx.lineWidth = plate ? plateStroke(4) : 4;
+      labelCtx.lineWidth = 4;
       let x = paddingX;
       for (const segment of segments) {
         labelCtx.strokeStyle = "#000";
@@ -419,7 +432,7 @@ export function createActorRenderer(options: {
     const multiplier = Math.max(1, context?.soulRewardMultiplier ?? 1);
     const detail = SOUL_STAT_DETAILS[stat];
     return {
-      name: nameLabel(`Soul ${detail.label}`),
+      name: `Soul ${detail.label}`,
       reward: cachedLabel(`soul:${stat}:${capped ? "capped" : ""}:${multiplier}`, () => {
         const amount = capped ? "Capped" : stat === "critDamage" ? `+${+(detail.reward * multiplier * 100).toFixed(1)}%` : soulRewardText(stat, multiplier);
         return createLabelBitmap([{ text: amount, color: "#ffffff" }, { text: " ", color: "#ffffff" }, { text: detail.label, color: detail.color }], "top");
@@ -442,14 +455,10 @@ export function createActorRenderer(options: {
     return label;
   }
 
-  function nameLabel(text: string) {
-    return cachedLabel(`name:${text}`, () => createLabelBitmap([{ text, color: "#f5e9c4" }], "bottom", true));
-  }
-
   function enemyLabels(type: string, reward: EnemyDefinition["reward"]) {
     const amountText = liveRewardText(reward, options.rewardContext?.()) ?? rewardAmountLabel(reward);
     return {
-      name: nameLabel(type),
+      name: type,
       reward: cachedLabel(`reward:${reward.type}:${amountText}`, () => createLabelBitmap([
         { text: amountText, color: "#ffffff" },
         { text: " ", color: "#ffffff" },
@@ -945,14 +954,18 @@ export function createActorRenderer(options: {
       const soulStat = soulStatOfCampName(enemy.campName);
       const labels = soulStat ? soulEnemyLabels(soulStat)
         : enemyLabels(enemy.displayName ?? (enemy.generatedBoss ? enemy.campName : enemy.type), { ...enemy.reward, amount: displayAmount(enemy.reward) });
-      // Name and empty bar, plus the full bar at full health: one image
-      // shared by every enemy of this kind (enemy-status-plate.ts).
+      // The empty bar, plus the full bar at full health: one image shared by
+      // every enemy with a bar this size (enemy-status-plate.ts).
       const full = hpRatio >= 1;
-      const plate = statusPlates.plate(labels.name, barW, barH, full);
+      const plate = statusPlates.plate(barW, barH, full);
       const smoothing = ctx.imageSmoothingEnabled;
       ctx.imageSmoothingEnabled = true;
       drawAtlasImage(ctx, plate, barCenterX + plate.left, barY + plate.top, plate.width, plate.height);
       ctx.imageSmoothingEnabled = smoothing;
+      ctx.font = nameLabelFont;
+      ctx.textAlign = "center";
+      ctx.textBaseline = "alphabetic";
+      options.outlinedText(labels.name, barCenterX, barY - ENEMY_NAME_GAP - nameLift(), "#f5e9c4", nameStroke);
       if (!full) {
         ctx.fillStyle = ENEMY_HEALTH_FILL;
         fillPill(ctx, barX, barY, barW * hpRatio, barH);

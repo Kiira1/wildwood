@@ -1,20 +1,17 @@
-import { drawAtlasImage, type AtlasImage, type CanvasAtlas } from "../render/canvas-atlas";
+import type { AtlasImage, CanvasAtlas } from "../render/canvas-atlas";
 import { platePixels, plateSize } from "../render/nameplate-scale";
 
-/** A label already drawn (an enemy's name): on a canvas of its own, or on a shared atlas page (canvas-atlas.ts). */
-export type StatusPlateLabel = AtlasImage & { width: number; height: number; anchorY: number };
-
 /**
- * The part of an enemy's status that every enemy of the same kind shares:
- * its name over the empty health bar and, at full health, the full bar.
- * Positions are relative to the bar's top edge, centred on x.
+ * The part of an enemy's status that every enemy with the same bar shares:
+ * the empty health bar and, at full health, the full bar. Positions are
+ * relative to the bar's top edge, centred on x.
  */
 export type EnemyStatusPlate = AtlasImage & { left: number; top: number; width: number; height: number };
 
 /** An enemy's health bar: a long, thin pill with no numbers on it, at plate scale. */
 export const ENEMY_HEALTH_BAR_HEIGHT = platePixels(5);
-/** Pixels between the top of the bar and the bottom of the name. */
-const NAME_GAP = plateSize(4);
+/** Pixels between the top of the bar and the bottom of the name's em box. */
+export const ENEMY_NAME_GAP = plateSize(4);
 export const ENEMY_HEALTH_FILL = "#55d568";
 const PLATE_CACHE_LIMIT = 512;
 const OUTLINE = 1;
@@ -36,10 +33,10 @@ export function fillPill(ctx: PillContext, x: number, y: number, width: number, 
 
 /**
  * A mob group is the same enemy many times over, and at full health each
- * one's name and bar are identical, so each kind's is drawn once to a plate
- * and every enemy of it is one image. A wounded enemy still uses the plate
- * for its name and empty bar, and draws only its green fill on top. With no
- * numbers on the bar there is nothing per enemy to cache but that fill.
+ * one's bar is identical, so it is drawn once to a plate and every enemy's
+ * bar is one image. A wounded enemy still uses the plate for its empty bar,
+ * and draws only its green fill on top. The name is text over it, drawn from
+ * a text sprite one to one on the screen's pixels (canvas.ts).
  *
  * Plates are drawn at the device pixel ratio so they land one-to-one on the
  * screen, and the cache is dropped whole when it fills, which only a very long
@@ -51,26 +48,22 @@ export function createEnemyStatusPlates(options: {
   /** Plates packed onto shared pages (canvas-atlas.ts); without one, or with it full, each plate gets its own canvas. */
   atlas?: CanvasAtlas;
 }) {
-  const plates = new Map<StatusPlateLabel, Map<string, EnemyStatusPlate>>();
-  let size = 0;
+  const plates = new Map<string, EnemyStatusPlate>();
   const createCanvas = options.createCanvas ?? (() => document.createElement("canvas"));
   // The atlas starting over drops every plate on it.
-  options.atlas?.onReset(() => { plates.clear(); size = 0; });
+  options.atlas?.onReset(() => plates.clear());
 
-  function build(name: StatusPlateLabel, barW: number, barH: number, full: boolean, scale: number): EnemyStatusPlate {
-    const nameTop = -NAME_GAP - name.anchorY;
+  function build(barW: number, barH: number, full: boolean, scale: number): EnemyStatusPlate {
     const barLeft = -barW / 2;
-    const left = Math.floor(Math.min(-name.width / 2, barLeft - OUTLINE)) - 1;
-    const right = Math.ceil(Math.max(name.width / 2, barLeft + barW + OUTLINE)) + 1;
-    const top = Math.floor(Math.min(nameTop, -OUTLINE)) - 1;
-    const bottom = Math.ceil(Math.max(nameTop + name.height, barH + OUTLINE)) + 1;
+    const left = Math.floor(barLeft - OUTLINE) - 1;
+    const right = Math.ceil(barLeft + barW + OUTLINE) + 1;
+    const top = -OUTLINE - 1;
+    const bottom = Math.ceil(barH + OUTLINE) + 1;
     const width = right - left;
     const height = bottom - top;
     const pixelWidth = Math.ceil(width * scale), pixelHeight = Math.ceil(height * scale);
     const paint = (plateCtx: CanvasRenderingContext2D) => {
       plateCtx.transform(scale, 0, 0, scale, -left * scale, -top * scale);
-      plateCtx.imageSmoothingEnabled = true;
-      drawAtlasImage(plateCtx, name, -name.width / 2, nameTop, name.width, name.height);
       plateCtx.fillStyle = "rgba(0,0,0,.8)";
       fillPill(plateCtx, barLeft - OUTLINE, -OUTLINE, barW + OUTLINE * 2, barH + OUTLINE * 2);
       plateCtx.fillStyle = "#000";
@@ -93,19 +86,16 @@ export function createEnemyStatusPlates(options: {
   }
 
   /** `full`: the enemy is at full health, so the plate carries the full bar too. */
-  function plate(name: StatusPlateLabel, barW: number, barH: number, full: boolean) {
+  function plate(barW: number, barH: number, full: boolean) {
     const scale = options.pixelRatio();
     const key = `${scale}|${barW}|${barH}|${full ? 1 : 0}`;
-    let byName = plates.get(name);
-    const cached = byName?.get(key);
+    const cached = plates.get(key);
     if (cached) return cached;
-    if (size >= PLATE_CACHE_LIMIT) { plates.clear(); size = 0; byName = undefined; }
-    if (!byName) { byName = new Map(); plates.set(name, byName); }
-    const built = build(name, barW, barH, full, scale);
-    byName.set(key, built);
-    size++;
+    if (plates.size >= PLATE_CACHE_LIMIT) plates.clear();
+    const built = build(barW, barH, full, scale);
+    plates.set(key, built);
     return built;
   }
 
-  return { plate, size: () => size };
+  return { plate, size: () => plates.size };
 }

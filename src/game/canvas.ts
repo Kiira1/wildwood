@@ -1,8 +1,13 @@
 import { canvasRenderPixelRatio } from "./runtime/render/render-budget";
 import { freezeCanvas, releaseFrozen, type FrozenImage } from "./runtime/render/frozen-canvas";
+import { cameraZoomPreference } from "./runtime/render/camera-zoom-preference";
 type TextSprite = {
   /** The text's canvas, then its frozen bitmap. */
   image: FrozenImage;
+  /** Device pixels per text pixel it was drawn at, and its size in device pixels. */
+  scale: number;
+  pixelWidth: number;
+  pixelHeight: number;
   logicalWidth: number;
   logicalHeight: number;
   textWidth: number;
@@ -46,14 +51,21 @@ export function textSpriteLayout(metrics: TextSpriteMetrics, fontSize: number, s
   };
 }
 
+/** Device pixels per text pixel within this of a sprite's own scale count as one to one. */
+const SCALE_MATCH = .01;
+type Matrix = { a: number; b: number; c: number; d: number; e: number; f: number };
+
+/**
+ * Text is drawn from cached sprites, one sprite pixel to one screen pixel on whole pixels wherever the
+ * sprite's scale is the drawing scale, so it is never resampled.
+ */
 export function createCanvasPrimitives(ctx: CanvasRenderingContext2D) {
   const TEXT_CACHE_LIMIT = 256;
   const TEXT_CACHE_PIXEL_LIMIT = 4_000_000;
   const textSprites = new Map<string, TextSprite>();
   let cachedTextPixels = 0;
 
-  function textSprite(text: string, fillColor: string, strokeWidth: number | null) {
-    const scale = canvasRenderPixelRatio(window.devicePixelRatio || 1);
+  function textSprite(text: string, fillColor: string, strokeWidth: number | null, scale: number) {
     const font = ctx.font;
     const direction = ctx.direction;
     const key = `${scale}\u0000${font}\u0000${direction}\u0000${fillColor}\u0000${strokeWidth ?? "fill"}\u0000${text}`;
@@ -92,7 +104,10 @@ export function createCanvasPrimitives(ctx: CanvasRenderingContext2D) {
       target.fillStyle = fillColor;
       target.fillText(text, padding, padding + ascent);
     }
-    const sprite: TextSprite = { image: canvas, logicalWidth, logicalHeight, textWidth, ascent, padding, pixels: canvas.width * canvas.height };
+    const sprite: TextSprite = {
+      image: canvas, scale, pixelWidth: canvas.width, pixelHeight: canvas.height,
+      logicalWidth, logicalHeight, textWidth, ascent, padding, pixels: canvas.width * canvas.height,
+    };
     textSprites.set(key, sprite);
     // Most labels stay on screen for many frames, so even one-off numbers are worth a bitmap.
     freezeCanvas(canvas, bitmap => {
@@ -111,7 +126,8 @@ export function createCanvasPrimitives(ctx: CanvasRenderingContext2D) {
     return sprite;
   }
 
-  function drawTextSprite(sprite: TextSprite, x: number, y: number) {
+  /** The sprite's top left for text drawn at (x, y) with the context's align and baseline, in text pixels. */
+  function spriteOrigin(sprite: Pick<TextSprite, "padding" | "textWidth" | "logicalHeight" | "ascent">, x: number, y: number) {
     const direction = ctx.direction;
     const align = ctx.textAlign === "start"
       ? direction === "rtl" ? "right" : "left"
@@ -130,17 +146,53 @@ export function createCanvasPrimitives(ctx: CanvasRenderingContext2D) {
         : ctx.textBaseline === "bottom" || ctx.textBaseline === "ideographic"
           ? sprite.logicalHeight - sprite.padding
           : sprite.padding + sprite.ascent;
-    const smoothing = ctx.imageSmoothingEnabled;
-    ctx.imageSmoothingEnabled = true;
-    ctx.drawImage(
-      sprite.image,
-      x - anchorX,
-      y - anchorY,
-      sprite.logicalWidth,
-      sprite.logicalHeight,
-    );
-    ctx.imageSmoothingEnabled = smoothing;
+    return { left: x - anchorX, top: y - anchorY };
   }
+
+  /** The scale to rasterise at for a drawing scale: the plates' (pixel ratio times the player's zoom) when it is that, else the pixel ratio. */
+  function rasterScale(drawScale: number, pixelRatio: number) {
+    const plates = pixelRatio * cameraZoomPreference();
+    return Math.abs(drawScale - plates) < SCALE_MATCH ? plates : pixelRatio;
+  }
+
+  /**
+   * Draws the sprite under `m`, the target's device transform. At the sprite's own scale it is copied one
+   * to one onto whole device pixels; otherwise it is scaled as before. Leaves `target` untransformed.
+   */
+  function blit(target: CanvasRenderingContext2D, m: Matrix, sprite: TextSprite, left: number, top: number) {
+    if (m.b === 0 && m.c === 0 && Math.abs(m.a - sprite.scale) < SCALE_MATCH && Math.abs(m.d - sprite.scale) < SCALE_MATCH) {
+      const x = Math.round(m.a * left + m.e), y = Math.round(m.d * top + m.f);
+      target.setTransform(1, 0, 0, 1, 0, 0);
+      target.drawImage(sprite.image, x, y);
+      return;
+    }
+    const width = sprite.pixelWidth / sprite.scale, height = sprite.pixelHeight / sprite.scale;
+    target.setTransform(m.a, m.b, m.c, m.d, m.e, m.f);
+    const smoothing = target.imageSmoothingEnabled;
+    target.imageSmoothingEnabled = true;
+    target.drawImage(sprite.image, left, top, width, height);
+    target.imageSmoothingEnabled = smoothing;
+    target.setTransform(1, 0, 0, 1, 0, 0);
+  }
+
+  function drawText(text: string, x: number, y: number, fillColor: string, strokeWidth: number | null) {
+    const pixelRatio = canvasRenderPixelRatio(window.devicePixelRatio || 1);
+    if (typeof ctx.getTransform !== "function") {
+      const sprite = textSprite(text, fillColor, strokeWidth, pixelRatio);
+      const { left, top } = spriteOrigin(sprite, x, y);
+      const smoothing = ctx.imageSmoothingEnabled;
+      ctx.imageSmoothingEnabled = true;
+      ctx.drawImage(sprite.image, left, top, sprite.pixelWidth / pixelRatio, sprite.pixelHeight / pixelRatio);
+      ctx.imageSmoothingEnabled = smoothing;
+      return;
+    }
+    const m = ctx.getTransform();
+    const sprite = textSprite(text, fillColor, strokeWidth, rasterScale(Math.hypot(m.a, m.b), pixelRatio));
+    const { left, top } = spriteOrigin(sprite, x, y);
+    blit(ctx, m, sprite, left, top);
+    ctx.setTransform(m);
+  }
+
   function pixelCircle(x: number, y: number, radius: number) {
     const step = 4;
     const radiusSquared = radius * radius;
@@ -173,19 +225,15 @@ export function createCanvasPrimitives(ctx: CanvasRenderingContext2D) {
     fillColor: string,
     strokeWidth = ctx.lineWidth,
   ) {
-    drawTextSprite(textSprite(text, fillColor, strokeWidth), x, y);
+    drawText(text, x, y, fillColor, strokeWidth);
   }
 
-  function drawFilledText(text: string, x: number, y: number) {
+  function fillWorldText(text: string, x: number, y: number) {
     if (typeof ctx.fillStyle !== "string") {
       ctx.fillText(text, x, y);
       return;
     }
-    drawTextSprite(textSprite(text, ctx.fillStyle, null), x, y);
-  }
-
-  function fillWorldText(text: string, x: number, y: number) {
-    drawFilledText(text, x, y);
+    drawText(text, x, y, ctx.fillStyle, null);
   }
 
   return { outlinedWorldText, fillWorldText, pixelCircle, roundRect };

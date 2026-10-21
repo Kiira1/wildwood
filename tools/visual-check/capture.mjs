@@ -2,7 +2,7 @@
 // Captures the visual-check scenes as PNGs with headless Chrome. Builds the harness, serves it with public/
 // behind it on 127.0.0.1, drives Chrome over the DevTools protocol, and always kills Chrome and the server.
 //
-//   node tools/visual-check/capture.mjs --out <dir> [--scenes plates,gear] [--dpr 1,2] [--no-build]
+//   node tools/visual-check/capture.mjs --out <dir> [--scenes plates,gear] [--dpr 1,2] [--cap 2|3] [--no-build]
 //     [--build-dir <dir>] [--public-dir <dir>] [--port 4517] [--cdp-port 9351]
 import { spawn, spawnSync } from "node:child_process";
 import { createReadStream, existsSync, mkdirSync, rmSync, statSync, writeFileSync } from "node:fs";
@@ -28,7 +28,7 @@ const DEFAULT_VIEWPORT = [{ width: 1280, height: 800, full: true }];
 const MAX_BAND_PIXELS = 8_000;
 
 function parseArgs(argv) {
-  const args = { build: true, dpr: [1, 2], port: 4517, cdpPort: 9351, scenes: null, out: null, buildDir: null, publicDir: join(repo, "public") };
+  const args = { build: true, dpr: [1, 2], cap: null, port: 4517, cdpPort: 9351, scenes: null, out: null, buildDir: null, publicDir: join(repo, "public") };
   for (let index = 0; index < argv.length; index += 1) {
     const flag = argv[index];
     const value = () => {
@@ -39,6 +39,7 @@ function parseArgs(argv) {
     if (flag === "--out") args.out = resolve(value());
     else if (flag === "--scenes") args.scenes = value().split(",").filter(Boolean);
     else if (flag === "--dpr") args.dpr = value().split(",").map(Number);
+    else if (flag === "--cap") args.cap = Number(value());
     else if (flag === "--no-build") args.build = false;
     else if (flag === "--build-dir") args.buildDir = resolve(value());
     else if (flag === "--public-dir") args.publicDir = resolve(value());
@@ -49,13 +50,14 @@ function parseArgs(argv) {
   }
   if (!args.out) throw new Error(`--out <dir> is required\n${readUsage()}`);
   if (args.dpr.some(dpr => !(dpr > 0))) throw new Error("--dpr takes numbers, e.g. 1,2");
+  if (args.cap !== null && args.cap !== 2 && args.cap !== 3) throw new Error("--cap is 2 (the game's default) or 3 (Settings > High Resolution)");
   if ([args.port, args.cdpPort].some(port => port === 3000 || port === 8000)) throw new Error("Ports 3000 and 8000 belong to the local game server and dev site; pick another.");
   args.buildDir ??= join(repo, "local-data/visual-check-build");
   return args;
 }
 
 function readUsage() {
-  return "usage: node tools/visual-check/capture.mjs --out <dir> [--scenes plates,gear] [--dpr 1,2] [--no-build] [--build-dir <dir>] [--public-dir <dir>] [--port 4517] [--cdp-port 9351]";
+  return "usage: node tools/visual-check/capture.mjs --out <dir> [--scenes plates,gear] [--dpr 1,2] [--cap 2|3] [--no-build] [--build-dir <dir>] [--public-dir <dir>] [--port 4517] [--cdp-port 9351]";
 }
 
 function portFree(port) {
@@ -278,6 +280,7 @@ async function main() {
   await cdp.send("Network.setCacheDisabled", { cacheDisabled: false });
 
   const base = `http://127.0.0.1:${args.port}/visual-check.html`;
+  const cap = args.cap === null ? "" : `&cap=${args.cap}`;
   let run = 0;
   const listed = await capture(cdp, `${base}?run=${run++}#__list`, DEFAULT_VIEWPORT[0], 1).catch(() => null);
   const available = JSON.parse((await cdp.send("Runtime.evaluate", { expression: "JSON.stringify(window.__visualScenes ?? [])", returnByValue: true })).result.value);
@@ -291,12 +294,12 @@ async function main() {
   for (const scene of scenes) {
     for (const viewport of VIEWPORTS[scene] ?? DEFAULT_VIEWPORT) {
       for (const dpr of args.dpr) {
-        const name = `${scene}-${viewport.width}w@${dpr}x.png`;
+        const name = `${scene}-${viewport.width}w@${dpr}x${args.cap === null ? "" : `-cap${args.cap}`}.png`;
         const started = Date.now();
         try {
-          const shot = await capture(cdp, `${base}?run=${run++}#${scene}`, viewport, dpr);
+          const shot = await capture(cdp, `${base}?run=${run++}${cap}#${scene}`, viewport, dpr);
           writeFileSync(join(args.out, name), await stitch(shot.bands));
-          manifest.push({ scene, file: name, width: viewport.width, cssHeight: shot.height, dpr, failures: shot.failures });
+          manifest.push({ scene, file: name, width: viewport.width, cssHeight: shot.height, dpr, cap: args.cap ?? 2, failures: shot.failures });
           console.log(`  ${name}  ${viewport.width}×${shot.height} css  ${Date.now() - started}ms${shot.failures.length ? `  (${shot.failures.length} load errors)` : ""}`);
         } catch (error) {
           failed += 1;

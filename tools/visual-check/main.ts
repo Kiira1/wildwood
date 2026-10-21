@@ -1,6 +1,7 @@
 // Offline visual checker: draws the game's own renderers from fake state, one scene per URL hash.
 // Clocks and randomness are pinned before any game module loads, so every capture is the same frame.
 import { installDeterminism } from "./determinism";
+import { setHighResolutionCanvas } from "../../src/game/runtime/render/render-budget";
 
 declare global {
   interface Window {
@@ -11,6 +12,8 @@ declare global {
 }
 
 installDeterminism();
+// The game canvas's pixel ratio cap: 2 as the game starts, 3 with Settings > High Resolution (?cap=3).
+setHighResolutionCanvas(new URLSearchParams(location.search).get("cap") === "3");
 
 async function run() {
   const scene = decodeURIComponent(location.hash.replace(/^#/, "")) || "plates";
