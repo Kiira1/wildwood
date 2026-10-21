@@ -85,10 +85,12 @@ const afterUpdateGateShell = String.raw`
           </div>
           <div id="playerProfilePresence" class="player-profile-presence">CHECKING STATUS</div>
           <div id="playerProfileChallenge" class="player-profile-challenge" hidden></div>
+          <button id="playerProfileGuild" class="player-profile-guild" type="button" hidden></button>
         </div>
       </div>
       <div class="profile-header-actions">
         <button id="editPlayerNameBtn" class="profile-editor-pencil profile-name-edit" type="button" aria-label="Edit profile" aria-haspopup="dialog" hidden><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zm17.71-10.21a1 1 0 0 0 0-1.41l-2.34-2.34a1 1 0 0 0-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg></button>
+        <button id="profileMoreBtn" class="profile-editor-pencil profile-name-edit profile-more-button" type="button" aria-label="More actions" aria-haspopup="dialog" hidden><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="5" cy="12" r="2.2" fill="currentColor"/><circle cx="12" cy="12" r="2.2" fill="currentColor"/><circle cx="19" cy="12" r="2.2" fill="currentColor"/></svg></button>
         <button id="settingsBtn" class="profile-settings-button" type="button" aria-label="Open settings" aria-expanded="false" aria-controls="settingsPanel" title="Settings" hidden><img src="assets/wildstat/icons/Icon_Settings.webp" alt="" aria-hidden="true"></button>
       </div>
     </header>
@@ -127,10 +129,6 @@ const afterUpdateGateShell = String.raw`
           <div><dt>STATUS</dt><dd id="profileOnline">—</dd></div>
         </dl>
         <section id="profileSoulTier" class="profile-soul-tier" hidden></section>
-        <div id="profileSafetyActions" class="profile-safety-actions" hidden>
-          <button id="profileReportBtn" type="button">Report</button>
-          <button id="profileBlockBtn" type="button">Block</button>
-        </div>
       </section>
       <section id="profileStatsPanel" class="profile-panel" role="tabpanel" aria-labelledby="profileStatsTab">
         <div id="profileStatGrid" class="profile-stat-grid"></div>

@@ -14,6 +14,8 @@ import type { createPrestigeExpansionRuntime } from "./prestige-expansion-runtim
 import { formatPlayedTime, profileAttackCap, profileInPlay, profilePower, profilePresenceText, profileSoulInPlay, renderProfileStats } from "./profile";
 import { profileBonusDeps } from "./profile-bonus-toggles";
 import { createProfileWindowController } from "./profile-window-controller";
+import { createGuildLookup } from "./profile-guild";
+import { playerGuildTag } from "../app/player-name-tags";
 
 type BootstrapAssets = ReturnType<typeof createGameBootstrapAssets>;
 type IdentityRenderer = ReturnType<typeof createPlayerIdentityRenderer>;
@@ -36,7 +38,7 @@ export type ProfileRuntimeDeps = {
   runPrestige: () => Promise<unknown>;
   openIconPicker: () => void;
   minimizeChat: () => void;
-  guildPanel: () => { close: () => void } | undefined;
+  guildPanel: () => { close: () => void; openGuildPreview: (id: string) => void } | undefined;
   clearInput: () => void;
   itemInspection: ReturnType<typeof createItemInspectionController>;
   destructionActions: ReturnType<typeof createInventoryController>["destructionActions"];
@@ -69,6 +71,7 @@ export function createProfileRuntime(deps: ProfileRuntimeDeps) {
     return request.finally(() => { if (pendingNameSave === request) pendingNameSave = undefined; });
   }
 
+  const guildLookup = createGuildLookup(() => client?.guild);
   const prestigePanel = deps.expansionNotice.createPanel({ e, showMessage, runPrestige: deps.runPrestige });
   const ownSoulInPlay = (profile: PlayerProfileData) => coop.isLocal(profile.identity) ? deps.soulInPlay() : profileSoulInPlay(profile);
   const profileWindow = createProfileWindowController({
@@ -82,12 +85,14 @@ export function createProfileRuntime(deps: ProfileRuntimeDeps) {
     equipmentFeet: e.profileEquippedFeetSlot, equipmentRightHand: e.profileEquippedRightHandSlot,
     previousSprite: e.previousPlayerSpriteBtn, nextSprite: e.nextPlayerSpriteBtn,
     duel: e.profileDuelBtn,
-    settings: e.settingsBtn, safetyActions: e.profileSafetyActions, report: e.profileReportBtn, block: e.profileBlockBtn,
+    settings: e.settingsBtn, more: e.profileMoreBtn, guild: e.playerProfileGuild,
     prestigeRow: e.profilePrestigeRow, prestige: e.profilePrestige, skillsTab: e.profileSkillsTab, skillsPanel: e.profileSkillsPanel,
     soulTier: e.profileSoulTier,
   }, {
     isBlocked: coop.isPlayerBlocked,
     openSafety: playerSafety.open,
+    guildTag: playerGuildTag, findGuild: guildLookup.find,
+    openGuild: id => deps.guildPanel()?.openGuildPreview(id),
     onOwnProfile: (own: boolean) => prestigePanel.refresh(own),
     prestigeLevel: coop.prestigeLevel,
     weaponMastery: () => client?.weaponMastery?.(),

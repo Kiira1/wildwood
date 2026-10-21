@@ -234,6 +234,9 @@ describe("other players in chat", () => {
     const line = () => [...tab.element("chatMessages").querySelectorAll("[data-message-id]")].find(node => node.textContent?.includes("look at my picture"))!;
     const portrait = () => line().querySelector<HTMLElement>(`[data-avatar-owner="${moss.hex}"]`)!;
     expect(portrait().dataset.profileIcon).toBe("12");
+    // Guild tags show once Show Guild Tags is on, on the line already written.
+    tab.tap("guildTagsToggle");
+    await tab.play(500);
     const name = line().querySelector<HTMLElement>(".chat-name")!;
     expect(name.textContent).toContain("[OAKS]");
     expect(name.textContent).toContain(nasty);
@@ -294,7 +297,8 @@ describe("blocking and reporting", () => {
     await openMoss();
     const controller = world.db.playerController.identity.find(annPlayer.identity);
     world.db.playerController.identity.update({ ...controller, connectionId: new ConnectionId(999_999n) });
-    tab.tap("profileBlockBtn");
+    tab.tap("profileMoreBtn");
+    tab.tap("profileMenuBlockBtn");
     submit(tab, safetyDialog().querySelector("form")!);
     await tab.play(300);
     expect(world.db.playerBlock.count()).toBe(0n);
@@ -333,7 +337,8 @@ describe("blocking and reporting", () => {
     await tab.play(300);
     tapNode(tab, tab.element("chatMessages").querySelector(`[data-avatar-owner="${cy.hex}"]`)!);
     await tab.play(800);
-    tab.tap("profileReportBtn");
+    tab.tap("profileMoreBtn");
+    tab.tap("profileMenuReportBtn");
     typeInto(tab, safetyDialog().querySelector("select")!, "harassment");
     submit(tab, safetyDialog().querySelector("form")!);
     await tab.play(500);

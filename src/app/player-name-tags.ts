@@ -2,11 +2,16 @@ import { isDeveloperIdentity } from "./developer";
 
 type NameTag = { guildTag: string; showDevTag: boolean };
 let revision = 0;
-let provider: { prefix: (identity?: string) => string; revision: () => number; prestigeLevel: (identity?: string) => number } | null = null;
+let provider: { prefix: (identity?: string) => string; revision: () => number; prestigeLevel: (identity?: string) => number;
+  guildTag?: (identity?: string) => string } | null = null;
 // Networking and rendering are separate browser bundles. Bind to the co-op API
 // so both read the same live tags rather than maintaining isolated module caches.
 export function bindPlayerNameTags(source: NonNullable<typeof provider>) { provider = source; }
-export const playerNameTagsRevision = () => provider ? provider.revision() : revision;
+// Settings > Show Guild Tags, per device. Read where names are drawn, never in the networking bundle.
+let guildTagsShown = false, settingRevision = 0;
+export const guildTagsVisible = () => guildTagsShown;
+export function setGuildTagsVisible(next: boolean) { if (guildTagsShown !== next) { guildTagsShown = next; settingRevision++; } }
+export const playerNameTagsRevision = () => (provider ? provider.revision() : revision) + settingRevision;
 /** Zero means no badge. Only the local player resolves until prestige level
  *  travels on a public table; everyone else reads as unprestiged. */
 export const playerPrestigeLevel = (identity?: string) => provider?.prestigeLevel(identity) ?? 0;
@@ -20,10 +25,22 @@ export function updatePlayerNameTag(identity: string, tag: NameTag) {
 export function removePlayerNameTag(identity: string) { if (tags.delete(key(identity))) revision++; }
 export function clearPlayerNameTags() { if (tags.size) { tags.clear(); revision++; } }
 export function developerNameTagVisible(identity?: string) { return isDeveloperIdentity(identity) && tags.get(key(identity))?.showDevTag !== false; }
-export function playerNamePrefix(identity?: string, developer = isDeveloperIdentity(identity)) {
+/** The player's guild name, which is their tag ("" without a guild), whether or not tags are shown. */
+export function playerGuildTag(identity?: string) {
+  return provider ? provider.guildTag?.(identity) ?? "" : tags.get(key(identity))?.guildTag ?? "";
+}
+/** Both tags, always: what the networking bundle hands the game bundle. */
+export function fullPlayerNamePrefix(identity?: string, developer = isDeveloperIdentity(identity)) {
   if (provider) return provider.prefix(identity);
   const tag = tags.get(key(identity));
   return `${developer && tag?.showDevTag !== false ? "[dev]" : ""}${tag?.guildTag ? `[${tag.guildTag}]` : ""}`;
+}
+/** The tags as drawn: the guild tag only while Show Guild Tags is on. */
+export function playerNamePrefix(identity?: string, developer = isDeveloperIdentity(identity)) {
+  const full = fullPlayerNamePrefix(identity, developer);
+  if (guildTagsShown) return full;
+  const guild = playerGuildTag(identity);
+  return guild && full.endsWith(`[${guild}]`) ? full.slice(0, -guild.length - 2) : full;
 }
 export function appendPlayerNameTags(element: HTMLElement, identity?: string, developer = isDeveloperIdentity(identity), showGuildTag = true) {
   const fullPrefix = playerNamePrefix(identity, developer);

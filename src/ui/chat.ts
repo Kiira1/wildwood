@@ -8,7 +8,7 @@ import { applyProfileIcon } from "../app/profile-icons";
 import { normalizeProfileIcon } from "../../shared/profile-icons";
 import { appendChatReactions } from "./chat-reactions";
 import type { ChatReaction, ChatReactionState, ChatRole } from "../../shared/chat-reactions";
-import { playerNamePrefix } from "../app/player-name-tags";
+import { playerNamePrefix, playerNameTagsRevision } from "../app/player-name-tags";
 import {
   duelReplayIsInteractive,
   formatChatReplyPreview,
@@ -499,7 +499,8 @@ export function createChatController({ elements, getCoop, showMessage, onOpenRep
 
     const readingLatest = enabled && large && !guildRequests.isSelected() && document.visibilityState !== "hidden"
       && (renderedRevision === "" || (!historyState.frozen && atLatest));
-    const revision = `${viewportRevision}:${Math.floor(now / 60_000)}:${reactionRevision}:${readingLatest}:${conversationKey()}:${coop?.chatRevision?.() ?? -1}:${coop?.social?.revision() ?? -1}:${coop?.localIdentity?.() ?? ""}:${enabled}:${large}:${historyState.revision}`;
+    // The name tags' revision moves when Show Guild Tags is switched, which no chat row does.
+    const revision = `${playerNameTagsRevision()}:${viewportRevision}:${Math.floor(now / 60_000)}:${reactionRevision}:${readingLatest}:${conversationKey()}:${coop?.chatRevision?.() ?? -1}:${coop?.social?.revision() ?? -1}:${coop?.localIdentity?.() ?? ""}:${enabled}:${large}:${historyState.revision}`;
     if (revision === renderedRevision && now < nextExpiryAt) return;
     // Scrolling changes only the message window, not conversation metadata.
     const metadata = `${readingLatest}:${conversationKey()}:${coop?.chatRevision?.() ?? -1}:${coop?.social?.revision() ?? -1}:${identity}:${enabled}:${large}`;

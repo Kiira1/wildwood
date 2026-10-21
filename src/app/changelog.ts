@@ -1,4 +1,9 @@
 export const RELEASE_NOTES: Record<string, string[]> = {
+  "0.916.22": [
+    "Guild tags are hidden by default; turn them on in Settings",
+    "Profiles show the player's guild",
+    "Report and Block moved into the ⋯ menu on other players' profiles",
+  ],
   "0.916.21": [
     "The game loads a little faster",
     "Players entering a map arrive a little away from the portal and spread out",

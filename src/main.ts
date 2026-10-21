@@ -129,6 +129,7 @@ import { MAX_PLAYER_STAT, PLAYER_SPAWN } from "../shared/rules";
   const coopAccess = createCoopAccess(coop);
   if (coop) bindPlayerNameTags({
     prefix: identity => coop.playerNamePrefix(identity), revision: () => coop.playerNameTagsRevision(),
+    guildTag: identity => coop.playerGuildTag(identity),
     prestigeLevel: identity => (identity && coop.prestigeLevelFor?.(identity)) || 0,
   });
   if (coop) bindAvatarFrames(coop.applyAvatarFrame);

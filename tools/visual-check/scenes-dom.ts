@@ -11,6 +11,8 @@ import { PLAYER_GENDER_MALE } from "../../shared/player-gender";
 import { craftExperienceForLevel } from "../../shared/crafting";
 import { createSmithController } from "../../src/ui/smith-window";
 import { createGearSellerController, type GearSellerDeps } from "../../src/ui/gear-seller-window";
+import { renderProfileGuild } from "../../src/ui/profile-guild";
+import { createProfileActionsMenu } from "../../src/ui/profile-actions-menu";
 import { settleFrames, settleImages } from "./determinism";
 import { GROUND, playerAppearance } from "./world";
 
@@ -192,4 +194,28 @@ async function shops() {
   await settleCssImages();
 }
 
-export const DOM_SCENES: Record<string, () => Promise<void>> = { icons, hud, wordmark, shops };
+/**
+ * The profile window's header from the game shell's own markup: the name, online line and guild row,
+ * the pencil on your own and the ⋯ button on anyone else's. The stats and preview stay empty.
+ */
+async function profileWindow(own: boolean) {
+  const doc = await gameMarkup();
+  document.body.style.background = GROUND;
+  for (const node of doc.body.children) document.body.append(document.importNode(node, true));
+  await import("../../src/ui/game-shell");
+  byId("playerProfile").hidden = false;
+  byId("playerProfileName").textContent = own ? "Rymel" : "Moss";
+  const presence = byId("playerProfilePresence");
+  presence.textContent = "Online - Forest"; presence.classList.add("is-online");
+  applyProfileIcon(byId("playerProfileIcon"), own ? 0 : 3);
+  renderProfileGuild(byId<HTMLButtonElement>("playerProfileGuild"), "TheG", { id: "1", name: "TheG", emblem: 5 });
+  byId("editPlayerNameBtn").hidden = !own;
+  byId("settingsBtn").hidden = !own;
+  byId("profileMoreBtn").hidden = own;
+  byId("profileDuelBtn").hidden = own;
+  if (!own) createProfileActionsMenu({ isBlocked: () => false, openSafety: () => {}, showMessage: () => {} }).open("p-moss", "Moss");
+  await settleCssImages();
+}
+
+export const DOM_SCENES: Record<string, () => Promise<void>> = { icons, hud, wordmark, shops,
+  "profile-own": () => profileWindow(true), "profile-other": () => profileWindow(false) };
