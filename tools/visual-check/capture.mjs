@@ -29,6 +29,8 @@ const VIEWPORTS = {
   hud: [{ width: 390, height: 844, full: false }, { width: 1280, height: 800, full: false }],
   wordmark: [{ width: 390, height: 844, full: false }, { width: 1280, height: 800, full: false }],
   shops: [{ width: 390, height: 844, full: true }],
+  "profile-own": [{ width: 390, height: 844, full: false }],
+  "profile-other": [{ width: 390, height: 844, full: false }],
 };
 const DEFAULT_VIEWPORT = [{ width: 1280, height: 800, full: true }];
 /** Chrome cannot paint one capture taller than this many device pixels; taller pages are taken in bands. */

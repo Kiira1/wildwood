@@ -19,7 +19,7 @@ export function createGameElements(skinTones: SkinToneOptions) {
   return {
     mailboxToggle: requiredElement<HTMLButtonElement>("mailboxToggle"),
     playerVisibilityToggle: requiredElement<HTMLButtonElement>("playerVisibilityToggle"),
-    profileSafetyActions: requiredElement("profileSafetyActions"), profileReportBtn: requiredElement<HTMLButtonElement>("profileReportBtn"), profileBlockBtn: requiredElement<HTMLButtonElement>("profileBlockBtn"),
+    profileMoreBtn: requiredElement<HTMLButtonElement>("profileMoreBtn"), playerProfileGuild: requiredElement<HTMLButtonElement>("playerProfileGuild"),
     blockedPlayersSetting: requiredElement("blockedPlayersSetting"), blockedPlayersList: requiredElement("blockedPlayersList"),
     canvas: requiredElement<HTMLCanvasElement>("game"), gameOverEl: requiredElement("gameOver"), deathCountdownEl: requiredElement("deathCountdown"),
     hpFill: requiredElement("hpFill"), hpText: requiredElement("hpText"), playerNameEl: requiredElement("playerName"), playerPowerEl: requiredElement("playerPower"), playerHudProfileIcon: requiredElement<HTMLButtonElement>("playerHudProfileIcon"), playerHudProfileGear: requiredElement<HTMLButtonElement>("playerHudProfileGear"), hudGemWallet: requiredElement("hudGemWallet"), hudGemBalance: requiredElement("hudGemBalance"), hudGoldWallet: requiredElement("hudGoldWallet"), hudGoldBalance: requiredElement("hudGoldBalance"), chatPanel: requiredElement("chatPanel"), coopStatusEl: requiredElement("coopStatus"), messageEl: requiredElement("message"), pickupLog: requiredElement("pickupLog"), itemDropReveal: requiredElement("itemDropReveal"),

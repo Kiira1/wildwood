@@ -1,4 +1,4 @@
-import { updatePlayerNameTag, removePlayerNameTag, clearPlayerNameTags, developerNameTagVisible, playerNamePrefix, playerNameTagsRevision } from "../../app/player-name-tags";
+import { updatePlayerNameTag, removePlayerNameTag, clearPlayerNameTags, developerNameTagVisible, fullPlayerNamePrefix, playerGuildTag, playerNameTagsRevision } from "../../app/player-name-tags";
 import type { Identity } from "spacetimedb";
 import {
   NAME_ADJECTIVES,
@@ -200,7 +200,7 @@ export function createProfileDirectory(dependencies: ProfileDirectoryDependencie
     },
     api: {
       ...patreon.api,
-      playerNamePrefix, playerNameTagsRevision,
+      playerNamePrefix: fullPlayerNamePrefix, playerGuildTag, playerNameTagsRevision,
       developerNameTagVisible: () => developerNameTagVisible(dependencies.localIdentity()),
       async setDeveloperNameTag(visible: boolean) {
         if (dependencies.reducers.protocolBlocked()) return { ok: false, error: "UPDATE REQUIRED" };

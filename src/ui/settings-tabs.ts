@@ -7,7 +7,7 @@ type SettingsSection = { title?: string; selectors: readonly string[] };
 /** Game's long list is split into headed sections; the other tabs are one section each. */
 const SETTINGS_GROUPS: readonly { id: string; label: string; sections: readonly SettingsSection[] }[] = [
   { id: "game", label: "Game", sections: [
-    { title: "Display", selectors: ["#attackRangeToggle", "#remoteGhostsToggle", "#cameraZoomToggle", "#ownNamePlateToggle", "#enemyHpNumbersToggle", "#damageNumbersToggle", "#cardFoundPopupsToggle", "#statPopupsToggle", "#baseStatRewardsToggle", "#scientificNotationToggle", "#statTrackerToggle", "#questTrackerToggle", "#gameTickerToggle"] },
+    { title: "Display", selectors: ["#attackRangeToggle", "#remoteGhostsToggle", "#cameraZoomToggle", "#ownNamePlateToggle", "#guildTagsToggle", "#enemyHpNumbersToggle", "#damageNumbersToggle", "#cardFoundPopupsToggle", "#statPopupsToggle", "#baseStatRewardsToggle", "#scientificNotationToggle", "#statTrackerToggle", "#questTrackerToggle", "#gameTickerToggle"] },
     { title: "Chat", selectors: ["#chatToggle", "#chatTimestampsToggle"] },
     { title: "Device", selectors: ["#toolbarHapticsToggle", "#selfProfileTapToggle", "#fullscreenToggle", "#keepScreenOnToggle"] },
     { title: "Performance", selectors: ["#highResolutionToggle", "#lowPerformanceToggle", "#fpsToggle", "#latencyToggle"] },

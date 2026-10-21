@@ -25,6 +25,7 @@ Picked by URL hash in `visual-check.html`:
 | `icons` | The inventory window over a full bag (every item, a few grades again at ★10 / ★20), at 390 and 1280 wide |
 | `hud` | The in-game HUD: player card, toolbar icons, gem wallet, minimap |
 | `wordmark` | The start screen with the wordmark |
+| `profile-own`, `profile-other` | The profile window's header: your own with the pencil and gear, another player's with the guild row and the ⋯ menu open |
 | `shops` | The Smith on Reforge, the Weapon Seller on Sell and the Armor Seller on Buy, stacked, at phone width |
 
 `world`, `town` and `bosses` build a map the way the game does (`game-world.ts`: the bootstrap state,

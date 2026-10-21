@@ -259,6 +259,7 @@ type ExpectedApiKey =
   | "developerNameTagVisible"
   | "setDeveloperNameTag"
   | "playerNamePrefix"
+  | "playerGuildTag"
   | "playerNameTagsRevision"
   | "getNameChangeStatus"
   | "setDisplayName"

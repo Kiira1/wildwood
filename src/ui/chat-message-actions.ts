@@ -91,7 +91,7 @@ export function shouldDismissMessageActionSheet(deltaY: number, sheetHeight: num
   return deltaY >= distanceThreshold || (deltaY >= 28 && velocity >= .55);
 }
 
-async function copyText(text: string) {
+export async function copyText(text: string) {
   if (navigator.clipboard?.writeText) {
     await navigator.clipboard.writeText(text);
     return;

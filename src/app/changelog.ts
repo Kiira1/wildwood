@@ -1,6 +1,9 @@
 export const RELEASE_NOTES: Record<string, string[]> = {
   "0.916.22": [
     "While You Were Away shows the gold you earned",
+    "Guild tags are hidden by default; turn them on in Settings",
+    "Profiles show the player's guild",
+    "Report and Block moved into the ⋯ menu on other players' profiles",
   ],
   "0.916.21": [
     "The game loads a little faster",

@@ -1,10 +1,11 @@
 import { afterEach, expect, it, vi } from "vitest";
 import { parseHTML } from "linkedom";
 import { DEVELOPER_IDENTITY, isDeveloperIdentity } from "./developer";
-import { appendPlayerNameTags, clearPlayerNameTags, developerNameTagVisible, playerNamePrefix, updatePlayerNameTag } from "./player-name-tags";
+import { appendPlayerNameTags, clearPlayerNameTags, developerNameTagVisible, playerNamePrefix, setGuildTagsVisible, updatePlayerNameTag } from "./player-name-tags";
 
-afterEach(() => { clearPlayerNameTags(); vi.unstubAllGlobals(); });
+afterEach(() => { clearPlayerNameTags(); setGuildTagsVisible(false); vi.unstubAllGlobals(); });
 it("orders tags without spaces and preserves developer access when its badge is hidden", () => {
+  setGuildTagsVisible(true);
   updatePlayerNameTag(DEVELOPER_IDENTITY, { guildTag: "TheG", showDevTag: true });
   expect(`${playerNamePrefix(DEVELOPER_IDENTITY)}rymel`).toBe("[dev][TheG]rymel");
   updatePlayerNameTag(DEVELOPER_IDENTITY, { guildTag: "TheG", showDevTag: false });
@@ -14,10 +15,16 @@ it("orders tags without spaces and preserves developer access when its badge is 
   updatePlayerNameTag("member", { guildTag: "Fire", showDevTag: true });
   expect(playerNamePrefix("member")).toBe("[Fire]");
   expect(playerNamePrefix("outsider")).toBe("");
+  // Show Guild Tags off drops only the guild's, even one named like the developer badge.
+  setGuildTagsVisible(false);
+  updatePlayerNameTag(DEVELOPER_IDENTITY, { guildTag: "dev", showDevTag: true });
+  expect(playerNamePrefix(DEVELOPER_IDENTITY)).toBe("[dev]");
+  expect(playerNamePrefix("member")).toBe("");
 });
 it("renders tag text safely and clears guild tags on session reset", () => {
   const { document } = parseHTML("<html><body></body></html>");
   vi.stubGlobal("document", document);
+  setGuildTagsVisible(true);
   const name = document.createElement("span");
   updatePlayerNameTag(DEVELOPER_IDENTITY, { guildTag: "TheG", showDevTag: true });
   appendPlayerNameTags(name as unknown as HTMLElement, DEVELOPER_IDENTITY);
@@ -34,7 +41,8 @@ it("reads live tags across the separately built networking and game modules", as
   const networking = await import("./player-name-tags");
   vi.resetModules();
   const game = await import("./player-name-tags");
-  game.bindPlayerNameTags({ prefix: networking.playerNamePrefix, revision: networking.playerNameTagsRevision, prestigeLevel: () => 0 });
+  game.bindPlayerNameTags({ prefix: networking.fullPlayerNamePrefix, revision: networking.playerNameTagsRevision, prestigeLevel: () => 0, guildTag: networking.playerGuildTag });
+  game.setGuildTagsVisible(true);
   networking.updatePlayerNameTag(DEVELOPER_IDENTITY, { guildTag: "TheG", showDevTag: true });
   expect(game.playerNamePrefix(DEVELOPER_IDENTITY)).toBe("[dev][TheG]");
   const before = game.playerNameTagsRevision();
