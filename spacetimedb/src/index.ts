@@ -44,6 +44,7 @@ import { duelStaffSkill, playerStaffSkill, playerWornStaffSkill } from "./staff-
 import { ensureWeaponSkillRoll } from "./weapon-skills";
 import { playerEquipmentCopy, pendingEquipmentOffer, createEquipmentCopies, publishItemDrop, offerDuplicateEquipment, expireEquipmentOffers, playerItemCollection, registerItemCollection } from "./equipment-copies";
 import { playerItemRefine, playerCopyRefine, playerOre, playerRefineResult, registerItemRefine } from "./item-refine";
+import { reachableStopFor } from "./door-reach";
 import { playerMining, playerMinedNode, playerMiningLevel, registerMining } from "./mining";
 import { playerWoodcutting, playerChoppedTree, playerWoodcuttingLevel, registerWoodcutting } from "./woodcutting";
 import { awardWeaponMastery, playerMasteryLevel, playerWeaponMastery, registerWeaponMastery } from "./weapon-mastery";
@@ -3678,7 +3679,9 @@ export const prepareWorldActionPosition = spacetimedb.reducer({ x: t.f64(), y: t
     throw new SenderError("Invalid bench position");
   }
   if (activeDuelFor(ctx, ctx.sender)) throw new SenderError("Finish your duel first.");
-  const next = { ...player, x, y, moving: false, vx: 0, vy: 0, dx: 0, dy: 0, lastInputAt: ctx.timestamp };
+  // A stop, not a teleport: only where the player could have walked, as a movement packet is judged.
+  const at = reachableStopFor(ctx, player, x, y);
+  const next = { ...player, ...at, ...playerZone(at.x, at.y), moving: false, vx: 0, vy: 0, dx: 0, dy: 0, lastInputAt: ctx.timestamp };
   updateSnapshotRow(ctx, "player", next);
   syncPlayerMotion(ctx, next);
 });

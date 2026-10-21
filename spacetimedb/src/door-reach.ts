@@ -42,3 +42,22 @@ export function withinStationReach(ctx: any, player: { x: number; y: number; spe
   station: { x: number; y: number }, range: number) {
   return doorDestinationFor(ctx, player, (x, y) => Math.hypot(x - station.x, y - station.y) <= range ? true : null, [station]) === true;
 }
+
+/**
+ * Where a player asking to stand at (x, y) may stop: there, if they could have walked to it since their last
+ * movement packet (the same allowance a movement packet and a station get), else the nearest point they could.
+ */
+export function reachableStopFor(ctx: any, player: { x: number; y: number; speed?: number; identity: any; mapId: string },
+  x: number, y: number) {
+  const motion = ctx.db.playerMotion.identity.find(player.identity);
+  const known = motion && motion.mapId === player.mapId && [motion.x, motion.y].every(Number.isFinite);
+  // With no motion row on this map the player has not walked, so only the packet slack applies.
+  const from = known ? motion : player;
+  const elapsed = known ? Math.max(0, Number(ctx.timestamp.microsSinceUnixEpoch - motion.lastInputAt.microsSinceUnixEpoch) / 1_000_000) : 0;
+  const walked = walkSpeedFor(ctx, player, readPlayerProgress(ctx, player.identity)) * elapsed;
+  const reach = (Number.isFinite(walked) ? walked : 0) + DOOR_POSITION_TOLERANCE;
+  const distance = Math.hypot(x - from.x, y - from.y);
+  if (distance <= reach) return { x, y };
+  const k = reach / distance;
+  return { x: from.x + (x - from.x) * k, y: from.y + (y - from.y) * k };
+}
