@@ -2,6 +2,8 @@ export const RELEASE_NOTES: Record<string, string[]> = {
   "0.916.21": [
     "The game loads a little faster",
     "Players entering a map arrive a little away from the portal and spread out",
+    "Losing a duel no longer stops Auto Farm",
+    "Other players see your Auto Farm right after a reload",
   ],
   "0.916.20": [
     "Craft always makes a new piece, so you can own more than one of the same bow",
