@@ -13,6 +13,7 @@
  */
 import { readdirSync, readFileSync } from "node:fs";
 import { join, resolve } from "node:path";
+import { sharedModuleState } from "./shared-bundle-state.mjs";
 
 const root = resolve(import.meta.dirname, "..");
 const failures = [];
@@ -164,6 +165,48 @@ for (const dir of ["shared", "spacetimedb/src"]) {
   }
   check(`${dir}: imports one another without cycles`, cycles.length === 0,
     `found ${cycles.length} import cycle(s):\n    ${cycles.join("\n    ")}`);
+}
+
+// coop-client.js and game.js each get their own copy of a module both import,
+// so state one bundle writes is invisible to the other (refine looks and chat
+// portraits broke this way). Shared state goes on the page (globalThis, as in
+// after-entry.ts) or through the co-op API; anything else is listed here.
+{
+  const ALLOWED = {
+    "shared/campaign-combat.ts": "per-bundle cache of authored map data",
+    "shared/compact-number.ts": "notation set and read by the game only; the coop build drops it",
+    "shared/enemy-defeats.ts": "per-bundle caches keyed by map",
+    "shared/item-tier.ts": "filled once at load from constants",
+    "shared/map-balance-runtime.ts": "installed and read by the game only; the coop build drops it",
+    "shared/procedural-maps.ts": "per-bundle cache keyed by level",
+    "shared/regular-enemy-simulation.ts": "scratch buffer",
+    "shared/rules.ts": "BOSS_RULES installed and read by the game only",
+    "src/app/after-entry.ts": "flag on the page; the held queue is per bundle by design",
+    "src/app/avatar-frames.ts": "the game binds to coop.applyAvatarFrame; the cache lives in coop",
+    "src/app/player-name-tags.ts": "the game binds to the coop provider; tags live in coop",
+    "src/app/version.ts": "coop checks only when game.js failed to load",
+    "src/coop/services/connection-diagnostic-runtime.ts": "collector stored on the page",
+    "src/ui/card-found-setting.ts": "game only; the coop build drops it",
+    "src/ui/chat-timestamp-setting.ts": "game only; the coop build drops it",
+    "src/ui/damage-number-setting.ts": "game only; the coop build drops it",
+    "src/ui/enemy-hp-setting.ts": "game only; the coop build drops it",
+    "src/ui/name-plate-setting.ts": "game only; the coop build drops it",
+    "src/ui/release-notes-unread.ts": "read mark and indicators stored on the page",
+    "src/ui/stat-popup-setting.ts": "game only; the coop build drops it",
+  };
+  const shared = sharedModuleState(root, ["src/main.ts", "src/wildstat-coop.ts"]);
+  const stateful = shared.filter(module => module.state.length > 0);
+  const at = "client bundles (src/main.ts, src/wildstat-coop.ts)";
+  // Proves the import reader still follows both graphs.
+  check(`${at}: finds the modules both bundles import`, shared.some(module => module.path === "src/app/after-entry.ts"),
+    "expected src/app/after-entry.ts to be reachable from both entries");
+  const unlisted = stateful.filter(module => !ALLOWED[module.path]);
+  check(`${at}: keep no module state that one bundle could write and the other miss`, unlisted.length === 0,
+    `put it on the page or behind the co-op API, or allow it in ALLOWED with a reason:\n    ${
+      unlisted.map(module => `${module.path}: ${module.state.join(", ")}`).join("\n    ")}`);
+  const stale = Object.keys(ALLOWED).filter(path => !stateful.some(module => module.path === path));
+  check(`${at}: allow only modules that still share state`, stale.length === 0,
+    `remove from ALLOWED:\n    ${stale.join("\n    ")}`);
 }
 
 if (failures.length) {
