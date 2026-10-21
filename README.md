@@ -2,7 +2,7 @@
   <img src="public/assets/wildstat/wildstat-wordmark.webp" width="520" alt="WildStat">
 </p>
 
-<p align="center"><strong>A multiplayer action RPG, right in your browser.</strong></p>
+<p align="center"><strong>A multiplayer incremental RPG, right in your browser.</strong></p>
 
 <p align="center"><a href="https://tydoskus.github.io/wildwood/"><strong>Play WildStat</strong></a></p>
 
