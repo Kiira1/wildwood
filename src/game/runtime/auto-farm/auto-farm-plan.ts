@@ -4,25 +4,6 @@ import { isSoulMap, SOUL_STAT_ORDER } from '../../../../shared/soul-dimension';
 
 /** How often the farm looks again at which group is furthest behind its share, while its group still has enemies. */
 export const SHARE_REPLAN_SECONDS = 20;
-/** The growth forecast's copy of the old Auto's camp ranking (growth-forecast.ts), until it goes. */
-export const AUTO_REPLAN_SECONDS = SHARE_REPLAN_SECONDS;
-const AUTO_SWITCH_MARGIN = 1.5;
-export type FarmCandidate = { key: string; alive: number; reward: FarmReward; secondsPerKill: number };
-export function rankFarmCandidates(candidates: readonly FarmCandidate[], evaluate: (reward?: FarmReward) => FarmEvaluation) {
-  const now = evaluate().power;
-  const alive = (pool: readonly FarmCandidate[]) => pool.some(candidate => candidate.alive > 0) ? pool.filter(candidate => candidate.alive > 0) : pool;
-  const gains = new Map(candidates.map(candidate => [candidate.key, evaluate(candidate.reward).power - now]));
-  const useful = candidates.filter(candidate => gains.get(candidate.key)! > 0);
-  return alive(useful.length ? useful : candidates).map(candidate => {
-    const gain = gains.get(candidate.key)!;
-    return { key: candidate.key, rate: Number.isFinite(gain) ? Math.max(0, gain) / Math.max(.1, candidate.secondsPerKill) : 0 };
-  }).sort((a, b) => b.rate - a.rate);
-}
-export function pickRankedCandidate(ranked: readonly { key: string; rate: number }[], current: string | null = null) {
-  if (!ranked.length) return null;
-  const held = ranked.find(entry => entry.key === current)?.rate;
-  return held !== undefined && ranked[0].rate <= held * AUTO_SWITCH_MARGIN ? current : ranked[0].key;
-}
 
 /** What the player's build would be, with or without one more kill's reward: its power, and its effective stats when known. */
 export type FarmEvaluation = { power: number; stats?: PlayerPowerStats };

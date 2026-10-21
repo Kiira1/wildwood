@@ -8,7 +8,7 @@ import type { EnemyState } from '../types';
  * What a site's enemy is under a map's balance: an Endless camp's lane over
  * the generated art, a campaign kind's row as map-balance-loader.ts installs it.
  * Null when the balance has no row for it. Reads no installed state, so another
- * map's balance can be priced too (the growth forecast's next map).
+ * map's balance can be priced too.
  */
 export function balancedSiteDefinition(snapshot: MapBalanceSnapshot, site: Pick<SpawnSite, 'id' | 'type'>,
   camps = isProceduralMap(snapshot.mapId) ? generateMap(snapshot.mapId).camps : null): EnemyDefinition | null {

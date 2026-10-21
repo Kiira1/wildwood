@@ -100,7 +100,7 @@ export function chaseSpeedFor(playerSpeed: number) {
 /**
  * When and how hard each participant hits the player standing at `standing`.
  * `hitAfterArmor` is the map's armor rule; the installed one unless a caller
- * prices another map's (the growth forecast's next map).
+ * prices another map's.
  */
 export function participantAttackers<Site extends CampSite>(
   participants: Iterable<Site>,

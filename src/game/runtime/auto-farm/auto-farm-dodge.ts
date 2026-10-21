@@ -182,8 +182,7 @@ export type KiteTuning = {
  * Whether autofarm kites (the circle, backing off) and dodges (boss attacks,
  * enemy shots) at all. Off for now: it fights standing, walking to the
  * target and standing to fight, as it did before kiting, so a Reflect build
- * tanks as it should. The code is kept, switched off; the growth forecast
- * prices standing and pulling only while it is (growth-forecast.ts).
+ * tanks as it should. The code is kept, switched off.
  */
 export const AUTO_FARM_EVASION = false;
 

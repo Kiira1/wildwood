@@ -128,10 +128,6 @@ export type VirtualPlayerProfile = {
   aggroGroups?: string[];
   /** An Aggro run: this many of the map's groups chase the player from arrival (Pull is off during one). */
   aggro?: number;
-  /** False: autofarm without the growth planner (auto-farm-growth.ts), as it was before it. */
-  growth?: boolean;
-  /** The growth planner's tuning, for comparing it (the game's defaults otherwise). */
-  growthTuning?: Partial<import('../auto-farm-growth').GrowthTuning>;
 };
 
 export type BossDuelSetup = {
@@ -141,9 +137,7 @@ export type BossDuelSetup = {
   playerShare: number;
 };
 
-type Sample = { t: number; map: string; power: number; phase: string; selected: string | null; x?: number; y?: number; hp: number; status: string; bossStatus: string;
-  /** The growth planner's forecast for what it was doing (power a minute), this map's best option, and its calibration. */
-  forecast?: { doing: number | null; best: number; mode: string | null; group: string | null; damage: number; incoming: number; groups?: string; next?: number | null; previous?: number | null } };
+type Sample = { t: number; map: string; power: number; phase: string; selected: string | null; x?: number; y?: number; hp: number; status: string; bossStatus: string };
 type MapVisit = { map: string; from: number; to: number | null; entryPower: number; exitPower: number | null; deaths: number; reason: string };
 type DeathEvent = { t: number; map: string; phase: string; selected: string | null; probation: boolean; afterBossLeave: boolean;
   /** What happened in the last 15 s: health shares taken by source, and the biggest single hit. */
