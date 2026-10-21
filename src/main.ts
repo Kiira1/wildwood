@@ -63,7 +63,7 @@ import { scheduleBackgroundTask } from "./game/runtime/scheduler";
 import { displayedPlayerPowerProgress } from "./game/runtime/render/player-identity-renderer";
 import type { PlayerDeathAnimationState } from "./game/runtime/player-death-animation";
 import { createCanvasRuntime, gameplayBottomInset } from "./game/runtime/render/canvas-runtime";
-import { PORTAL_CUTSCENE_SEEN_KEYS, APP_SHELL_STORAGE_KEYS, GAME_VERSION, MUSIC_VOLUME_KEY, SFX_VOLUME_KEY } from "./game/runtime/game-settings";
+import { APP_SHELL_STORAGE_KEYS, GAME_VERSION, MUSIC_VOLUME_KEY, SFX_VOLUME_KEY } from "./game/runtime/game-settings";
 import { createWorldProgressionController } from "./game/runtime/world-progression-controller";
 import { createBossController } from "./game/runtime/boss/boss-controller";
 import { BOSSES, BOSS_KINDS } from "./game/runtime/boss/boss-registry";
@@ -79,12 +79,7 @@ import { createWebGLStaticWorldLayer } from "./game/runtime/render/webgl-static-
 import { PLAYER_SKIN_TONES, PLAYER_SKIN_TONE_NAMES, warmPlayerAppearanceCache } from "./game/player-appearance";
 import type { DuelScene } from "./game/runtime/types";
 import {
-  ADVANCED_LAVA_WASTES_MAP_ID,
-  BEGINNER_DESERT_MAP_ID,
-  INFERNAL_DEPTHS_MAP_ID,
-  INTERMEDIATE_SNOWLANDS_MAP_ID,
   TUTORIAL_FOREST_MAP_ID,
-  WATER_REACH_MAP_ID,
   type MapId,
 } from "./game/world";
 import { createChatRuntimeController } from "./ui/chat-runtime-controller";
@@ -318,7 +313,6 @@ import { MAX_PLAYER_STAT, PLAYER_SPAWN } from "../shared/rules";
   });
   const renderInventory = inventoryController.render;
   const worldProgression = createWorldProgressionController({
-    hasSeenPortalCutscene: (cutscene) => coop?.hasSeenPortalCutscene?.(cutscene) ?? true,
     player,
     bootsPickup,
     movementSpeedForBoots: (bootsEquipped) => progress.movementSpeedForEquipment(bootsEquipped),
@@ -331,7 +325,6 @@ import { MAX_PLAYER_STAT, PLAYER_SPAWN } from "../shared/rules";
     resume: () => setGameplayPause("boot-upgrade", false),
     bootUpgrade: bootUpgradeEl,
     bootUpgradeClose,
-    ...PORTAL_CUTSCENE_SEEN_KEYS,
   });
   const playerInput = createPlayerInputController({
     canvas,
@@ -468,13 +461,6 @@ import { MAX_PLAYER_STAT, PLAYER_SPAWN } from "../shared/rules";
     onTravelRefused: destination => autoFarm.travelRefused(destination),
     markPortalCutsceneSeen: (cutscene) => coop?.markPortalCutsceneSeen?.(cutscene),
     mapConfig: MAP_CONFIG,
-    tutorialMapId: TUTORIAL_FOREST_MAP_ID,
-    desertMapId: BEGINNER_DESERT_MAP_ID,
-    snowMapId: INTERMEDIATE_SNOWLANDS_MAP_ID,
-    lavaMapId: ADVANCED_LAVA_WASTES_MAP_ID,
-    infernalMapId: INFERNAL_DEPTHS_MAP_ID,
-    waterMapId: WATER_REACH_MAP_ID,
-    ...PORTAL_CUTSCENE_SEEN_KEYS,
     getCurrentMapId: () => currentMapId,
     setCurrentMapId: setCurrentMap,
     prepareMapAssets: (mapId) => mapAssets.prepare(mapId),
@@ -533,7 +519,7 @@ import { MAX_PLAYER_STAT, PLAYER_SPAWN } from "../shared/rules";
     running: () => session.isRunning(),
     currentMapId: () => currentMapId,
     portalCutsceneActive: () => mapController.isCutsceneActive(),
-    portalCutscenes: bossPortalCutscenes(worldProgression, mapController),
+    portalCutscenes: bossPortalCutscenes((cutscene) => coop?.hasSeenPortalCutscene?.(cutscene) ?? true, mapController),
     spawnBurst,
     damagePlayer: (amount) => playerCombat.damagePlayerFromBoss(amount),
     damageEnemies: (attack, amount, inside) => playerCombat.damageEnemiesFromBoss(attack, amount, inside),

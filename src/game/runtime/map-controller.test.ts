@@ -3,6 +3,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { drawTownTeleport, endTownTeleport } from "./town/town-teleport";
 import { createMapController, prepareMapTransition } from "./map-controller";
 import type { PlayerState } from "./types";
+import { DRAGON_PORTAL_CUTSCENE_SEEN_KEY } from "./game-settings";
 import { createGameBootstrap } from "./game-bootstrap";
 import { createGameSessionController } from "./game-session-controller";
 import { parseHTML } from "linkedom";
@@ -48,18 +49,6 @@ function portalArrivalHarness(destinationArrival: { x: number; y: number }, over
         arrival: destinationArrival,
       },
     },
-    tutorialMapId,
-    desertMapId,
-    snowMapId: desertMapId,
-    lavaMapId: desertMapId,
-    infernalMapId: desertMapId,
-    waterMapId: desertMapId,
-    dragonCutsceneSeenKey: "dragon",
-    snowlandsCutsceneSeenKey: "snow",
-    lavaCutsceneSeenKey: "lava",
-    infernalCutsceneSeenKey: "infernal",
-    waterCutsceneSeenKey: "water",
-    samuraiCutsceneSeenKey: "samurai",
     markPortalCutsceneSeen,
     getCurrentMapId: () => currentMapId,
     setCurrentMapId: (mapId: typeof currentMapId) => { currentMapId = mapId; },
@@ -149,10 +138,10 @@ describe("cutscene completion", () => {
   it("persists the cutscene as seen once it finishes", () => {
     vi.stubGlobal("document", { body: { classList: { add: vi.fn(), remove: vi.fn() } } });
     const { controller, markPortalCutsceneSeen } = portalArrivalHarness({ x: 300, y: 400 });
-    controller.startDragonPortalCutscene();
+    controller.startBossPortalCutscene("dragon");
     expect(markPortalCutsceneSeen).not.toHaveBeenCalled();
     controller.updatePortalCutscene(20);
-    expect(markPortalCutsceneSeen).toHaveBeenCalledExactlyOnceWith("dragon");
+    expect(markPortalCutsceneSeen).toHaveBeenCalledExactlyOnceWith(DRAGON_PORTAL_CUTSCENE_SEEN_KEY);
   });
 });
 
@@ -724,12 +713,12 @@ it("waits for the authoritative unlock before showing a dragon portal cinematic"
   vi.stubGlobal("document", { body: { classList: { add: vi.fn(), remove: vi.fn() } } });
   const h = portalArrivalHarness({ x: 300, y: 400 });
   h.setUnlocked(false);
-  expect(h.controller.startDragonPortalCutscene()).toBe(false);
+  expect(h.controller.startBossPortalCutscene("dragon")).toBe(false);
   expect(h.controller.isCutsceneActive()).toBe(false);
   expect(h.prepareMapAssets).not.toHaveBeenCalled();
   expect(h.markPortalCutsceneSeen).not.toHaveBeenCalled();
   h.setUnlocked(true);
-  expect(h.controller.startDragonPortalCutscene()).toBe(true);
+  expect(h.controller.startBossPortalCutscene("dragon")).toBe(true);
   expect(h.controller.isCutsceneActive()).toBe(true);
 });
 
