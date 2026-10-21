@@ -1428,7 +1428,10 @@
     position: fixed;
     /* Below the minimap and its online and version lines: on a short narrow
        phone 20% of the height put the reward toast on top of them. */
-    top: max(15%, calc(var(--hud-safe-top, 0px) + var(--hud-map-size) + 44px));
+    --pickup-anchor: max(15%, calc(var(--hud-safe-top, 0px) + var(--hud-map-size) + 44px));
+    /* Bottom-anchored one toast below the anchor: the newest lands where the
+       first one did and pushes older ones up. */
+    top: calc(var(--pickup-anchor) + 38px);
     left: 50%;
     bottom: auto;
     /* Developer Tools allows combat behind it; keep earned rewards visible. */
@@ -1437,7 +1440,7 @@
     justify-items: center;
     gap: 8px;
     width: min(440px, calc(100vw - 24px));
-    transform: translateX(-50%);
+    transform: translate(-50%, -100%);
     pointer-events: none;
   }
 
