@@ -554,7 +554,9 @@ it.each([true, false])("uses reset stats only after prestige succeeds: %s", asyn
   expect(await h.service.api.prestigeAccount()).toMatchObject({ ok: success });
   expect(h.service.api.savedProgress()?.damage).toBe(success ? 4 : 9003);
   expect(h.service.progressFor(identity)?.damage).toBe(success ? 4 : 9003);
-  if (success) expect(h.storage.length).toBe(0);
+  // The unsaved prediction is gone; only the kill queue's empty record may stay.
+  const keys = Array.from({ length: h.storage.length }, (_, index) => h.storage.key(index) ?? "");
+  if (success) expect(keys.filter(key => key.startsWith("pending-progress"))).toEqual([]);
   h.service.dispose();
   vi.unstubAllGlobals();
 });

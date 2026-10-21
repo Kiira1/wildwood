@@ -38,6 +38,8 @@ it("commits the guest restriction, receipt and private audit together", () => {
   expect([...f.db.moderationAction.iter()]).toMatchObject([{ action: "guest_connection_blocked", rule: "enemy_defeat_allowance" }]);
   expect([...f.db.regularEnemyStream.iter()]).toMatchObject([{ sequence: 1n }]);
   expect(() => f.run(server.registerProtocol, { protocolVersion: PROTOCOL_VERSION })).toThrow("DEFEAT_SESSION_COOLDOWN");
+  // A portal is refused with the restriction, not taken quietly as if the move were made.
+  expect(() => f.run(server.changeMap, { mapId: "town", x: 4050, y: 4050 })).toThrow("DEFEAT_SESSION_COOLDOWN");
   f.ctx.timestamp = new Timestamp(39_999_999n);
   expect(() => requireAllowedDefeatSession(f.ctx as any)).toThrow("DEFEAT_SESSION_COOLDOWN");
   f.ctx.timestamp = new Timestamp(40_000_000n);

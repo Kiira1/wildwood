@@ -464,6 +464,7 @@ import { MAX_PLAYER_STAT, PLAYER_SPAWN } from "../shared/rules";
     openTravel: portal => isSoulMap(portal.destination) ? soulDimension.openWindow() : travel.open(),
     closeTravel: () => { travel.close(); soulDimension.closeWindow(); },
     onTravelStarted: () => autoFarm.travelStarted(), travelWanted: destination => autoFarm.headingTo(destination),
+    onTravelRefused: destination => autoFarm.travelRefused(destination),
     markPortalCutsceneSeen: (cutscene) => coop?.markPortalCutsceneSeen?.(cutscene),
     mapConfig: MAP_CONFIG,
     tutorialMapId: TUTORIAL_FOREST_MAP_ID,

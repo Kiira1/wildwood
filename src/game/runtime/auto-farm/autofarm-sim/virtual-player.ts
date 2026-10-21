@@ -261,6 +261,8 @@ export function createVirtualPlayer(profile: VirtualPlayerProfile, options: {
   storage?: ReturnType<typeof memoryStorage>; startMs?: number;
   /** Respawn and boss-fight memory read the simulated clock, as the browser's would read the real one (the Lab keeps the wall clock). */
   memoryOnSimClock?: boolean;
+  /** For tests: the server's answer to a crossing (true by default). */
+  changeMap?: (mapId: string) => boolean;
 } = {}) {
   const clock = { ms: options.startMs ?? SIM_EPOCH_MS };
   const random = mulberry32(profile.seed);
@@ -491,6 +493,7 @@ export function createVirtualPlayer(profile: VirtualPlayerProfile, options: {
 
   const mapController = createMapController({
     onTravelStarted: () => autoFarm.travelStarted(),
+    travelWanted: destination => autoFarm.headingTo(destination), onTravelRefused: destination => autoFarm.travelRefused(destination),
     markPortalCutsceneSeen: noop,
     mapConfig: mapConfig as never,
     tutorialMapId: TUTORIAL_FOREST_MAP_ID, desertMapId: 'beginner_desert' as MapId, snowMapId: 'intermediate_snowlands' as MapId,
@@ -501,7 +504,7 @@ export function createVirtualPlayer(profile: VirtualPlayerProfile, options: {
     cutsceneOverlay: { hidden: true } as HTMLElement, resizeViewport: noop, isDueling: () => false, running: () => running,
     localMapState: () => ({ mapId: currentMapId, x: player.x, y: player.y, facing: player.facing }),
     // The server's move, at once; the destination's balance is installed before the map is built, as main.ts awaits it.
-    changeMap: mapId => { installBalance(mapId); return true; },
+    changeMap: mapId => { if (options.changeMap && !options.changeMap(mapId)) return false; installBalance(mapId); return true; },
     syncStoppedPosition: noop, resetPresentationState: noop, fadeToWorld: action => { action(); },
     mapUnlocked: mapId => mapUnlocked(mapId),
     syncMapMusic: noop, rebuildWorld: () => playerController.rebuildWorld(), spawnFromSite, enemies, spawnSites,

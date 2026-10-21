@@ -6,6 +6,7 @@ import { portalUsePoint } from "../../shared/map-gateways";
 import { TOWN_DOORS } from "../../shared/town";
 import { createSpawnSites } from "../../src/game/world";
 import { createGameBootstrap } from "../../src/game/runtime/game-bootstrap";
+import { readyToPrestige } from "./harness/gear";
 import { acceptedKillReports, bossPayouts, campSites, nearest, characterAt, popupAmount, seedBrowserRandom, reportedKills, sendQueuedKills, startReflectOnly, tapSwitch, lastSentPosition, enemyIndex } from "./harness/combat";
 
 const distanceTo = (a: { x: number; y: number }, b: { x: number; y: number }) => Math.hypot(a.x - b.x, a.y - b.y);
@@ -160,6 +161,25 @@ describe("combat in the booted game", { timeout: 60_000 }, () => {
     expect(reports.map(report => report.mapId)).toEqual(["tutorial_forest"]);
     expect(reportedKills(tab).Spitter).toBeGreaterThanOrEqual(1);
     expect(ann.progress()!.damage).toBeGreaterThan(before.damage);
+  });
+
+  it("kills still queued when she prestiges are paid to the run that made them, and none is sent after to be refused", async () => {
+    const world = gameWorld();
+    const camp = campSites("beginner_desert", "Sunbaked Burrow");
+    const raider = nearest(camp, { x: camp[0].x, y: camp[0].y });
+    const ann = characterAt(world, "Ann", { x: raider.x - 150, y: raider.y, mapId: "beginner_desert" });
+    readyToPrestige(world, ann);
+    ann.patch("playerProgress", { desertUnlocked: true, damage: 1e6, maxHp: 1e6 });
+    const tab = await playAs(world, "Ann");
+    expect(await tab.until(() => popupAmount(tab) !== null, 10_000, 20)).toBe(true);
+    expect(acceptedKillReports(tab)).toEqual([]);
+    expect(await tab.coop.prestigeAccount()).toMatchObject({ ok: true });
+    expect(ann.row("player")?.mapId).toBe("tutorial_forest");
+    await sendQueuedKills(tab);
+    await tab.play(2_000);
+    const reports = tab.connection()!.fake.calls.filter(call => /^report(AutoFarm)?EnemyDefeats$/.test(call.reducer));
+    expect(reports.filter(call => call.error)).toEqual([]);
+    expect(acceptedKillReports(tab).map(report => report.mapId)).toContain("beginner_desert");
   });
 
   it("the profile shows the power the game plays with; switching research off lowers it, and no switch moves during a challenge", async () => {

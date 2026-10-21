@@ -9,7 +9,7 @@ import { isSoulMap, soulReturnOpenFor, worldBoundsFor, requireSoulDimensionOpen,
 import { isGuildHallMap, guildHallMember, enterGuildHall } from "./guild-hall";
 import { isTownMap, TOWN_MAP_ID, TOWN_ARRIVAL, townPortalUsePoints } from "./town";
 import { CAMPAIGN_GATEWAYS, portalUsePoint, campaignLanding, endlessEntryPortal, exitPortalFor, portalArrival } from "../../shared/map-gateways";
-import { blockedSession, requireControllingPlayer, isDeveloperIdentity } from "./session-guards";
+import { requireControllingPlayer, isDeveloperIdentity } from "./session-guards";
 import { activeDuelFor } from "./duel-runtime";
 import { SenderError } from "spacetimedb/server";
 import { readPlayerProgress } from "./wide-stats";
@@ -43,7 +43,8 @@ export const MAP_ARRIVALS: Record<string, { x: number; y: number }> =
 export const MAP_PORTAL_USE_RANGE = 125;
 
 export function changePlayerMap(ctx: ModuleReducerCtx, { mapId, x, y }: { mapId: string; x: number; y: number }) {
-  if (blockedSession(ctx)) return;
+  // A restricted session is refused with its restriction, which the client shows. Returning quietly read as a
+  // move made, and the client walked on to a map the server never sent it to.
   const current = requireControllingPlayer(ctx);
   if (activeDuelFor(ctx, ctx.sender)) throw new SenderError("Finish the duel before using a portal.");
   // "Base" and "Fight" both ask for the Town (Home, retired, means the same): Base from anywhere, Fight from the Town.

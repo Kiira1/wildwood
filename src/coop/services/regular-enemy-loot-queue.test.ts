@@ -88,13 +88,16 @@ it("does not let a rejected old-map report block current-map kills", async () =>
   const requests: EnemyLootRequest[] = [];
   const queue = createRegularEnemyLootQueue({ ...f.options, send: async request => {
     requests.push(request);
-    return request.mapId === "water_reach" ? "discard" : true;
+    return request.mapId === "water_reach" ? "wrong-map" : true;
   } });
   queue.record("water_reach", "old-species");
   queue.record("endless_40", "site:0");
+  queue.record("water_reach", "old-species");
   expect(await queue.flush(true)).toBe(true);
   expect(requests[1].sequence).toBe(1n);
   expect(requests[1].streamId).not.toBe(requests[0].streamId);
+  // The map's other report is dropped with it, not sent to be refused again.
+  expect(requests.map(request => request.mapId)).toEqual(["water_reach", "endless_40"]);
   expect(queue.hasPending()).toBe(false);
 });
 

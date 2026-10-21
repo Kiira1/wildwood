@@ -48,7 +48,8 @@ export function createRegularEnemyLootQueue(options: {
   identity: () => string;
   tabId: () => string;
   storage: Storage;
-  send: (request: EnemyLootRequest) => Promise<boolean | "discard" | "throttled">;
+  /** "wrong-map": the server takes no kills for that map now, so the rest queued for it go too. */
+  send: (request: EnemyLootRequest) => Promise<boolean | "discard" | "wrong-map" | "throttled">;
   /** Seconds of game simulation run so far on this page; monotonic. */
   simulatedSeconds?: () => number;
   /** True while another device or tab holds the session: this page cannot report, so its play time is not this account's. */
@@ -252,7 +253,7 @@ export function createRegularEnemyLootQueue(options: {
           else batch.sealed = true;
         }
         write(storageKey, stream);
-        let accepted: boolean | "discard" | "throttled" = false;
+        let accepted: boolean | "discard" | "wrong-map" | "throttled" = false;
         try { accepted = await withRequestDeadline(options.send({ streamId: stream.streamId, sequence: BigInt(batch.sequence), mapId: batch.mapId, count: batch.count, enemies: batch.enemies, autoFarm: Boolean(batch.autoFarm), simulatedMillis: batch.simulatedMillis ?? 0 }), ENEMY_DEFEAT_BATCH_TIMEOUT_MS); } catch (error) { options.sendFailed?.(error); }
         if (accepted === "throttled") noteThrottle(runOwner);
         if (epoch !== runEpoch || options.identity() !== runOwner) return false;
@@ -260,7 +261,9 @@ export function createRegularEnemyLootQueue(options: {
         if (!accepted) return false;
         stream.retryAtMs = 0;
         stream.batches.shift();
-        if (accepted === "discard") {
+        // Each would be refused the same way: one refusal, not one per batch.
+        if (accepted === "wrong-map") stream.batches = stream.batches.filter(remaining => remaining.mapId !== batch.mapId);
+        if (accepted === "discard" || accepted === "wrong-map") {
           // A forced map change can invalidate unaccepted reports. Start a fresh
           // ordered stream so that rejection cannot block future valid rewards.
           stream.streamId = crypto.randomUUID();

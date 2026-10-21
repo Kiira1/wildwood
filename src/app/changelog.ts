@@ -1,4 +1,8 @@
 export const RELEASE_NOTES: Record<string, string[]> = {
+  "0.916.22": [
+    "Kills made just before a prestige are paid instead of lost",
+    "Auto Farm no longer keeps walking into a portal that will not let it through",
+  ],
   "0.916.21": [
     "The game loads a little faster",
     "Players entering a map arrive a little away from the portal and spread out",
