@@ -4,9 +4,13 @@ import { platePixels, plateSize } from "../render/nameplate-scale";
 /**
  * The part of an enemy's status that every enemy with the same bar shares:
  * the empty health bar and, at full health, the full bar. Positions are
- * relative to the bar's top edge, centred on x.
+ * relative to the bar's top left corner. In device pixels: the image's size,
+ * the bar's within it, and `inset`, from the image's corner to the bar's.
  */
-export type EnemyStatusPlate = AtlasImage & { left: number; top: number; width: number; height: number };
+export type EnemyStatusPlate = AtlasImage & {
+  left: number; top: number; width: number; height: number;
+  pixelWidth: number; pixelHeight: number; barPixelWidth: number; barPixelHeight: number; inset: number;
+};
 
 /** An enemy's health bar: a long, thin pill with no numbers on it, at plate scale. */
 export const ENEMY_HEALTH_BAR_HEIGHT = platePixels(5);
@@ -38,8 +42,9 @@ export function fillPill(ctx: PillContext, x: number, y: number, width: number, 
  * and draws only its green fill on top. The name is text over it, drawn from
  * a text sprite one to one on the screen's pixels (canvas.ts).
  *
- * Plates are drawn at the device pixel ratio so they land one-to-one on the
- * screen, and the cache is dropped whole when it fills, which only a very long
+ * Plates are drawn at the scale they are shown at (the pixel ratio times the
+ * player's zoom) so they land one-to-one on the screen's pixels, and the cache
+ * is dropped whole when it fills, which only a very long
  * session across many maps can do.
  */
 export function createEnemyStatusPlates(options: {
@@ -54,40 +59,38 @@ export function createEnemyStatusPlates(options: {
   options.atlas?.onReset(() => plates.clear());
 
   function build(barW: number, barH: number, full: boolean, scale: number): EnemyStatusPlate {
-    const barLeft = -barW / 2;
-    const left = Math.floor(barLeft - OUTLINE) - 1;
-    const right = Math.ceil(barLeft + barW + OUTLINE) + 1;
-    const top = -OUTLINE - 1;
-    const bottom = Math.ceil(barH + OUTLINE) + 1;
-    const width = right - left;
-    const height = bottom - top;
-    const pixelWidth = Math.ceil(width * scale), pixelHeight = Math.ceil(height * scale);
+    // Drawn in whole device pixels, so the bar's edges are sharp where the plate lands one to one.
+    const barPixelWidth = Math.max(1, Math.round(barW * scale)), barPixelHeight = Math.max(1, Math.round(barH * scale));
+    const outline = Math.max(1, Math.round(OUTLINE * scale));
+    const inset = outline + Math.max(1, Math.round(scale));
+    const pixelWidth = barPixelWidth + inset * 2, pixelHeight = barPixelHeight + inset * 2;
+    const left = -inset / scale, top = -inset / scale, width = pixelWidth / scale, height = pixelHeight / scale;
     const paint = (plateCtx: CanvasRenderingContext2D) => {
-      plateCtx.transform(scale, 0, 0, scale, -left * scale, -top * scale);
+      plateCtx.transform(1, 0, 0, 1, inset, inset);
       plateCtx.fillStyle = "rgba(0,0,0,.8)";
-      fillPill(plateCtx, barLeft - OUTLINE, -OUTLINE, barW + OUTLINE * 2, barH + OUTLINE * 2);
+      fillPill(plateCtx, -outline, -outline, barPixelWidth + outline * 2, barPixelHeight + outline * 2);
       plateCtx.fillStyle = "#000";
-      fillPill(plateCtx, barLeft, 0, barW, barH);
+      fillPill(plateCtx, 0, 0, barPixelWidth, barPixelHeight);
       if (full) {
         plateCtx.fillStyle = ENEMY_HEALTH_FILL;
-        fillPill(plateCtx, barLeft, 0, barW, barH);
+        fillPill(plateCtx, 0, 0, barPixelWidth, barPixelHeight);
       }
     };
+    const sizes = { left, top, width, height, pixelWidth, pixelHeight, barPixelWidth, barPixelHeight, inset };
     const region = options.atlas?.allocate(pixelWidth, pixelHeight);
     if (region && options.atlas!.drawInto(region, paint)) {
-      return { canvas: region.canvas, sx: region.x, sy: region.y, sw: pixelWidth, sh: pixelHeight, left, top, width, height };
+      return { canvas: region.canvas, sx: region.x, sy: region.y, sw: pixelWidth, sh: pixelHeight, ...sizes };
     }
     const canvas = createCanvas();
     const plateCtx = canvas.getContext("2d");
     canvas.width = pixelWidth;
     canvas.height = pixelHeight;
     if (plateCtx) paint(plateCtx);
-    return { canvas, left, top, width, height };
+    return { canvas, ...sizes };
   }
 
-  /** `full`: the enemy is at full health, so the plate carries the full bar too. */
-  function plate(barW: number, barH: number, full: boolean) {
-    const scale = options.pixelRatio();
+  /** `full`: the enemy is at full health, so the plate carries the full bar too. `scale`: device pixels per bar pixel. */
+  function plate(barW: number, barH: number, full: boolean, scale = options.pixelRatio()) {
     const key = `${scale}|${barW}|${barH}|${full ? 1 : 0}`;
     const cached = plates.get(key);
     if (cached) return cached;

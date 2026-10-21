@@ -11,7 +11,9 @@ import type { RemotePlayer } from "../../../wildstat-coop";
 import type { PlayerGender } from "../../../../shared/player-gender";
 import type { Camera } from "./camera";
 import { ENEMY_HEALTH_BAR_HEIGHT, ENEMY_HEALTH_FILL, ENEMY_NAME_GAP, createEnemyStatusPlates, fillPill } from "../enemies/enemy-status-plate";
-import { createCanvasAtlas, drawAtlasImage, type AtlasImage } from "./canvas-atlas";
+import { createCanvasAtlas, drawAtlasImage } from "./canvas-atlas";
+import { cameraZoomPreference } from "./camera-zoom-preference";
+import type { TextSegment } from "../../canvas";
 import { liveRewardText, soulRewardCapped, type RewardLabelContext } from "../reward-labels";
 import { enemyHpNumbersEnabled } from "../../../ui/enemy-hp-setting";
 import { ownNamePlateEnabled } from "../../../ui/name-plate-setting";
@@ -32,7 +34,7 @@ import { localItemRefine } from "../../local-item-refines";
 import { playerDeathPose, type PlayerDeathAnimationState } from "../player-death-animation";
 import { finishedEquipmentSprite } from "../../player-appearance";
 import type { StaticWorldSpriteFrame } from "./webgl-static-world-layer";
-import { drawScreenSpaceAt, snapWorldRenderCoordinate } from "./render-space";
+import { drawScreenSpaceAt, snapWorldRenderCoordinate, transformAtScale } from "./render-space";
 import { createTintedImageCanvas } from "./image-tint";
 import { freezeCanvas, freezeEntry, type FrozenImage } from "./frozen-canvas";
 import { drawTrainingDummy } from "./training-dummy-art";
@@ -45,8 +47,7 @@ type Viewport = { width: number; height: number };
 type DrawShadow = (x: number, y: number, width: number, alpha?: number) => void;
 type PixelCircle = (x: number, y: number, radius: number) => void;
 type OutlinedText = (text: string, x: number, y: number, color: string, strokeWidth?: number) => void;
-type LabelBitmap = AtlasImage & { width: number; height: number; anchorY: number };
-type LabelSegment = { text: string; color: string };
+type OutlinedSegments = (segments: readonly TextSegment[], x: number, y: number, strokeWidth?: number) => void;
 type EnemyLayerPlanPart =
   | { kind: "STATIC"; image: FrozenImage; x: number; y: number }
   | { kind: "AIMED"; layer: LoadedSpriteLayer };
@@ -254,6 +255,8 @@ export function createActorRenderer(options: {
   enemyTextVisible: (enemy: EnemyState) => boolean;
   pixelCircle: PixelCircle;
   outlinedText: OutlinedText;
+  /** Text in several colours as one snapped sprite (canvas.ts): the reward under an enemy. */
+  outlinedSegments: OutlinedSegments;
   drawShadow: DrawShadow;
   drawStatus: (status: ActorStatus) => void;
   drawIdentity: (identity: string | undefined, name: string, power: number | null, centerX: number, headTop: number, color: string, gender?: PlayerGender) => void;
@@ -267,11 +270,9 @@ export function createActorRenderer(options: {
   const sampleEnemyAnimation = createEnemyAnimationSampler();
   const screenX = (worldX: number) => snapWorldRenderCoordinate(worldX - camera.x, camera.zoom, options.devicePixelRatio());
   const screenY = (worldY: number) => snapWorldRenderCoordinate(worldY - camera.y, camera.zoom, options.devicePixelRatio());
-  const enemyLabelCache = new Map<string, LabelBitmap>();
-  // Labels and plates are packed onto a few shared pages instead of a canvas each (canvas-atlas.ts).
-  // Two atlases: a plate is drawn from a label, and a page is never drawn onto itself.
-  const labelAtlas = createCanvasAtlas();
-  labelAtlas.onReset(() => enemyLabelCache.clear());
+  // Reward runs per label text, so a frame builds none; the sprites themselves are cached in canvas.ts.
+  const enemyLabelCache = new Map<string, readonly TextSegment[]>();
+  // Plates are packed onto a few shared pages instead of a canvas each (canvas-atlas.ts).
   const plateAtlas = createCanvasAtlas();
   const statusPlates = createEnemyStatusPlates({ pixelRatio: options.devicePixelRatio, atlas: plateAtlas });
   let atlasMapId: string | undefined;
@@ -304,6 +305,19 @@ export function createActorRenderer(options: {
     const fromBaseline = labelMeasure.measureText("H").actualBoundingBoxDescent;
     const lift = fromBaseline - fromBottom;
     return nameBaselineLift = Number.isFinite(lift) && lift >= 0 ? lift : 0;
+  }
+  /** How far the rewards' alphabetic baseline sits below the top of their em box, where they used to hang. */
+  let rewardBaselineDrop: number | undefined;
+  function rewardDrop() {
+    if (rewardBaselineDrop !== undefined) return rewardBaselineDrop;
+    if (labelMeasure === undefined) labelMeasure = document.createElement("canvas").getContext("2d");
+    if (!labelMeasure) return 0;
+    labelMeasure.font = rewardLabelFont;
+    labelMeasure.textBaseline = "top";
+    const fromTop = labelMeasure.measureText("H").actualBoundingBoxAscent;
+    labelMeasure.textBaseline = "alphabetic";
+    const drop = labelMeasure.measureText("H").actualBoundingBoxAscent - fromTop;
+    return rewardBaselineDrop = Number.isFinite(drop) && drop >= 0 ? drop : 0;
   }
   const projectileCircleSprites = new Map<string, HTMLCanvasElement>();
   let arrowProjectileSprite: HTMLCanvasElement | null | undefined;
@@ -382,49 +396,6 @@ export function createActorRenderer(options: {
     return { source, left: x - width / 2, top: y - height / 2, width, height, rotation };
   }
 
-  function createLabelBitmap(segments: LabelSegment[], baseline: CanvasTextBaseline): LabelBitmap {
-    const scale = 3;
-    const enemyLabelFont = rewardLabelFont;
-    const paddingX = 5;
-    const paddingY = 3;
-    if (labelMeasure === undefined) labelMeasure = document.createElement("canvas").getContext("2d");
-    const measure = labelMeasure;
-    if (!measure) return { canvas: document.createElement("canvas"), width: 0, height: 0, anchorY: 0 };
-    measure.font = enemyLabelFont;
-    const textWidth = segments.reduce((width, segment) => width + measure.measureText(segment.text).width, 0);
-    const width = Math.ceil(textWidth + paddingX * 2);
-    const height = 19;
-    const y = baseline === "top" ? paddingY : height - paddingY;
-    const paint = (labelCtx: CanvasRenderingContext2D) => {
-      labelCtx.transform(scale, 0, 0, scale, 0, 0);
-      labelCtx.font = enemyLabelFont;
-      labelCtx.textAlign = "left";
-      labelCtx.textBaseline = baseline;
-      labelCtx.lineJoin = "round";
-      labelCtx.lineWidth = 4;
-      let x = paddingX;
-      for (const segment of segments) {
-        labelCtx.strokeStyle = "#000";
-        labelCtx.strokeText(segment.text, x, y);
-        labelCtx.fillStyle = segment.color;
-        labelCtx.fillText(segment.text, x, y);
-        x += labelCtx.measureText(segment.text).width;
-      }
-    };
-    const region = labelAtlas.allocate(width * scale, height * scale);
-    if (region && labelAtlas.drawInto(region, paint)) {
-      return { canvas: region.canvas, sx: region.x, sy: region.y, sw: width * scale, sh: height * scale, width, height, anchorY: y };
-    }
-    // The atlas is full until its next start-over: this one label gets a canvas of its own, as before.
-    const canvas = document.createElement("canvas");
-    const labelCtx = canvas.getContext("2d");
-    if (!labelCtx) return { canvas, width: 0, height: 0, anchorY: 0 };
-    canvas.width = width * scale;
-    canvas.height = height * scale;
-    paint(labelCtx);
-    return { canvas, width, height, anchorY: y };
-  }
-
   /** A Soul Dimension enemy is named for the soul stat it pays, and shows that flat reward in its colour. */
   function soulEnemyLabels(stat: SoulStatId) {
     const context = options.rewardContext?.();
@@ -435,7 +406,7 @@ export function createActorRenderer(options: {
       name: `Soul ${detail.label}`,
       reward: cachedLabel(`soul:${stat}:${capped ? "capped" : ""}:${multiplier}`, () => {
         const amount = capped ? "Capped" : stat === "critDamage" ? `+${+(detail.reward * multiplier * 100).toFixed(1)}%` : soulRewardText(stat, multiplier);
-        return createLabelBitmap([{ text: amount, color: "#ffffff" }, { text: " ", color: "#ffffff" }, { text: detail.label, color: detail.color }], "top");
+        return [{ text: `${amount} `, color: "#ffffff" }, { text: detail.label, color: detail.color }];
       }),
     };
   }
@@ -449,9 +420,12 @@ export function createActorRenderer(options: {
 
   // A name is cached apart from the reward under it. The reward text moves with the player's attack speed
   // and crit; tied to it, the name and its plate were drawn again (and kept) at every step.
-  function cachedLabel(key: string, create: () => LabelBitmap) {
+  function cachedLabel(key: string, create: () => readonly TextSegment[]) {
     let label = enemyLabelCache.get(key);
-    if (!label) enemyLabelCache.set(key, label = create());
+    if (!label) {
+      if (enemyLabelCache.size >= 512) enemyLabelCache.clear();
+      enemyLabelCache.set(key, label = create());
+    }
     return label;
   }
 
@@ -459,11 +433,10 @@ export function createActorRenderer(options: {
     const amountText = liveRewardText(reward, options.rewardContext?.()) ?? rewardAmountLabel(reward);
     return {
       name: type,
-      reward: cachedLabel(`reward:${reward.type}:${amountText}`, () => createLabelBitmap([
-        { text: amountText, color: "#ffffff" },
-        { text: " ", color: "#ffffff" },
+      reward: cachedLabel(`reward:${reward.type}:${amountText}`, () => [
+        { text: `${amountText} `, color: "#ffffff" },
         { text: reward.type === "speed" ? "Atk Speed" : reward.type === "crit" ? "Crit Multiplier" : rewardStatLabel(reward), color: REWARD_DATA[reward.type].color },
-      ], "top")),
+      ]),
     };
   }
 
@@ -946,10 +919,9 @@ export function createActorRenderer(options: {
       const mapId = options.mapId?.();
       if (mapId !== atlasMapId) {
         atlasMapId = mapId;
-        labelAtlas.release();
+        enemyLabelCache.clear();
         plateAtlas.release();
       }
-      labelAtlas.resetIfFull();
       plateAtlas.resetIfFull();
       const soulStat = soulStatOfCampName(enemy.campName);
       const labels = soulStat ? soulEnemyLabels(soulStat)
@@ -957,41 +929,68 @@ export function createActorRenderer(options: {
       // The empty bar, plus the full bar at full health: one image shared by
       // every enemy with a bar this size (enemy-status-plate.ts).
       const full = hpRatio >= 1;
-      const plate = statusPlates.plate(barW, barH, full);
-      const smoothing = ctx.imageSmoothingEnabled;
-      ctx.imageSmoothingEnabled = true;
-      drawAtlasImage(ctx, plate, barCenterX + plate.left, barY + plate.top, plate.width, plate.height);
-      ctx.imageSmoothingEnabled = smoothing;
+      const lossTimer = enemy.hpLossFlashTimer ?? 0;
+      const lossFrom = lossTimer > 0 && (enemy.hpLossFlashFrom ?? 0) > displayedHp
+        ? clamp((enemy.hpLossFlashFrom ?? 0) / enemy.maxHp, hpRatio, 1) : null;
+      const lossAlpha = visibility * clamp(lossTimer / ENEMY_HP_LOSS_FLASH_SECONDS, 0, 1);
+      let barTop = barY, barHeight = barH;
+      // At the plates' own scale the bar is drawn on whole device pixels: its plate copied one to one,
+      // the fill on the same edges, and the text placed from where the bar landed.
+      const scale = options.devicePixelRatio() * cameraZoomPreference();
+      const grid = transformAtScale(ctx, scale);
+      if (grid) {
+        const plate = statusPlates.plate(barW, barH, full, scale);
+        const left = Math.round(grid.a * barX + grid.e), top = Math.round(grid.d * barY + grid.f);
+        ctx.setTransform(1, 0, 0, 1, 0, 0);
+        drawAtlasImage(ctx, plate, left - plate.inset, top - plate.inset, plate.pixelWidth, plate.pixelHeight);
+        if (!full) drawEnemyHealthFill(left, top, plate.barPixelWidth, plate.barPixelHeight, hpRatio, lossFrom, lossAlpha, true);
+        ctx.setTransform(grid);
+        barTop = (top - grid.f) / grid.d;
+        barHeight = plate.barPixelHeight / grid.d;
+      } else {
+        const plate = statusPlates.plate(barW, barH, full);
+        const smoothing = ctx.imageSmoothingEnabled;
+        ctx.imageSmoothingEnabled = true;
+        drawAtlasImage(ctx, plate, barX + plate.left, barY + plate.top, plate.width, plate.height);
+        ctx.imageSmoothingEnabled = smoothing;
+        if (!full) drawEnemyHealthFill(barX, barY, barW, barH, hpRatio, lossFrom, lossAlpha, false);
+      }
       ctx.font = nameLabelFont;
       ctx.textAlign = "center";
       ctx.textBaseline = "alphabetic";
-      options.outlinedText(labels.name, barCenterX, barY - ENEMY_NAME_GAP - nameLift(), "#f5e9c4", nameStroke);
-      if (!full) {
-        ctx.fillStyle = ENEMY_HEALTH_FILL;
-        fillPill(ctx, barX, barY, barW * hpRatio, barH);
-        // Only the health just lost lights up, fading out, the way a boss's bar does.
-        const lossTimer = enemy.hpLossFlashTimer ?? 0;
-        if (lossTimer > 0 && (enemy.hpLossFlashFrom ?? 0) > displayedHp) {
-          const fromRatio = clamp((enemy.hpLossFlashFrom ?? 0) / enemy.maxHp, hpRatio, 1);
-          ctx.save();
-          ctx.globalAlpha = visibility * clamp(lossTimer / ENEMY_HP_LOSS_FLASH_SECONDS, 0, 1);
-          ctx.fillStyle = "#ffffff";
-          fillPill(ctx, barX + barW * hpRatio, barY, Math.max(1, barW * (fromRatio - hpRatio)), barH);
-          ctx.restore();
-        }
-      }
+      options.outlinedText(labels.name, barCenterX, barTop - ENEMY_NAME_GAP - nameLift(), "#f5e9c4", nameStroke);
       if (showNumbers) {
         ctx.textAlign = "center";
         ctx.font = ENEMY_HP_FONT;
         ctx.textBaseline = "middle";
-        options.outlinedText(enemyHpLabel(enemy, displayedHp), barCenterX, healthBarTextY(barY, barH), "#ffffff", ENEMY_HP_TEXT_STROKE);
+        options.outlinedText(enemyHpLabel(enemy, displayedHp), barCenterX, healthBarTextY(barTop, barHeight), "#ffffff", ENEMY_HP_TEXT_STROKE);
       }
 
       if (!enemy.remoteCombatGhost && !enemy.generatedBoss) {
-        const label = labels.reward;
-        drawAtlasImage(ctx, label, -label.width / 2, rewardY - label.anchorY, label.width, label.height);
+        ctx.font = rewardLabelFont;
+        ctx.textAlign = "center";
+        ctx.textBaseline = "alphabetic";
+        options.outlinedSegments(labels.reward, 0, rewardY + rewardDrop(), 4);
       }
     });
+  }
+
+  /**
+   * The green fill over an enemy's empty bar and, fading, the health just lost. `pixels`: the bar is in
+   * device pixels, so the fill's end is rounded to one too.
+   */
+  function drawEnemyHealthFill(x: number, y: number, width: number, height: number, ratio: number, lossFrom: number | null, lossAlpha: number, pixels: boolean) {
+    const at = (value: number) => !pixels ? width * value : value > 0 ? Math.max(1, Math.round(width * value)) : 0;
+    const filled = at(ratio);
+    ctx.fillStyle = ENEMY_HEALTH_FILL;
+    fillPill(ctx, x, y, filled, height);
+    // Only the health just lost lights up, fading out, the way a boss's bar does.
+    if (lossFrom === null) return;
+    ctx.save();
+    ctx.globalAlpha = lossAlpha;
+    ctx.fillStyle = "#ffffff";
+    fillPill(ctx, x + filled, y, Math.max(1, at(lossFrom) - filled), height);
+    ctx.restore();
   }
 
   function drawProjectile(projectile: Projectile | EnemyShot, enemy = false) {
