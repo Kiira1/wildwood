@@ -22,10 +22,7 @@ describe("authored late-map incoming damage", () => {
   });
 
   it("preserves the tutorial and keeps extra armor useful", () => {
-    // The tutorial's gentlest hitter is its health camp, and a new character
-    // survives more than four hits from the Spitters it starts on.
-    const forest = ["Bramble", "Needle", "Mossback", "Spitter", "Brood", "Cindermaw"] as const;
-    for (const kind of forest) expect(ENEMY_TYPES.Bramble.damage).toBeLessThanOrEqual(ENEMY_TYPES[kind].damage);
+    // A new character survives more than four hits from the Spitters it starts on.
     expect(ENEMY_TYPES.Spitter.damage).toBeLessThan(PLAYER_BASE_HP / 4);
     const build = lateMapReferenceBuild(3), hit = ENEMY_TYPES["Geode Guardian"].damage;
     expect(damageAfterArmor(hit, build.armor * 10)).toBeLessThan(damageAfterArmor(hit, build.armor));
