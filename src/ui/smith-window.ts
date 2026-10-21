@@ -8,11 +8,9 @@ import { formatEquipmentStat } from "./equipment-stat-format";
 import { refineStars } from "./refine-badge";
 import { REFINE_ORE_ORDER } from "../../shared/ore-bag";
 import { itemTier } from "../../shared/item-tier";
-import { GRADE_SHOP_LINES, gradeShopLineKey } from "../../shared/grade-shop";
-import { weaponSchool as schoolOfWeapon, type WeaponSchool } from "../../shared/weapon-mastery";
-import { craftDepsFor, createCraftSection, gradeItemRow, type CraftCoop, type CraftSectionDeps } from "./craft-section";
+import { craftDepsFor, createCraftSection, materialList, type CraftCoop, type CraftSectionDeps } from "./craft-section";
 import { mountToolSection, toolDepsFor, type ToolSectionDeps } from "./tool-section";
-import { schoolLines, schoolWeaponName, type WornLoadout } from "./smith-buy-plan";
+import { asDetail, renderStationGrid, stationPick, stationViewMarkup, type StationTile } from "./station-grid";
 
 type Result = { ok: boolean; error?: string } | undefined;
 type RefineResult = { itemId: string; copyId: bigint; fromLevel: number; toLevel: number; succeeded: boolean };
@@ -29,15 +27,12 @@ const percent = (chance: number) => {
   return `${Number(value.toFixed(value >= 10 ? 1 : value >= 1 ? 2 : 3))}%`;
 };
 
-/** The Smith's tabs, one job each, and which lines Craft lists; both kept on the device. Buying is the sellers' (gear-seller-window.ts). */
+/** The Smith's tabs, one job each; the last picked is kept on the device. Buying is the sellers' (gear-seller-window.ts). */
 export type SmithView = "craft" | "reforge" | "refine" | "tools";
-type GearShown = "yours" | "all";
-const VIEW_STORE = "wildstat.smithView", SHOWN_STORE = "wildstat.smithGearShown";
+const VIEW_STORE = "wildstat.smithView";
 const VIEW_NAMES: Readonly<Record<SmithView, string>> = { craft: "Craft", reforge: "Reforge", refine: "Refine", tools: "Tools" };
 // Tabs a device kept before these.
 const OLD_VIEWS: Readonly<Record<string, SmithView>> = { gear: "craft", buy: "craft", upgrade: "tools", slots: "tools" };
-// Yours / All Gear on Craft.
-const SHOWN_BAR = `<div class="inventory-filters smith-shown" role="group" aria-label="Lines shown"></div>`;
 function stored(key: string) {
   try { return localStorage.getItem(key); } catch { return null; }
 }
@@ -68,32 +63,22 @@ export function createSmithController(deps: {
   /** Smithing, Fletching and Enchanting: every line crafted here, on the Craft tab, and Reforge (craft-section.ts). */
   craft?: CraftSectionDeps;
   tools?: ToolSectionDeps;
-  /** What the player wears, for the Craft tab's Yours; read from the worn items when left out. */
-  worn?: () => WornLoadout;
 }) {
   const dialog = document.createElement("dialog");
-  dialog.className = "farm-sheet quest-sheet smith-sheet";
+  dialog.className = "farm-sheet quest-sheet smith-sheet station-sheet";
   dialog.setAttribute("aria-labelledby", "smithTitle");
   dialog.innerHTML = `<header class="farm-header"><h2 id="smithTitle" class="window-banner"><span>The Smith</span></h2></header>`
     + `<div class="quest-body"><div class="smith-views-bar"><div class="inventory-filters smith-views" role="group" aria-label="Smith view"></div></div>`
-    // Refine first in the page, so its button is the window's first: the view bar decides what shows.
-    + `<section class="smith-view smith-refine-view" data-view="refine">`
-    + `<p class="farm-map smith-intro">Refine gear with ore. Safe up to its limit; past it a try can fail, and a fail costs only the ore.</p>`
-    + `<section class="smith-focus" aria-live="polite"></section>`
-    + `<p class="smith-ores" aria-label="Your ores"></p>`
-    + `<div class="smith-section-head"><strong>Your Gear</strong><span class="smith-items-count"></span></div>`
-    + `<div class="inventory-filters smith-filters" role="group" aria-label="Show gear"></div>`
-    + `<p class="smith-empty smith-filter-empty" hidden></p>`
-    + `<div class="smith-items" role="listbox" aria-label="Your gear"></div></section>`
-    + `<section class="smith-view smith-craft-view" data-view="craft"><section class="smith-shop" aria-labelledby="smithCraftTitle">`
-    + `<div class="smith-shop-bar">${SHOWN_BAR}</div>`
-    + `<div class="smith-shop-head"><h3 id="smithCraftTitle" class="smith-list-title"></h3></div>`
-    + `<div class="smith-shop-rows smith-craft-rows" role="list" aria-label="Gear to craft"></div></section></section>`
-    // Reforge: each weapon copy held, one Reforge each.
-    + `<section class="smith-view smith-reforge-view" data-view="reforge">`
-    + `<p class="farm-map smith-intro">Roll a weapon's skills again for the same materials as crafting it. Each skill keeps the better roll.</p>`
-    + `<p class="smith-empty smith-reforge-empty" hidden>No weapon to reforge yet. Craft one first.</p>`
-    + `<div class="smith-shop-rows smith-reforge-rows" role="list" aria-label="Weapons to reforge"></div></section>`
+    // Each tab: the piece picked pinned on top, the grid to pick from under it.
+    + stationViewMarkup("craft", "Gear to craft")
+    + stationViewMarkup("reforge", "Weapons to reforge", {
+      after: `<p class="farm-map smith-intro">Roll a weapon's skills again for the same materials as crafting it. Each skill keeps the better roll.</p>`,
+    })
+    + stationViewMarkup("refine", "Your gear", {
+      before: `<div class="inventory-filters smith-filters" role="group" aria-label="Show gear"></div>`,
+      after: `<p class="smith-ores" aria-label="Your ores"></p>`
+        + `<p class="farm-map smith-intro">Refine gear with ore. Safe up to its limit; past it a try can fail, and a fail costs only the ore.</p>`,
+    })
     // Tools: the five tools, and where their ore and wood come from.
     + `<section class="smith-view smith-tools-view" data-view="tools">`
     + `<div class="smith-tools"></div>`
@@ -103,21 +88,18 @@ export function createSmithController(deps: {
 
     + `<footer class="farm-footer"><div class="farm-actions"><button type="button" class="window-back-button">Back</button></div></footer>`;
   document.body.append(dialog);
-  const focus = dialog.querySelector<HTMLElement>(".smith-focus")!;
+  const viewPart = (view: SmithView, selector: string) => dialog.querySelector<HTMLElement>(`[data-view="${view}"] ${selector}`)!;
+  const focus = viewPart("refine", ".station-detail");
+  focus.classList.add("smith-focus");
   const oreLine = dialog.querySelector<HTMLElement>(".smith-ores")!;
-  const list = dialog.querySelector<HTMLElement>(".smith-items")!;
   const back = dialog.querySelector<HTMLButtonElement>(".window-back-button")!;
   const miningText = dialog.querySelector<HTMLElement>(".smith-mining-text")!;
   const woodcuttingText = dialog.querySelector<HTMLElement>(".smith-woodcutting-text")!;
   const filterBar = dialog.querySelector<HTMLElement>(".smith-filters")!;
-  const filterEmpty = dialog.querySelector<HTMLElement>(".smith-filter-empty")!;
-  const craftRows = dialog.querySelector<HTMLElement>(".smith-craft-rows")!;
-  const reforgeRows = dialog.querySelector<HTMLElement>(".smith-reforge-rows")!, reforgeEmpty = dialog.querySelector<HTMLElement>(".smith-reforge-empty")!;
   const viewBar = dialog.querySelector<HTMLElement>(".smith-views")!;
-  const itemsCount = dialog.querySelector<HTMLElement>(".smith-items-count")!;
-  // The three crafts' levels head the Craft tab; each row there is its line's craft line.
+  // The three crafts' levels sit under the Craft grid.
   const crafts = deps.craft ? createCraftSection(deps.craft, { onChange: () => { if (dialog.open) render(); } }) : null;
-  if (crafts) dialog.querySelector(".smith-craft-view .smith-shop-bar")!.before(crafts.element);
+  if (crafts) viewPart("craft", ".station-scroll").append(crafts.element);
   const tools = mountToolSection(dialog, deps.tools, () => { if (dialog.open) render(); });
   // Making first, then improving: crafting, reforging, refining and the tools.
   const views = ([
@@ -125,19 +107,11 @@ export function createSmithController(deps: {
   ] as const).filter(([, shown]) => shown).map(([view]) => view as SmithView);
   const storedView = () => { const value = stored(VIEW_STORE) ?? ""; return views.find(each => each === (OLD_VIEWS[value] ?? value)); };
   let view: SmithView = storedView() ?? views[0];
-  let gearShown: GearShown = stored(SHOWN_STORE) === "all" ? "all" : "yours";
   viewBar.parentElement!.hidden = views.length < 2;
   for (const each of views) {
     const button = pillButton(VIEW_NAMES[each], () => { if (view !== each) { view = each; store(VIEW_STORE, each); render(); } });
     button.dataset.view = each;
     viewBar.append(button);
-  }
-  for (const bar of dialog.querySelectorAll<HTMLElement>(".smith-shown")) {
-    for (const [each, label] of [["yours", "Yours"], ["all", "All Gear"]] as const) {
-      const button = pillButton(label, () => { if (gearShown !== each) { gearShown = each; store(SHOWN_STORE, each); render(); } });
-      button.dataset.shown = each;
-      bar.append(button);
-    }
   }
   /** The gear shown, as the bag filters it: everything, or one kind. */
   let shown: (typeof SMITH_FILTERS)[number][0] = "ALL";
@@ -150,7 +124,9 @@ export function createSmithController(deps: {
     button.addEventListener("click", () => { if (shown !== kind) { shown = kind; render(); } });
     filterBar.append(button);
   }
+  /** The piece picked on each tab, kept while the window is closed. */
   let selected: string | null = null;
+  const picked: Partial<Record<"craft" | "reforge", string | null>> = {};
   let refining = false;
   let lastResult: { text: string; good: boolean } | null = null;
   let renderedState = "";
@@ -162,36 +138,23 @@ export function createSmithController(deps: {
         || nameOf(a.itemId).localeCompare(nameOf(b.itemId)) || (a.copyId < b.copyId ? -1 : 1));
   }
 
-  /** What the player wears, slot by slot. */
-  function wornNow(): WornLoadout {
-    if (deps.worn) return deps.worn();
-    const worn: WornLoadout = {};
-    for (const item of deps.items()) {
-      if (!item.equipped || item.copyId !== 0n) continue;
-      const slot = itemDefinition(item.itemId)?.slot;
-      if (slot === "HAND") worn.equippedRightHand = item.itemId;
-      else if (slot === "HEAD") worn.equippedHead = item.itemId;
-      else if (slot === "CHEST") worn.equippedChest = item.itemId;
-      else if (slot === "FEET") worn.equippedFeet = item.itemId;
-    }
-    return worn;
-  }
-
-  /** The school of the weapon in hand: its lines are the player's own. */
-  function school(worn = wornNow()): WeaponSchool {
-    return schoolOfWeapon(worn.equippedRightHand || worn.equippedLeftHand || "");
+  /** A copy's next try: what it costs, and whether it can be made now. */
+  function nextTry(item: SmithItem) {
+    const level = deps.refineLevel(item.itemId, item.copyId), atTop = level >= REFINE_MAX;
+    const cost = atTop ? null : refineCost(item.itemId, level + 1), held = deps.ores();
+    const short = cost ? Object.entries(cost).filter(([oreId, count]) => (held[oreId as OreId] ?? 0) < (count ?? 0)) : [];
+    return { level, atTop, cost, short, ready: !atTop && short.length === 0 };
   }
 
   function renderFocus(item: SmithItem | undefined) {
     if (!item) {
-      focus.innerHTML = `<p class="smith-empty">Bring the Smith a weapon, helmet, armor or boots to refine.</p>`;
+      const filter = SMITH_FILTERS.find(([kind]) => kind === shown)?.[1].toLowerCase();
+      focus.innerHTML = `<p class="smith-empty"></p>`;
+      focus.firstElementChild!.textContent = shown === "ALL" ? "Bring the Smith a weapon, helmet, armor or boots to refine." : `No ${filter ?? "gear"} to bring`;
       return;
     }
-    const level = deps.refineLevel(item.itemId, item.copyId), next = level + 1, tier = deps.slotTier(item.itemId);
-    const atTop = level >= REFINE_MAX, safe = refineSafeLimit(item.itemId), chance = atTop ? 0 : refineSuccessChance(item.itemId, next, deps.refineLuck?.() ?? 0);
-    const cost = atTop ? null : refineCost(item.itemId, next);
-    const held = deps.ores();
-    const short = cost ? Object.entries(cost).filter(([oreId, count]) => (held[oreId as OreId] ?? 0) < (count ?? 0)) : [];
+    const { level, atTop, cost, short } = nextTry(item), next = level + 1, tier = deps.slotTier(item.itemId);
+    const safe = refineSafeLimit(item.itemId), chance = atTop ? 0 : refineSuccessChance(item.itemId, next, deps.refineLuck?.() ?? 0);
     const [now] = itemStats(item.itemId, { tier, refine: level }), [after] = atTop ? [""] : itemStats(item.itemId, { tier, refine: next });
     focus.replaceChildren();
     // Title case, as the item window shows stats ("Damage +7%").
@@ -210,7 +173,6 @@ export function createSmithController(deps: {
     if (!atTop) {
       fact("Chance", next <= safe ? "Safe" : percent(chance), next <= safe ? "is-safe" : "is-risky");
       fact("Safe to", `★${safe}`);
-      fact("Costs", Object.entries(cost!).map(([oreId, count]) => `${count} ${REFINE_ORES[oreId as OreId].name}`).join(" + "));
     }
     const button = document.createElement("button");
     button.type = "button";
@@ -219,7 +181,10 @@ export function createSmithController(deps: {
     button.disabled = atTop || refining || short.length > 0;
     if (short.length) button.textContent = `Need ${short.map(([oreId]) => REFINE_ORES[oreId as OreId].name).join(" + ")}`;
     button.addEventListener("click", () => { void refine(item, level); });
-    focus.append(head, facts, button);
+    focus.append(head, facts);
+    // What the try costs, each ore held against needed.
+    if (cost) focus.append(materialList(cost as Record<string, number>, deps.ores()));
+    focus.append(button);
     appendOutcome();
   }
 
@@ -244,71 +209,52 @@ export function createSmithController(deps: {
     crafts?.render();
     tools?.render();
     const items = choices();
-    if (!selected || !items.some(item => key(item) === selected)) selected = items[0] ? key(items[0]) : null;
+    const refineTiles: StationTile[] = items.map(item => ({
+      key: key(item), itemId: item.itemId, copyId: item.copyId, refine: deps.refineLevel(item.itemId, item.copyId),
+      tier: deps.slotTier(item.itemId), badge: item.equipped ? "Worn" : undefined, waits: !nextTry(item).ready,
+    }));
+    selected = stationPick(refineTiles, selected);
     const chosen = items.find(item => key(item) === selected);
+    // Only the tab on screen lists its tiles; picking another tab renders it.
+    const craftTiles = view === "craft" && crafts ? crafts.craftTiles() : [];
+    const reforgeTiles = view === "reforge" && crafts ? crafts.reforgeTiles() : [];
+    if (view === "craft") picked.craft = stationPick(craftTiles, picked.craft ?? null);
+    if (view === "reforge") picked.reforge = stationPick(reforgeTiles, picked.reforge ?? null);
     // Presence updates also refresh open windows. Keep focus and buttons in place until this window changes.
     const state = JSON.stringify([
-      view, gearShown, wornNow(), shown, selected, refining, lastResult,
-      deps.ores(), deps.mining?.(), deps.woodcutting?.(), crafts?.state(),
-      items.map(item => [key(item), item.equipped, deps.refineLevel(item.itemId, item.copyId), deps.slotTier(item.itemId)]),
-    ]);
+      view, shown, selected, picked, refining, lastResult, deps.refineLuck?.(),
+      deps.ores(), deps.mining?.(), deps.woodcutting?.(), crafts?.state(), refineTiles,
+    ], (_key, value) => typeof value === "bigint" ? String(value) : value);
     if (state === renderedState) return;
     renderedState = state;
     for (const section of dialog.querySelectorAll<HTMLElement>(".smith-view")) section.hidden = section.dataset.view !== view;
     for (const button of viewBar.querySelectorAll<HTMLButtonElement>("[data-view]")) button.setAttribute("aria-pressed", String(button.dataset.view === view));
-    itemsCount.textContent = items.length ? String(items.length) : "";
     for (const button of filterBar.querySelectorAll<HTMLButtonElement>(".inventory-filter")) button.setAttribute("aria-pressed", String(button.dataset.filter === shown));
-    filterEmpty.hidden = items.length > 0 || shown === "ALL";
-    filterEmpty.textContent = `No ${SMITH_FILTERS.find(([kind]) => kind === shown)?.[1].toLowerCase() ?? "gear"} to bring`;
-    renderFocus(chosen);
     const held = deps.ores();
     oreLine.textContent = REFINE_ORE_ORDER.map(oreId => `${REFINE_ORES[oreId].name} ${held[oreId] ?? 0}`).join(" · ");
     // Where the ore and wood come from: every player holds a pickaxe and a hatchet.
     miningText.textContent = `Mining ${deps.mining?.() ?? 0} · Ore is in the Copper Hills, east of Town`;
     woodcuttingText.textContent = `Woodcutting ${deps.woodcutting?.() ?? 0} · Wood is in Timberwood, north of the Copper Hills`;
-    // Only the tab on screen lists its rows; picking another tab renders it.
-    if (view === "craft") renderCraft(wornNow());
-    else if (view === "reforge") renderReforge();
-    list.replaceChildren(...items.map(item => {
-      const option = document.createElement("button");
-      option.type = "button";
-      option.className = "smith-choice";
-      option.setAttribute("role", "option");
-      const isSelected = key(item) === selected, level = deps.refineLevel(item.itemId, item.copyId);
-      option.setAttribute("aria-selected", String(isSelected));
-      option.setAttribute("aria-label", `${nameOf(item.itemId)} ${refineStars(level)}${item.equipped ? ", worn" : ""}`.trim());
-      option.innerHTML = `<span class="smith-choice-art">${itemArtMarkup(item.itemId)}</span>`
-        + (level > 0 ? `<span class="refine-badge">${refineStars(level)}</span>` : "")
-        + (item.equipped ? `<span class="smith-worn">Worn</span>` : "");
-      option.addEventListener("click", () => {
-        selected = key(item); lastResult = null; render();
-      });
-      return option;
-    }));
+    if (view === "refine") {
+      renderFocus(chosen);
+      renderStationGrid(viewPart("refine", ".station-grid"), refineTiles, selected, pick => { selected = pick; lastResult = null; render(); });
+    } else if (view === "craft" && crafts) {
+      viewPart("craft", ".station-detail").replaceChildren(...detailOf(picked.craft ? crafts.craftDetail(picked.craft) : null));
+      renderStationGrid(viewPart("craft", ".station-grid"), craftTiles, picked.craft ?? null, pick => { picked.craft = pick; render(); });
+    } else if (view === "reforge" && crafts) {
+      viewPart("reforge", ".station-detail").replaceChildren(...detailOf(picked.reforge ? crafts.reforgeDetail(picked.reforge) : null, "No weapon to reforge yet. Craft one first."));
+      renderStationGrid(viewPart("reforge", ".station-grid"), reforgeTiles, picked.reforge ?? null, pick => { picked.reforge = pick; render(); });
+    }
   }
 
-  /** The lines Craft lists: the weapon in hand's (Yours), or every line. */
-  function shownLines(worn: WornLoadout) {
-    for (const button of dialog.querySelectorAll<HTMLButtonElement>("[data-shown]")) button.setAttribute("aria-pressed", String(button.dataset.shown === gearShown));
-    for (const title of dialog.querySelectorAll(".smith-list-title")) title.textContent = gearShown === "all" ? "All Gear" : `For Your ${schoolWeaponName(school(worn))}`;
-    const yours = schoolLines(school(worn)).map(gradeShopLineKey);
-    return gearShown === "all" ? GRADE_SHOP_LINES : GRADE_SHOP_LINES.filter(line => yours.includes(gradeShopLineKey(line)));
-  }
-
-  /** Craft: materials only. One row per line, its craft line at the grade the craft's level opens (craft-section.ts). */
-  function renderCraft(worn: WornLoadout) {
-    craftRows.replaceChildren(...shownLines(worn).map(line => {
-      const made = crafts!.craftLine(line), { row, deal } = gradeItemRow(made.itemId);
-      deal.append(made.line);
-      return row;
-    }));
-  }
-
-  /** Reforge: one row per weapon copy held (craft-section.ts reforgeRows). */
-  function renderReforge() {
-    const rows = crafts!.reforgeRows();
-    reforgeEmpty.hidden = rows.length > 0;
-    reforgeRows.replaceChildren(...rows);
+  /** The picked piece's row as the pinned detail, or a line saying there is nothing to pick. */
+  function detailOf(row: HTMLElement | null | undefined, empty = "") {
+    if (row) return [asDetail(row)];
+    if (!empty) return [];
+    const note = document.createElement("p");
+    note.className = "smith-empty";
+    note.textContent = empty;
+    return [note];
   }
 
   async function refine(item: SmithItem, level: number) {
@@ -411,7 +357,6 @@ export function createSmithRuntime(deps: {
     woodcutting: () => deps.coop()?.woodcutting?.() ?? 0,
     craft: craftDepsFor(deps.coop, inventory, deps.showMessage),
     tools: toolDepsFor(deps.coop, deps.showMessage),
-    worn: () => inventory,
   });
   let listening = false;
   return {

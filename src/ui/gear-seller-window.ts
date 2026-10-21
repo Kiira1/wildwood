@@ -14,22 +14,20 @@ import {
   bagFullFor, gradeItemRow, gradeStepperElement, heldItemsFor, offerButton, offerLine, ownedRow, type CraftCoop, type CraftInventory,
 } from "./craft-section";
 import {
-  gearComparison, gradeShortName, schoolLines, schoolWeaponName, upgradeAllPlan, wornInSlot, type UpgradePlan, type WornLoadout,
+  gearComparison, gradeShortName, schoolLines, upgradeAllPlan, wornInSlot, type UpgradePlan, type WornLoadout,
 } from "./smith-buy-plan";
+import { asDetail, renderStationGrid, stationPick, stationViewMarkup, type StationTile } from "./station-grid";
 
 type Result = { ok: boolean; error?: string } | undefined;
 /** One copy of a piece in the bag: copy id 0 is the first copy, the one a slot holds. */
 export type SellerItem = { itemId: string; copyId: bigint; equipped: boolean; roll?: WeaponSkillRoll | null };
 type SellerView = "buy" | "sell";
-type GearShown = "yours" | "all";
 
 const nameOf = (itemId: string) => itemInspectionButtonLabel(itemDisplayName(itemId));
 const key = (item: { itemId: string; copyId: bigint }) => `${item.itemId}:${item.copyId}`;
 // The HUD's gold coin, beside every price in gold.
 const GOLD_COIN = `<svg class="smith-coin" viewBox="0 0 20 20" aria-hidden="true"><circle cx="10" cy="10" r="8.5" fill="#e3b23c" stroke="#7a4f12" stroke-width="1.5"/><circle cx="10" cy="10" r="5.5" fill="none" stroke="#a8741d" stroke-width="1.2"/></svg>`;
 const SELLER_NAMES: Readonly<Record<GearSeller, string>> = { weapons: "Weapon Seller", armor: "Armor Seller" };
-// Yours / All Gear, kept on the device as the Smith's Buy tab kept it.
-const SHOWN_STORE = "wildstat.smithGearShown";
 const viewStore = (seller: GearSeller) => `wildstat.gearSellerView.${seller}`;
 function stored(name: string) {
   try { return localStorage.getItem(name); } catch { return null; }
@@ -44,6 +42,12 @@ function pillButton(label: string, onClick: () => void) {
   button.textContent = label;
   button.addEventListener("click", onClick);
   return button;
+}
+function emptyNote(text: string) {
+  const note = document.createElement("p");
+  note.className = "smith-empty";
+  note.textContent = text;
+  return note;
 }
 function goldPrice(price: number) {
   const cost = document.createElement("span");
@@ -84,45 +88,34 @@ export type GearSellerDeps = {
 export function createGearSellerController(seller: GearSeller, deps: GearSellerDeps) {
   const titleId = `${seller === "weapons" ? "weapon" : "armor"}SellerTitle`;
   const dialog = document.createElement("dialog");
-  dialog.className = "farm-sheet quest-sheet smith-sheet gear-seller-sheet";
+  dialog.className = "farm-sheet quest-sheet smith-sheet station-sheet gear-seller-sheet";
   dialog.dataset.seller = seller;
   dialog.setAttribute("aria-labelledby", titleId);
   dialog.innerHTML = `<header class="farm-header"><h2 id="${titleId}" class="window-banner"><span>${SELLER_NAMES[seller]}</span></h2></header>`
-    + `<div class="quest-body"><div class="smith-views-bar"><div class="inventory-filters smith-views" role="group" aria-label="Seller view"></div></div>`
-    + `<section class="smith-view" data-view="buy"><section class="smith-shop" aria-labelledby="${titleId}Buy">`
-    + `<div class="smith-upgrade-all"><button type="button" class="farm-start smith-upgrade-all-button"><span class="smith-upgrade-all-title"></span><span class="smith-upgrade-all-sub"></span></button>`
-    + `<ul class="smith-upgrade-all-picks" aria-label="Upgrade All buys"></ul></div>`
-    + `<div class="smith-shop-bar"><div class="inventory-filters smith-shown" role="group" aria-label="Lines shown"></div>`
+    + `<div class="quest-body"><div class="smith-views-bar"><div class="inventory-filters smith-views" role="group" aria-label="Seller view"></div>`
     + `<span class="smith-gold" aria-label="Your gold">${GOLD_COIN}<strong></strong></span></div>`
-    + `<div class="smith-shop-head"><h3 id="${titleId}Buy" class="smith-list-title"></h3></div>`
-    + `<div class="smith-shop-rows seller-buy-rows" role="list" aria-label="Gear to buy"></div></section></section>`
-    + `<section class="smith-view" data-view="sell"><section class="smith-shop" aria-labelledby="${titleId}Sell">`
-    + `<div class="smith-shop-bar"><h3 id="${titleId}Sell" class="smith-list-title">Your Gear</h3>`
-    + `<span class="smith-gold" aria-label="Your gold">${GOLD_COIN}<strong></strong></span></div>`
-    + `<p class="smith-empty seller-sell-empty" hidden>Nothing to sell here. Worn gear stays on you.</p>`
-    + `<div class="smith-shop-rows seller-sell-rows" role="list" aria-label="Gear to sell"></div></section></section></div>`
-    + `<footer class="farm-footer"><div class="farm-actions"><button type="button" class="window-back-button">Back</button></div></footer>`;
+    // Each tab: the piece picked pinned on top, the grid to pick from under it; Upgrade All follows Buy's grid.
+    + stationViewMarkup("buy", "Gear to buy", {
+      after: `<div class="smith-upgrade-all" role="group" aria-label="Upgrade All"><button type="button" class="farm-start smith-upgrade-all-button">`
+        + `<span class="smith-upgrade-all-title"></span><span class="smith-upgrade-all-sub"></span></button>`
+        + `<ul class="smith-upgrade-all-picks" aria-label="Upgrade All buys"></ul></div>`,
+    })
+    + stationViewMarkup("sell", "Gear to sell")
+    + `</div><footer class="farm-footer"><div class="farm-actions"><button type="button" class="window-back-button">Back</button></div></footer>`;
   document.body.append(dialog);
   const back = dialog.querySelector<HTMLButtonElement>(".window-back-button")!;
   const viewBar = dialog.querySelector<HTMLElement>(".smith-views")!;
-  const buyRows = dialog.querySelector<HTMLElement>(".seller-buy-rows")!, sellRows = dialog.querySelector<HTMLElement>(".seller-sell-rows")!;
-  const sellEmpty = dialog.querySelector<HTMLElement>(".seller-sell-empty")!;
+  const viewPart = (view: SellerView, selector: string) => dialog.querySelector<HTMLElement>(`[data-view="${view}"] ${selector}`)!;
   const upgradeButton = dialog.querySelector<HTMLButtonElement>(".smith-upgrade-all-button")!;
   const upgradeTitle = dialog.querySelector<HTMLElement>(".smith-upgrade-all-title")!, upgradeSub = dialog.querySelector<HTMLElement>(".smith-upgrade-all-sub")!;
   const upgradePicks = dialog.querySelector<HTMLElement>(".smith-upgrade-all-picks")!;
   const lines = GRADE_SHOP_LINES.filter(line => gearSellerOfLine(line) === seller);
 
   let view: SellerView = stored(viewStore(seller)) === "sell" ? "sell" : "buy";
-  let gearShown: GearShown = stored(SHOWN_STORE) === "all" ? "all" : "yours";
   for (const each of ["buy", "sell"] as const) {
     const button = pillButton(each === "buy" ? "Buy" : "Sell", () => { if (view !== each) { view = each; store(viewStore(seller), each); render(); } });
     button.dataset.view = each;
     viewBar.append(button);
-  }
-  for (const [each, label] of [["yours", "Yours"], ["all", "All Gear"]] as const) {
-    const button = pillButton(label, () => { if (gearShown !== each) { gearShown = each; store(SHOWN_STORE, each); render(); } });
-    button.dataset.shown = each;
-    dialog.querySelector(".smith-shown")!.append(button);
   }
   upgradeButton.addEventListener("click", () => { void upgradeAll(); });
 
@@ -136,6 +129,8 @@ export function createGearSellerController(seller: GearSeller, deps: GearSellerD
   /** The copy being sold, and the one asked once already: a sale takes a second tap. */
   let selling: string | null = null, confirming: string | null = null;
   let confirmTimer: ReturnType<typeof setTimeout> | null = null;
+  /** The piece picked on each tab: a line on Buy, a copy on Sell; kept while the window is closed. */
+  const selected: Record<SellerView, string | null> = { buy: null, sell: null };
   let rendered = "";
 
   const school = (worn = deps.worn()): WeaponSchool => schoolOfWeapon(worn.equippedRightHand || worn.equippedLeftHand || "");
@@ -165,7 +160,7 @@ export function createGearSellerController(seller: GearSeller, deps: GearSellerD
   }
 
   function state() {
-    return JSON.stringify([view, gearShown, String(deps.gold()), deps.masteryLevels(), [...heldGear()].filter(gradeShopPrice), deps.bagFull(), deps.worn(),
+    return JSON.stringify([view, selected, String(deps.gold()), deps.masteryLevels(), [...heldGear()].filter(gradeShopPrice), deps.bagFull(), deps.worn(),
       buyingGear, upgrading, [...picked], selling, confirming,
       [...new Set(lines.map(line => deps.slotTier(gradeShopItemId(line, "crude"))))],
       forSale().map(item => [key(item), item.roll, deps.refineLevel(item.itemId, item.copyId), deps.locked(item.itemId, item.copyId)])]);
@@ -177,7 +172,7 @@ export function createGearSellerController(seller: GearSeller, deps: GearSellerD
     rendered = now;
     for (const section of dialog.querySelectorAll<HTMLElement>(".smith-view")) section.hidden = section.dataset.view !== view;
     for (const button of viewBar.querySelectorAll<HTMLButtonElement>("[data-view]")) button.setAttribute("aria-pressed", String(button.dataset.view === view));
-    for (const gold of dialog.querySelectorAll(".smith-gold strong")) gold.textContent = formatGemAmount(deps.gold());
+    dialog.querySelector(".smith-gold strong")!.textContent = formatGemAmount(deps.gold());
     if (view === "buy") renderBuy();
     else renderSell();
   }
@@ -195,29 +190,43 @@ export function createGearSellerController(seller: GearSeller, deps: GearSellerD
     upgradePicks.hidden = !next.picks.length || upgrading !== null;
   }
 
+  /** A line's offer: the grade picked (or the best the gold covers), and whether its Buy can act. */
+  function lineOffer(line: GradeShopLine, held: ReadonlySet<string>, levels: MasteryLevels) {
+    const offer = gradeShopOffer(line, held, levels, Number(deps.gold())), choice = picked.get(gradeShopLineKey(line));
+    const grade = choice && offer.grades.includes(choice) ? choice : offer.grade, itemId = gradeShopItemId(line, grade);
+    const ready = !offer.owned && gradeShopOpen(itemId, levels) && deps.gold() >= BigInt(gradeShopPrice(itemId)!) && !deps.bagFull();
+    return { offer, grade, itemId, ready };
+  }
+
   /**
-   * Buy: one row per line (the weapon in hand's, or all of this seller's), offering any grade Mastery opens above the
-   * best one held, with a grade stepper (the best the gold covers to start, else the highest open), its price and a Buy.
+   * Buy: a tile per line of this seller's, offering any grade Mastery opens above the best one held. The line picked
+   * shows a grade stepper (the best the gold covers to start, else the highest open), how it compares with what is
+   * worn, its price and a Buy.
    */
   function renderBuy() {
     const worn = deps.worn(), held = heldGear(), levels = deps.masteryLevels();
     renderUpgradeAll(plan());
-    for (const button of dialog.querySelectorAll<HTMLButtonElement>("[data-shown]")) button.setAttribute("aria-pressed", String(button.dataset.shown === gearShown));
-    dialog.querySelector(`#${titleId}Buy`)!.textContent = gearShown === "all" ? "All Gear" : `For Your ${schoolWeaponName(school(worn))}`;
-    const shownLines: readonly GradeShopLine[] = gearShown === "all" ? lines : yourLines(worn);
-    buyRows.replaceChildren(...shownLines.map(line => {
-      const offer = gradeShopOffer(line, held, levels, Number(deps.gold())), choice = picked.get(gradeShopLineKey(line));
-      const grade = choice && offer.grades.includes(choice) ? choice : offer.grade, itemId = gradeShopItemId(line, grade);
-      if (offer.owned) return ownedRow(itemId).row;
-      // Only a locked line names what it waits for.
-      const { row, deal } = gradeItemRow(itemId, 0, offer.open ? [] : [{ text: `Needs ${gradeShopNeed(itemId)}`, met: false }]);
-      row.querySelector(".smith-shop-stat")!.after(comparisonTag(itemId, worn));
-      const stepper = offer.open ? gradeStepperElement(offer.grades, grade, {
-        label: "Grade to buy", busy: buyingGear !== null, onPick: to => { picked.set(gradeShopLineKey(line), to); render(); },
-      }) : null;
-      deal.append(buyLine(itemId, levels, stepper));
-      return row;
-    }));
+    const tiles: StationTile[] = lines.map(line => {
+      const { offer, itemId, ready } = lineOffer(line, held, levels);
+      return { key: gradeShopLineKey(line), itemId, tier: deps.slotTier(itemId), badge: offer.owned ? "Owned" : !offer.open ? "Locked" : undefined, waits: !ready };
+    });
+    selected.buy = stationPick(tiles, selected.buy);
+    renderStationGrid(viewPart("buy", ".station-grid"), tiles, selected.buy, pick => { selected.buy = pick; render(); });
+    const line = lines.find(each => gradeShopLineKey(each) === selected.buy);
+    viewPart("buy", ".station-detail").replaceChildren(...(line ? [asDetail(buyDetail(line, worn, held, levels))] : []));
+  }
+
+  function buyDetail(line: GradeShopLine, worn: WornLoadout, held: ReadonlySet<string>, levels: MasteryLevels) {
+    const { offer, grade, itemId } = lineOffer(line, held, levels);
+    if (offer.owned) return ownedRow(itemId).row;
+    // Only a locked line names what it waits for.
+    const { row, deal } = gradeItemRow(itemId, 0, offer.open ? [] : [{ text: `Needs ${gradeShopNeed(itemId)}`, met: false }]);
+    row.querySelector(".smith-shop-stat")!.after(comparisonTag(itemId, worn));
+    const stepper = offer.open ? gradeStepperElement(offer.grades, grade, {
+      label: "Grade to buy", busy: buyingGear !== null, onPick: to => { picked.set(gradeShopLineKey(line), to); render(); },
+    }) : null;
+    deal.append(buyLine(itemId, levels, stepper));
+    return row;
   }
 
   /** "+12% Damage vs Now": what the piece changes against what is worn in its slot. */
@@ -241,25 +250,33 @@ export function createGearSellerController(seller: GearSeller, deps: GearSellerD
     return line;
   }
 
-  /** Sell: each copy in the bag this seller buys, its refine and skills, what it pays, and one Sell (a second tap sells). */
+  /** Sell: a tile per copy in the bag this seller buys; the one picked shows its refine and skills, what it pays, and one Sell (a second tap sells). */
   function renderSell() {
     const items = forSale();
-    sellEmpty.hidden = items.length > 0;
-    sellRows.replaceChildren(...items.map(item => {
-      const itemId = item.itemId as GradeItemId, price = gradeShopSalePrice(itemId)!, itemKey = key(item), locked = deps.locked(itemId, item.copyId);
-      const { row, deal } = gradeItemRow(itemId, deps.refineLevel(itemId, item.copyId));
-      row.dataset.copyId = String(item.copyId);
-      const skills = weaponSkillLines(itemId, item.roll);
-      if (skills.length) {
-        const line = document.createElement("span");
-        line.className = "craft-hint";
-        line.textContent = skills.join(" · ");
-        row.querySelector(".smith-shop-copy")!.append(line);
-      }
-      const text = locked ? "Locked" : selling === itemKey ? "Selling…" : confirming === itemKey ? "Tap Again To Sell" : "Sell";
-      deal.append(offerLine([goldPrice(price)], offerButton(text, !locked && selling === null, () => { void sell(item, price); })));
-      return row;
-    }));
+    const tiles: StationTile[] = items.map(item => {
+      const locked = deps.locked(item.itemId, item.copyId);
+      return { key: key(item), itemId: item.itemId, copyId: item.copyId, refine: deps.refineLevel(item.itemId, item.copyId), badge: locked ? "Locked" : undefined, waits: locked };
+    });
+    selected.sell = stationPick(tiles, selected.sell);
+    renderStationGrid(viewPart("sell", ".station-grid"), tiles, selected.sell, pick => { selected.sell = pick; render(); });
+    const item = items.find(each => key(each) === selected.sell);
+    viewPart("sell", ".station-detail").replaceChildren(item ? asDetail(sellDetail(item)) : emptyNote("Nothing to sell here. Worn gear stays on you."));
+  }
+
+  function sellDetail(item: SellerItem) {
+    const itemId = item.itemId as GradeItemId, price = gradeShopSalePrice(itemId)!, itemKey = key(item), locked = deps.locked(itemId, item.copyId);
+    const { row, deal } = gradeItemRow(itemId, deps.refineLevel(itemId, item.copyId));
+    row.dataset.copyId = String(item.copyId);
+    const skills = weaponSkillLines(itemId, item.roll);
+    if (skills.length) {
+      const line = document.createElement("span");
+      line.className = "craft-hint";
+      line.textContent = skills.join(" · ");
+      row.querySelector(".smith-shop-copy")!.append(line);
+    }
+    const text = locked ? "Locked" : selling === itemKey ? "Selling…" : confirming === itemKey ? "Tap Again To Sell" : "Sell";
+    deal.append(offerLine([goldPrice(price)], offerButton(text, !locked && selling === null, () => { void sell(item, price); })));
+    return row;
   }
 
   async function sell(item: SellerItem, price: number) {

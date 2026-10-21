@@ -19,8 +19,16 @@ const smithWindow = (tab: GameTab) => windowTitled(tab, "smithTitle");
 /** The gear sellers' windows while they are open. */
 const weaponSeller = (tab: GameTab) => windowTitled(tab, "weaponSellerTitle");
 const armorSeller = (tab: GameTab) => windowTitled(tab, "armorSellerTitle");
-/** The Armor Seller's Buy row offering this piece. */
-const offer = (tab: GameTab, itemId: string) => armorSeller(tab)?.querySelector<HTMLElement>(`[data-view=buy] [data-item-id="${itemId}"]`) ?? null;
+/** Taps a station's tile for this piece and returns the detail it shows on top, or null while the grid has no such tile. */
+function pick(tab: GameTab, station: HTMLElement | null, view: string, itemId: string, copyId?: bigint) {
+  const copy = copyId === undefined ? "" : `[data-copy-id="${copyId}"]`;
+  const tile = station?.querySelector(`[data-view=${view}] [role=listbox] [data-item-id="${itemId}"]${copy}`);
+  if (!tile) return null;
+  press(tab, tile);
+  return station!.querySelector<HTMLElement>(`[data-view=${view}] [aria-live=polite]`);
+}
+/** The Armor Seller's Buy detail for this piece. */
+const offer = (tab: GameTab, itemId: string) => pick(tab, armorSeller(tab), "buy", itemId);
 /** A row's own action: the last button on it (Buy, Craft). */
 const action = (row: Element | null) => [...(row?.querySelectorAll<HTMLButtonElement>("button") ?? [])].at(-1) ?? null;
 /** The price a row shows, in gold. */
@@ -110,8 +118,7 @@ describe("the gear sellers and the Smith", () => {
     const tab = await playAs(world, "Ann");
     await playUntil(tab, () => Boolean(smithWindow(tab)), "the Smith opens");
     press(tab, smithWindow(tab)!.querySelector("button[data-view=craft]"));
-    press(tab, smithWindow(tab)!.querySelector("[data-view=craft] [data-shown=all]"));
-    const craftRow = (itemId: string) => smithWindow(tab)!.querySelector(`[data-view=craft] [data-item-id="${itemId}"]`);
+    const craftRow = (itemId: string) => pick(tab, smithWindow(tab), "craft", itemId);
     /** What a row says it takes: material id to the count needed. */
     const needs = (row: Element | null) => Object.fromEntries([...(row?.querySelectorAll<HTMLElement>("[data-material]") ?? [])]
       .map(item => [item.dataset.material!, Number(/\/\s*([\d,]+)/.exec(item.textContent ?? "")![1].replace(/,/g, ""))]));
@@ -141,7 +148,7 @@ describe("the gear sellers and the Smith", () => {
     // Reforge lists each bow; the second one is rerolled for the same materials and experience, and the first keeps its refine.
     world.setup(ctx => setRefineLevel(ctx, ann.identity, "crude_bow", 0n, 5));
     press(tab, smithWindow(tab)!.querySelector("button[data-view=reforge]"));
-    const reforgeRow = (copyId: bigint) => smithWindow(tab)!.querySelector(`[data-view=reforge] [data-item-id="crude_bow"][data-copy-id="${copyId}"]`);
+    const reforgeRow = (copyId: bigint) => pick(tab, smithWindow(tab), "reforge", "crude_bow", copyId);
     await playUntil(tab, () => Boolean(reforgeRow(0n) && reforgeRow(copies()[0].id)), "Reforge lists both bows");
     const second = copies()[0], ores = oresOf(world, ann, "pine_log");
     press(tab, action(reforgeRow(second.id)));
@@ -273,8 +280,8 @@ describe("the gear sellers and the Smith", () => {
     ann.disconnect();
     const tab = await playAs(world, "Ann");
     await playUntil(tab, () => Boolean(armorSeller(tab)), "the Armor Seller opens");
-    // The big button heads the Buy tab: its total, and the pieces it lists.
-    const upgrade = () => armorSeller(tab)!.querySelector<HTMLButtonElement>("[data-view=buy]:not(button) button")!;
+    // The big button on the Buy tab: its total, and the pieces it lists.
+    const upgrade = () => armorSeller(tab)!.querySelector<HTMLButtonElement>("[data-view=buy] [aria-label='Upgrade All'] button")!;
     const total = shownNumber(upgrade().querySelector("span")!.textContent);
     expect(total).toBeGreaterThan(0);
     // The HUD says there are upgrades in Town while there are.
@@ -325,18 +332,19 @@ describe("the gear sellers and the Smith", () => {
     // Two crude bows at the Weapon Seller's Sell tab, the worn bow not among them: a sale takes a second tap, and one copy.
     await playUntil(tab, () => Boolean(weaponSeller(tab)), "the Weapon Seller opens");
     press(tab, weaponSeller(tab)!.querySelector("button[data-view=sell]"));
-    const sellRows = () => [...weaponSeller(tab)!.querySelectorAll<HTMLElement>("[data-view=sell] [data-item-id]")];
-    await playUntil(tab, () => sellRows().length === 2, "both crude bows are for sale");
-    expect(sellRows().map(row => row.dataset.itemId)).toEqual(["crude_bow", "crude_bow"]);
-    const first = shownPrice(sellRows()[0]);
+    const sellTiles = () => [...weaponSeller(tab)!.querySelectorAll<HTMLElement>("[data-view=sell] [role=option]")];
+    const firstForSale = () => pick(tab, weaponSeller(tab), "sell", sellTiles()[0].dataset.itemId!, BigInt(sellTiles()[0].dataset.copyId!));
+    await playUntil(tab, () => sellTiles().length === 2, "both crude bows are for sale");
+    expect(sellTiles().map(tile => tile.dataset.itemId)).toEqual(["crude_bow", "crude_bow"]);
+    const first = shownPrice(firstForSale());
     expect(first).toBeGreaterThan(0);
     const before = goldOf(world, ann);
-    press(tab, action(sellRows()[0]));
+    press(tab, action(firstForSale()));
     expect(goldOf(world, ann)).toBe(before);
-    press(tab, action(sellRows()[0]));
+    press(tab, action(firstForSale()));
     await playUntil(tab, () => goldOf(world, ann) === before + BigInt(first), "the sale is paid");
     expect(serverBag(ann)).toContain("crude_bow");
-    await playUntil(tab, () => sellRows().length === 1 && bowEntries().length === 1, "one bow left");
+    await playUntil(tab, () => sellTiles().length === 1 && bowEntries().length === 1, "one bow left");
     press(tab, weaponSeller(tab)!.querySelector("footer button"));
     // The last one goes, and its refine with it.
     expect(await sell(bowEntries()[0])).toBe(first);

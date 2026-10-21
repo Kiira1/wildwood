@@ -811,15 +811,6 @@
 .smith-sheet .smith-filters { display: flex; flex-wrap: nowrap; gap: 4px; margin: 0 14px 10px; }
 .smith-sheet .smith-filters .inventory-filter { flex: 1 1 auto; min-height: 32px; padding: 0 6px; border: 1px solid rgba(255,255,255,.16); border-radius: 999px; background: #141414; color: #c7c7c7; font: 800 13px/1 var(--font-rounded); }
 .smith-sheet .smith-filters .inventory-filter[aria-pressed="true"] { border-color: #fff; background: #fff; color: #111; text-shadow: none; -webkit-text-stroke: 0; }
-.smith-sheet .smith-filter-empty { margin: 0 14px 12px; }
-.smith-sheet .smith-filter-empty[hidden] { display: none; }
-.smith-sheet .smith-items { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 8px; margin: 0 14px 12px; }
-.smith-sheet .smith-choice { position: relative; display: grid; place-items: center; aspect-ratio: 1; min-width: 0; margin: 0; padding: 4px; border: 2px solid rgba(255,255,255,.12); border-radius: 10px; background: rgba(255,255,255,.04); box-shadow: none; }
-.smith-sheet .smith-choice[aria-selected="true"] { border-color: #fff; background: #1f1f1f; box-shadow: inset 0 0 0 1px #fff; }
-.smith-sheet .smith-choice-art .inventory-item-art { width: 40px; height: 36px; }
-/* Worn sits under the art, so neither covers the other. */
-.smith-sheet .smith-choice { grid-template-rows: minmax(0, 1fr) 13px; aspect-ratio: 4 / 5; padding: 4px 2px 5px; }
-.smith-sheet .smith-worn { color: #fff; font-size: 13px; font-weight: 900; line-height: 1; }
 .smith-sheet .smith-mining[hidden], .smith-sheet .farm-start[hidden] { display: none; }
 /* A card's effects, as the Card Seller lists them. */
 .smith-sheet .smith-card-effects { display: grid; gap: 3px; margin: 0; padding: 0; list-style: none; text-align: center; font-size: 14px; font-weight: 800; }
@@ -895,10 +886,9 @@
 /* The Smith's tabs as a pill toggle, as the Cards tab's: Buy, Craft, Refine, Upgrade. */
 .smith-sheet .smith-views-bar { display: flex; justify-content: center; margin: 0 14px 12px; }
 .smith-sheet .smith-views-bar[hidden], .smith-sheet .smith-view[hidden] { display: none; }
-.smith-sheet .smith-views, .smith-sheet .smith-shown { display: inline-flex; gap: 0; padding: 3px; border: 1px solid rgba(255,255,255,.12); border-radius: 999px; background: #0d0d0d; overflow: visible; }
-.smith-sheet .smith-views .inventory-filter, .smith-sheet .smith-shown .inventory-filter { position: relative; min-width: 86px; min-height: 34px; padding: 0 14px; border: 0; border-radius: 999px; color: #b3b3b3; font: 900 14px/1 var(--font-rounded); letter-spacing: .02em; }
-.smith-sheet .smith-shown .inventory-filter { min-width: 0; min-height: 30px; padding: 0 12px; font-size: 13px; }
-.smith-sheet .smith-views .inventory-filter[aria-pressed="true"], .smith-sheet .smith-shown .inventory-filter[aria-pressed="true"] { background: #fff; color: #111; border-bottom: 0; text-shadow: none; -webkit-text-stroke: 0; }
+.smith-sheet .smith-views { display: inline-flex; gap: 0; padding: 3px; border: 1px solid rgba(255,255,255,.12); border-radius: 999px; background: #0d0d0d; overflow: visible; }
+.smith-sheet .smith-views .inventory-filter { position: relative; min-width: 86px; min-height: 34px; padding: 0 14px; border: 0; border-radius: 999px; color: #b3b3b3; font: 900 14px/1 var(--font-rounded); letter-spacing: .02em; }
+.smith-sheet .smith-views .inventory-filter[aria-pressed="true"] { background: #fff; color: #111; border-bottom: 0; text-shadow: none; -webkit-text-stroke: 0; }
 /* Four tabs share the bar at phone width. */
 .smith-sheet .smith-views .inventory-filter { min-width: 70px; padding: 0 12px; }
 /* Slot Upgrades (slot-upgrades-controller.ts) on the Upgrade tab, under its heading: the old standalone window laid flat in the sheet, in its colors. */
@@ -923,12 +913,9 @@
 .smith-sheet .slot-upgrades-picker-heading { font-size: 15px; letter-spacing: 0; }
 .smith-sheet .slot-upgrades-picker-item { height: auto; min-height: 72px; border-color: rgba(255,255,255,.12); background: #141414; }
 /* A section's heading in a view: its name, and a count on the right. */
-.smith-sheet .smith-section-head { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; margin: 0 16px 8px; }
-.smith-sheet .smith-section-head strong { color: #fff; font: 900 15px/18px var(--font-rounded); }
-.smith-sheet .smith-section-head span { color: #b3b3b3; font: 800 13px/16px var(--font-rounded); }
 /* Upgrade All: the Buy tab's one big button, and what it buys as pills under it. */
 .smith-sheet .smith-upgrade-all { display: grid; gap: 8px; }
-.smith-sheet .smith-upgrade-all[hidden], .smith-sheet .smith-shop-bar[hidden], .smith-sheet .smith-upgrade-all-picks[hidden], .smith-sheet .smith-upgrade-all-sub[hidden] { display: none; }
+.smith-sheet .smith-upgrade-all[hidden], .smith-sheet .smith-upgrade-all-picks[hidden], .smith-sheet .smith-upgrade-all-sub[hidden] { display: none; }
 .smith-sheet .farm-start.smith-upgrade-all-button { display: grid; justify-items: center; align-content: center; gap: 3px; width: 100%; height: auto; min-height: 56px; margin: 0; padding: 8px 14px 10px; border-color: #5a3c00; border-radius: 12px; background: linear-gradient(#ffe07a, #e2a628); box-shadow: 0 3px 0 #5a3c00; font-size: 17px; line-height: 1.15; text-transform: none; }
 .smith-sheet .farm-start.smith-upgrade-all-button:active:not(:disabled) { box-shadow: 0 1px 0 #5a3c00; }
 .smith-sheet .farm-start.smith-upgrade-all-button:disabled { opacity: 1; border: 1px dashed rgba(255,255,255,.2); background: transparent; box-shadow: none; color: #fff; }
@@ -936,8 +923,27 @@
 .smith-sheet .smith-upgrade-all-button:disabled .smith-upgrade-all-sub { color: #c7c7c7; -webkit-text-stroke: 0; text-shadow: none; }
 .smith-sheet .smith-upgrade-all-picks { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; margin: 0; padding: 0; list-style: none; }
 .smith-sheet .smith-upgrade-all-picks li { padding: 4px 10px; border: 1px solid rgba(255,255,255,.18); border-radius: 999px; background: #1d1d1d; color: #fff; font: 800 13px/16px var(--font-rounded); }
-.smith-sheet .smith-shop-bar { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-top: 4px; }
 .smith-sheet .smith-focus { border: 1px solid rgba(255,255,255,.12); background: #141414; }
+/* A station (the Smith and the gear sellers): the tabs and the picked piece stay put; only the grid under them scrolls. */
+.farm-sheet.quest-sheet.station-sheet { height: min(640px, calc(100dvh - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px) - 32px)); }
+.station-sheet .quest-body { display: flex; flex-direction: column; overflow: hidden; }
+.station-sheet .smith-views-bar { flex: none; align-items: center; gap: 10px; }
+.station-sheet.gear-seller-sheet .smith-views-bar { justify-content: space-between; }
+.station-sheet .smith-view:not([hidden]) { display: flex; flex: 1 1 auto; flex-direction: column; min-height: 0; }
+.station-sheet .smith-tools-view:not([hidden]) { display: block; overflow-y: auto; overscroll-behavior: contain; }
+.station-sheet .station-detail { flex: 0 1 auto; min-height: 0; margin: 0 14px 8px; overflow-y: auto; overscroll-behavior: contain; scrollbar-width: none; }
+.station-sheet .station-detail.smith-focus { margin: 0 14px 8px; }
+.station-sheet .station-detail .smith-empty { margin: 14px 0; }
+.station-sheet .station-scroll { display: flex; flex: 1 1 0; flex-direction: column; gap: 10px; min-height: 76px; padding: 2px 14px 12px; overflow-y: auto; overscroll-behavior: contain; touch-action: pan-y; }
+.station-sheet .station-scroll > .smith-filters, .station-sheet .station-scroll > .smith-ores, .station-sheet .station-scroll > .smith-intro, .station-sheet .station-scroll > .craft-section { margin: 0; }
+.station-sheet .station-scroll > * { flex: none; }
+.station-sheet .station-grid { grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 6px; }
+.station-sheet .station-grid:empty { display: none; }
+.station-sheet .station-grid > .inventory-item { color: #fff; }
+.station-sheet .station-grid > .inventory-item.is-selected { border-color: #fff; background: #262626; box-shadow: inset 0 0 0 1px #fff; }
+.station-sheet .station-grid > .inventory-item.is-waiting > :not(.station-tile-badge) { opacity: .4; }
+.station-sheet .station-tile-badge { position: absolute; right: 0; bottom: 3px; left: 0; color: #fff; font: 900 13px/1 var(--font-rounded); text-align: center; -webkit-text-stroke: 0; text-shadow: 0 1px 1px #000, 0 0 3px #000; pointer-events: none; }
+.station-sheet .station-detail-row { padding: 10px 12px; }
 /* A school's Mastery card, as the Smith's crafting card. */
 .school-window .school-window-card { border-color: rgba(255,255,255,.12); border-radius: 12px; background: #141414; }
 .school-window .school-window-bar { height: 6px; border-radius: 999px; background: rgba(255,255,255,.1); }

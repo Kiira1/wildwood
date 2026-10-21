@@ -6,7 +6,7 @@ import {
 import { isSkillWeapon, weaponSkillLines, type WeaponSkillRoll } from "../../shared/weapon-skills";
 import { ARMOR_CLASS_DETAILS, ARMOR_CLASS_NAMES, BOOT_STYLE_NAMES, GEAR_GRADE_NAMES, gradeIndex, type GearGrade } from "../../shared/gear-grades";
 import { armorClassOf, bootStyleOf, gradeEquipmentKindOf, gradeOf, type GradeItemId } from "../../shared/grade-equipment";
-import { gradeShopItemId, gradeShopLineKey, masteryLevels, type GradeShopLine, type MasteryLevels } from "../../shared/grade-shop";
+import { GRADE_SHOP_LINES, gradeShopItemId, gradeShopLineKey, masteryLevels, type GradeShopLine, type MasteryLevels } from "../../shared/grade-shop";
 import { bagSlotsWithOres } from "../../shared/ore-bag";
 import { bagSlotCapacity } from "../../shared/gems";
 import type { OreId } from "../../shared/refine";
@@ -17,6 +17,7 @@ import { formatEquipmentStat } from "./equipment-stat-format";
 import { refineStars } from "./refine-badge";
 import { oreIconSource } from "./ore-icon";
 import { formatCompactNumber } from "./number-format";
+import type { StationTile } from "./station-grid";
 
 type Result = { ok: boolean; error?: string } | undefined;
 type Ores = Readonly<Partial<Record<OreId, number>>>;
@@ -141,10 +142,10 @@ const copyKey = (item: { itemId: string; copyId: bigint }) => `${item.itemId}:${
 
 /**
  * The Smith's crafting card: Smithing, Fletching and Enchanting side by side, each with its level and progress. His
- * Craft tab's rows take each line's craft line (craftLine), offering the best grade that craft's level opens, with
- * a stepper to pick any other open grade (gradeCraftOffer), its materials and a button: "Craft Common Sword ★2",
- * always a new piece. His Reforge tab lists each weapon copy held (reforgeRows), one Reforge each. The server decides
- * (craft_grade_item, reforge_weapon).
+ * Craft tab has a tile per line (craftTiles); the line picked shows its craft line (craftDetail), offering the best grade
+ * that craft's level opens, with a stepper to pick any other open grade (gradeCraftOffer), its materials and a button:
+ * "Craft Common Sword ★2", always a new piece. His Reforge tab has a tile per weapon copy held (reforgeTiles), and the
+ * one picked shows one Reforge (reforgeDetail). The server decides (craft_grade_item, reforge_weapon).
  */
 export function createCraftSection(deps: CraftSectionDeps, options: { onChange?: () => void } = {}) {
   const section = document.createElement("section");
@@ -184,19 +185,23 @@ export function createCraftSection(deps: CraftSectionDeps, options: { onChange?:
 
   const skillLevel = (skill: CraftSkill) => craftProgress(deps.craftSkills()[skill] ?? 0n).level;
 
+  /** A line's piece at the grade picked (or the best open), what it takes, and whether it can be made now. */
+  function craftOffer(line: GradeShopLine) {
+    const skill = lineCraftSkill(line), offer = gradeCraftOffer(line, skillLevel(skill)), choice = picked.get(gradeShopLineKey(line));
+    const grade = choice && offer.grades.includes(choice) ? choice : offer.grade, itemId = gradeShopItemId(line, grade);
+    const materials = gradeCraftMaterials(itemId)!, lacking = craftMaterialsShort(materials, deps.ores()).length > 0;
+    return { skill, offer, grade, itemId, materials, lacking, ready: !lacking && !deps.bagFull() };
+  }
+
   /**
    * A line's craft line, by the craft that makes it, at the grade picked (or the best open): a labelled grade stepper
    * with what the next grade needs, the materials held against needed, and a button naming what it makes, or why it waits.
    */
   function craftLine(line: GradeShopLine) {
-    const skill = lineCraftSkill(line), offer = gradeCraftOffer(line, skillLevel(skill)), choice = picked.get(gradeShopLineKey(line));
-    const grade = choice && offer.grades.includes(choice) ? choice : offer.grade, itemId = gradeShopItemId(line, grade);
-    const ores = deps.ores(), materials = gradeCraftMaterials(itemId)!;
+    const { skill, offer, grade, itemId, materials, lacking, ready } = craftOffer(line), ores = deps.ores();
     const piece = `${GEAR_GRADE_NAMES[grade]} ${KIND_NAMES[gradeEquipmentKindOf(itemId)!]}`;
-    const lacking = craftMaterialsShort(materials, ores).length > 0, full = deps.bagFull();
-    const ready = !lacking && !full && crafting === null;
-    const text = crafting === itemId ? "Crafting…" : lacking ? `Need More For ${piece}` : full ? "Bag Full" : `Craft ${piece} ${refineStars(CRAFTED_REFINE)}`;
-    const button = offerButton(text, ready, () => { void craft(itemId); });
+    const text = crafting === itemId ? "Crafting…" : lacking ? `Need More For ${piece}` : deps.bagFull() ? "Bag Full" : `Craft ${piece} ${refineStars(CRAFTED_REFINE)}`;
+    const button = offerButton(text, ready && crafting === null, () => { void craft(itemId); });
     button.classList.add("craft-action");
     const head = document.createElement("span");
     head.className = "craft-head";
@@ -215,28 +220,57 @@ export function createCraftSection(deps: CraftSectionDeps, options: { onChange?:
         || a.itemId.localeCompare(b.itemId) || (a.copyId < b.copyId ? -1 : 1));
   }
 
-  /**
-   * The Reforge tab's rows: one per weapon copy held, its skills now (so two bows tell apart), the materials a
-   * Reforge takes against what is held, and one Reforge button, or why it waits.
-   */
-  function reforgeRows() {
+  /** Reforge's tiles: one per weapon copy held, Worn on the one in hand, dimmed while it cannot be reforged. */
+  function reforgeTiles(): StationTile[] {
     const ores = deps.ores();
     return reforgeable().map(weapon => {
-      const itemId = weapon.itemId as GradeItemId, skill = gradeCraftSkill(itemId)!, materials = gradeCraftMaterials(itemId)!;
-      const levelMet = skillLevel(skill) >= gradeCraftLevel(itemId), lacking = craftMaterialsShort(materials, ores).length > 0;
-      const key = copyKey(weapon);
-      const made = gradeItemRow(itemId, deps.refineLevel(itemId, weapon.copyId), levelMet ? [] : [{ text: `Needs ${gradeCraftNeed(itemId)}`, met: false }]);
-      made.row.dataset.copyId = String(weapon.copyId);
-      const skills = weaponSkillLines(itemId, weapon.roll);
-      made.row.querySelector(".smith-shop-copy")!.append(hint([weapon.equipped ? "Worn" : "", skills.length ? skills.join(" · ") : "No Skills Yet"].filter(Boolean).join(" · ")));
-      const text = crafting === key ? "Reforging…" : !levelMet ? "Locked" : lacking ? "Need More" : "Reforge";
-      const button = offerButton(text, levelMet && !lacking && crafting === null, () => { void reforge(weapon); });
-      button.classList.add("craft-action");
-      const line = offerLine([materialList(materials, ores)], button);
-      line.classList.add("craft-offer", "craft-line");
-      made.deal.append(line);
-      return made.row;
+      const itemId = weapon.itemId as GradeItemId;
+      const ready = skillLevel(gradeCraftSkill(itemId)!) >= gradeCraftLevel(itemId) && !craftMaterialsShort(gradeCraftMaterials(itemId)!, ores).length;
+      return {
+        key: copyKey(weapon), itemId, copyId: weapon.copyId, refine: deps.refineLevel(itemId, weapon.copyId),
+        badge: weapon.equipped ? "Worn" : undefined, waits: !ready,
+      };
     });
+  }
+
+  /**
+   * The weapon copy picked on Reforge: its skills now (so two bows tell apart), the materials a Reforge takes against
+   * what is held, and one Reforge button, or why it waits.
+   */
+  function reforgeDetail(key: string) {
+    const weapon = reforgeable().find(each => copyKey(each) === key);
+    if (!weapon) return null;
+    const ores = deps.ores();
+    const itemId = weapon.itemId as GradeItemId, skill = gradeCraftSkill(itemId)!, materials = gradeCraftMaterials(itemId)!;
+    const levelMet = skillLevel(skill) >= gradeCraftLevel(itemId), lacking = craftMaterialsShort(materials, ores).length > 0;
+    const made = gradeItemRow(itemId, deps.refineLevel(itemId, weapon.copyId), levelMet ? [] : [{ text: `Needs ${gradeCraftNeed(itemId)}`, met: false }]);
+    made.row.dataset.copyId = String(weapon.copyId);
+    const skills = weaponSkillLines(itemId, weapon.roll);
+    made.row.querySelector(".smith-shop-copy")!.append(hint([weapon.equipped ? "Worn" : "", skills.length ? skills.join(" · ") : "No Skills Yet"].filter(Boolean).join(" · ")));
+    const text = crafting === key ? "Reforging…" : !levelMet ? "Locked" : lacking ? "Need More" : "Reforge";
+    const button = offerButton(text, levelMet && !lacking && crafting === null, () => { void reforge(weapon); });
+    button.classList.add("craft-action");
+    const line = offerLine([materialList(materials, ores)], button);
+    line.classList.add("craft-offer", "craft-line");
+    made.deal.append(line);
+    return made.row;
+  }
+
+  /** Craft's tiles: one per line, at the grade picked or the best open, dimmed while it cannot be made. */
+  function craftTiles(): StationTile[] {
+    return GRADE_SHOP_LINES.map(line => {
+      const offer = craftOffer(line);
+      return { key: gradeShopLineKey(line), itemId: offer.itemId, waits: !offer.ready };
+    });
+  }
+
+  /** The line picked on Craft: the piece, then its craft line. */
+  function craftDetail(key: string) {
+    const line = GRADE_SHOP_LINES.find(each => gradeShopLineKey(each) === key);
+    if (!line) return null;
+    const made = craftLine(line), { row, deal } = gradeItemRow(made.itemId);
+    deal.append(made.line);
+    return row;
   }
 
   function gradeStepper(line: GradeShopLine, grades: readonly GearGrade[], grade: GearGrade) {
@@ -244,27 +278,6 @@ export function createCraftSection(deps: CraftSectionDeps, options: { onChange?:
       label: "Grade to craft", busy: crafting !== null,
       onPick: to => { picked.set(gradeShopLineKey(line), to); changed(); },
     });
-  }
-
-  function materialList(materials: Readonly<Record<string, number>>, ores: Ores) {
-    const list = document.createElement("ul");
-    list.className = "craft-materials";
-    list.setAttribute("aria-label", "Materials");
-    list.append(...Object.entries(materials).map(([id, needCount]) => {
-      const item = document.createElement("li"), have = ores[id as OreId] ?? 0;
-      item.className = have >= needCount ? "craft-material" : "craft-material is-short";
-      item.dataset.material = id;
-      const icon = document.createElement("span");
-      icon.className = "craft-material-icon";
-      icon.setAttribute("aria-hidden", "true");
-      const source = oreIconSource(id as OreId);
-      if (source) icon.style.backgroundImage = `url(${source})`;
-      const label = document.createElement("span");
-      label.textContent = `${count(have)} / ${count(needCount)} ${MATERIAL_NAMES[id] ?? id}`;
-      item.append(icon, label);
-      return item;
-    }));
-    return list;
   }
 
   async function craft(itemId: GradeItemId) {
@@ -303,13 +316,37 @@ export function createCraftSection(deps: CraftSectionDeps, options: { onChange?:
   return {
     element: section,
     render,
-    craftLine,
-    reforgeRows,
+    craftTiles,
+    craftDetail,
+    reforgeTiles,
+    reforgeDetail,
     /** What the rows show, for the window that lists them. */
     state,
     /** Each visit starts at each line's best grade. */
     reset() { picked.clear(); rendered = ""; },
   };
+}
+
+/** What a piece takes, each material held against needed, with its icon. */
+export function materialList(materials: Readonly<Record<string, number>>, ores: Ores) {
+  const list = document.createElement("ul");
+  list.className = "craft-materials";
+  list.setAttribute("aria-label", "Materials");
+  list.append(...Object.entries(materials).map(([id, needCount]) => {
+    const item = document.createElement("li"), have = ores[id as OreId] ?? 0;
+    item.className = have >= needCount ? "craft-material" : "craft-material is-short";
+    item.dataset.material = id;
+    const icon = document.createElement("span");
+    icon.className = "craft-material-icon";
+    icon.setAttribute("aria-hidden", "true");
+    const source = oreIconSource(id as OreId);
+    if (source) icon.style.backgroundImage = `url(${source})`;
+    const label = document.createElement("span");
+    label.textContent = `${count(have)} / ${count(needCount)} ${MATERIAL_NAMES[id] ?? id}`;
+    item.append(icon, label);
+    return item;
+  }));
+  return list;
 }
 
 /** A short muted line of its own under an offer's terms. */
