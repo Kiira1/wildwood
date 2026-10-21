@@ -1,8 +1,15 @@
 import type { SimPlayer } from "./sim";
 import type { GameTab } from "./game";
 import type { ScenarioPlayer, ScenarioWorld } from "./server";
+import { DEFAULT_ATTACK_INTERVAL, PLAYER_BASE_REGEN } from "../../../shared/rules";
 
 /** Helpers for the Auto Farm, Prestige, Research and Tutorial scenarios. */
+
+/** A saved build for a sim player: base stats as the server keeps them. */
+export const savedBuild = (damage: number, maxHp: number) => ({ damage, maxHp, armor: 0, regen: PLAYER_BASE_REGEN, attackRate: DEFAULT_ATTACK_INTERVAL });
+
+/** Auto Farm shares with one stat on Farm and the rest Off. */
+export const onlyStat = (stat: string) => Object.fromEntries(["stat:health", "stat:damage", "stat:speed", "stat:regen", "stat:armor", "stat:crit"].map(key => [key, key === stat ? 100 : 0]));
 
 /** Distance between two points. */
 export const distance = (a: { x: number; y: number }, b: { x: number; y: number }) => Math.hypot(a.x - b.x, a.y - b.y);

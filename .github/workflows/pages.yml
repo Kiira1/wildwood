@@ -94,8 +94,10 @@ jobs:
           npm run typecheck:coop
           npm run typecheck:server
 
-  # The unit suite in four parts at once. Vitest splits the test files the same
-  # way on every run, so a failing file always lands in the same part.
+  # The unit suite in four parts at once, split by each file's time
+  # (tests/shard-weights.json, `npm run test:weights`) so no part waits on the
+  # booted scenarios alone. The split is the same on every run, so a failing
+  # file always lands in the same part.
   test:
     runs-on: ubuntu-latest
     strategy:

@@ -3,15 +3,13 @@ import { simPlayer } from "./harness/sim";
 import { scenarioWorld } from "./harness/server";
 import { TERMS_VERSION } from "../../shared/legal";
 import { VIRTUAL_PLAYER_TICKET_HEX_LENGTH } from "../../shared/virtual-player-load-test";
-import { distance, farmedSeconds, fromCamp, killSimPlayer } from "./harness/farm";
-import { DEFAULT_ATTACK_INTERVAL, PLAYER_BASE_REGEN } from "../../shared/rules";
+import { distance, fromCamp, killSimPlayer, onlyStat, savedBuild } from "./harness/farm";
 import { BASIC_PAPER_HAT, STARTER_STONE } from "../../shared/items";
 import { GRADE_GOLD_PRICE } from "../../shared/gear-grades";
-import { AUTO_FARM_WEIGHTS_KEY } from "../../src/game/runtime/auto-farm/auto-farm-plan";
-import { bossAggroRange } from "../../src/game/runtime/auto-farm/boss-zone";
 import { createStatTrackerModel, RUN_SETTLE_MS } from "../../src/ui/stat-tracker-model";
 
-// Auto Farm played headless on the game's own frame step (tests/scenarios/harness/sim.ts).
+// Auto Farm played headless on the game's own frame step (tests/scenarios/harness/sim.ts);
+// its shares and where it stands are in autofarm-shares.test.ts.
 // Minutes of play take a few seconds each.
 vi.setConfig({ testTimeout: 60_000 });
 
@@ -63,13 +61,10 @@ describe("Auto Farm interruptions (FARM-05)", () => {
   });
 });
 
-/** A saved build: base stats as the server keeps them. */
-const build = (damage: number, maxHp: number) => ({ damage, maxHp, armor: 0, regen: PLAYER_BASE_REGEN, attackRate: DEFAULT_ATTACK_INTERVAL });
-
 describe("Auto Farm, the boss and the next map (FARM-03)", () => {
   it("fights the Dragon only once the fight projects a win, wins it, and walks on into the Desert", async () => {
     // Short of the Dragon: Move On farms the Forest and never starts the fight.
-    const short = simPlayer({ advance: true, readiness: true, base: build(80, 4_000) });
+    const short = simPlayer({ advance: true, readiness: true, base: savedBuild(80, 4_000) });
     let report = await short.play(120, { autofarm: true });
     expect(report.bossAttempts).toEqual([]);
     expect(report.combat.hits.boss ?? 0).toBe(0);
@@ -77,7 +72,7 @@ describe("Auto Farm, the boss and the next map (FARM-03)", () => {
     short.dispose();
 
     // Ready for it: it goes for the Dragon, beats it, and takes the portal it opens.
-    const ready = simPlayer({ advance: true, readiness: true, base: build(500, 50_000) });
+    const ready = simPlayer({ advance: true, readiness: true, base: savedBuild(500, 50_000) });
     report = await ready.play(120, { autofarm: true });
     expect(report.bossAttempts.map(attempt => [attempt.map, attempt.outcome])).toEqual([["tutorial_forest", "won"]]);
     expect(report.travels.map(travel => [travel.from, travel.to])).toEqual([["tutorial_forest", "beginner_desert"]]);
@@ -85,14 +80,14 @@ describe("Auto Farm, the boss and the next map (FARM-03)", () => {
     ready.dispose();
 
     // Move At 10x asks for ten times the strength: the same build waits.
-    const careful = simPlayer({ advance: true, readiness: true, moveAt: 10, base: build(500, 50_000) });
+    const careful = simPlayer({ advance: true, readiness: true, moveAt: 10, base: savedBuild(500, 50_000) });
     report = await careful.play(120, { autofarm: true });
     expect(report.bossAttempts).toEqual([]);
     expect(report.endMap).toBe("tutorial_forest");
   });
 
   it("starts the fight the moment the build it farms grows ready, not before", async () => {
-    const growing = simPlayer({ advance: true, readiness: true, base: build(200, 20_000), economy: true });
+    const growing = simPlayer({ advance: true, readiness: true, base: savedBuild(200, 20_000), economy: true });
     const report = await growing.play(240, { autofarm: true });
     expect(report.bossAttempts).toHaveLength(1);
     expect(report.bossAttempts[0]).toMatchObject({ map: "tutorial_forest", outcome: "won" });
@@ -103,7 +98,7 @@ describe("Auto Farm, the boss and the next map (FARM-03)", () => {
   });
 
   it("with Move On off, farms on beside a boss it could beat", async () => {
-    const stay = simPlayer({ advance: false, readiness: true, base: build(500, 50_000) });
+    const stay = simPlayer({ advance: false, readiness: true, base: savedBuild(500, 50_000) });
     const report = await stay.play(90, { autofarm: true });
     expect(report.bossAttempts).toEqual([]);
     expect(report.endMap).toBe("tutorial_forest");
@@ -111,11 +106,11 @@ describe("Auto Farm, the boss and the next map (FARM-03)", () => {
   });
 
   it("past a beaten boss, walks into the next map only once ready for its enemies", async () => {
-    const weak = simPlayer({ advance: true, readiness: true, bossBeaten: true, base: build(30, 1_500) });
+    const weak = simPlayer({ advance: true, readiness: true, bossBeaten: true, base: savedBuild(30, 1_500) });
     let report = await weak.play(90, { autofarm: true });
     expect(report.travels).toEqual([]);
     weak.dispose();
-    const ready = simPlayer({ advance: true, readiness: true, bossBeaten: true, base: build(500, 50_000) });
+    const ready = simPlayer({ advance: true, readiness: true, bossBeaten: true, base: savedBuild(500, 50_000) });
     report = await ready.play(90, { autofarm: true });
     // The Dragon is already down: no fight, straight through its portal.
     expect(report.bossAttempts).toEqual([]);
@@ -141,118 +136,12 @@ describe("A Forest run (FARM-01)", () => {
   });
 });
 
-describe("Auto Farm's stat shares (FARM-02)", () => {
-  it("farms every stat by default; set shares split the time, damage counting twice, 0% never", async () => {
-    const even = simPlayer();
-    await even.play(300, { autofarm: true });
-    const time = farmedSeconds(even);
-    const stats = even.parts.autoFarm().choices().map(choice => choice.key);
-    expect(stats.length).toBe(6);
-    for (const stat of stats) expect(time[stat] ?? 0).toBeGreaterThan(0);
-    even.dispose();
-
-    // 80 / 10 / 10 of health, damage and speed: damage weighs 20, so 80 : 20 : 10 of the time.
-    const set = simPlayer({ seed: 3 });
-    set.parts.autoFarm().start({ "stat:health": 80, "stat:damage": 10, "stat:speed": 10, "stat:regen": 0, "stat:armor": 0, "stat:crit": 0 });
-    await set.play(300, { autofarm: true });
-    const split = farmedSeconds(set);
-    const total = Object.values(split).reduce((sum, seconds) => sum + seconds, 0);
-    expect(split["stat:health"] / total).toBeGreaterThan(.6);
-    expect(split["stat:damage"] / total).toBeGreaterThan(.1);
-    expect(split["stat:damage"]).toBeGreaterThan(split["stat:speed"]);
-    expect(Object.keys(split).sort()).toEqual(["stat:damage", "stat:health", "stat:speed"]);
-  });
-
-  it("reads sliders saved by an old version: a stat left at 0% stays off, the rest are farmed by their weight", async () => {
-    const sim = simPlayer({ seed: 2 });
-    // The 0-200% sliders of before: damage at 200, health at 50, three stats at 0 (speed was never moved, so 100).
-    sim.parts.storage.setItem(AUTO_FARM_WEIGHTS_KEY, JSON.stringify({ auto: false, weights: { "stat:damage": 200, "stat:health": 50, "stat:armor": 0, "stat:regen": 0, "stat:crit": 0 } }));
-    const farm = sim.parts.autoFarm();
-    farm.start(farm.savedShares());
-    await sim.play(200, { autofarm: true });
-    const time = farmedSeconds(sim);
-    expect(Object.keys(time).sort()).toEqual(["stat:damage", "stat:health", "stat:speed"]);
-    expect(time["stat:damage"]).toBeGreaterThan(time["stat:speed"]);
-    expect(time["stat:speed"]).toBeGreaterThan(time["stat:health"]);
-  });
-});
-
-describe("Where Auto Farm stands (FARM-04, FARM-08)", () => {
-  /** The gap between the player and the nearest enemy, sampled each second the player is attacking. */
-  async function attackGaps(weapon: string, profile: Parameters<typeof simPlayer>[0] = {}, shares?: Record<string, number>) {
-    const sim = simPlayer({ weapon, base: build(20, 1_000), ...profile });
-    if (shares) sim.parts.autoFarm().start(shares);
-    const gaps: number[] = [];
-    for (let second = 0; second < 120; second++) {
-      await sim.play(1, { autofarm: true });
-      const { player } = sim.parts;
-      if (player.combatFacing == null) continue;
-      gaps.push(Math.min(...sim.enemiesNear().map(enemy => distance(enemy, player) - enemy.r - player.r)));
-    }
-    if (!profile.reflectOnly) expect(sim.report().kills).toBeGreaterThan(5);
-    return gaps;
-  }
-
-  it("a sword closes to its own reach to fight, where a bow fights from range", async () => {
-    const sword = await attackGaps("wooden_sword"), bow = await attackGaps("starter_bow");
-    expect(Math.max(...sword)).toBeLessThan(100);
-    expect(bow.filter(gap => gap > 100).length).toBeGreaterThan(0);
-  });
-
-  it("in Reflect Only a bow walks up to enemies that shoot from range, since only hits thrown back hurt them", async () => {
-    // Damage is paid by camps that keep their distance and shoot.
-    const shooting = await attackGaps("starter_bow", {}, only("stat:damage"));
-    const reflecting = await attackGaps("starter_bow", { reflectOnly: true, perks: { riposte: 5 } }, only("stat:damage"));
-    const far = (gaps: number[]) => gaps.filter(gap => gap > 60).length / gaps.length;
-    // Shooting, a fair share of its attacks land from range; reflecting, it stands against them.
-    expect(far(shooting)).toBeGreaterThan(.2);
-    expect(far(reflecting)).toBeLessThan(far(shooting) / 2);
-  });
-
-  it("after the boss kills it, it farms on and tries the boss again only once it is a quarter stronger", async () => {
-    const sim = simPlayer({ advance: true, readiness: true, base: build(500, 50_000) });
-    // It sets off for the Dragon at once; the Dragon kills it on the way in.
-    await sim.play(1, { autofarm: true });
-    expect(sim.parts.autoFarm().state().phase).toBe("boss");
-    const fellAt = sim.power();
-    killSimPlayer(sim);
-    await sim.play(60, { autofarm: true });
-    expect(sim.report().bossAttempts).toHaveLength(1);
-    expect(sim.mapId()).toBe("tutorial_forest");
-    expect(sim.power()).toBeLessThan(fellAt * 1.25);
-    // Far stronger (gear, research): it goes back and wins.
-    Object.assign(sim.parts.player, { damage: sim.parts.player.damage * 2, baseMaxHp: sim.parts.player.baseMaxHp * 2 });
-    expect(sim.power()).toBeGreaterThan(fellAt * 1.25);
-    const report = await sim.play(60, { autofarm: true });
-    expect(report.bossAttempts.slice(0, 2).map(attempt => [attempt.map, attempt.outcome])).toEqual([["tutorial_forest", "died"], ["tutorial_forest", "won"]]);
-  });
-
-  it("walks round a live boss's range to reach its camp, never into it", async () => {
-    const sim = simPlayer();
-    const dragon = sim.parts.bosses.dragon!;
-    // East of the Dragon, with the only stat on Farm (armor) at a camp to its west.
-    Object.assign(sim.parts.player, { x: dragon.x + 960, y: dragon.y + 60 });
-    sim.parts.autoFarm().start({ "stat:armor": 100, "stat:health": 0, "stat:damage": 0, "stat:speed": 0, "stat:regen": 0, "stat:crit": 0 });
-    let closest = Infinity;
-    for (let step = 0; step < 200; step++) {
-      await sim.play(.1, { autofarm: false });
-      closest = Math.min(closest, distance(dragon, sim.parts.player));
-    }
-    expect(fromCamp(sim, "stat:armor")).toBeLessThan(300);
-    expect(closest).toBeGreaterThan(bossAggroRange("tutorial_forest")!);
-    expect(sim.report().combat.hits.boss ?? 0).toBe(0);
-  });
-});
-
-/** Shares with one stat on Farm and the rest Off. */
-const only = (stat: string) => Object.fromEntries(["stat:health", "stat:damage", "stat:speed", "stat:regen", "stat:armor", "stat:crit"].map(key => [key, key === stat ? 100 : 0]));
-
 describe("Pull and Aggro switches (FARM-10)", () => {
   /** Farms Max Health for a minute; returns the kinds pulled, how far the player walked after settling, and the closest a pulled enemy came. */
   async function farmHealth(profile: Parameters<typeof simPlayer>[0]) {
-    const sim = simPlayer({ base: build(20, 1_000), ...profile });
+    const sim = simPlayer({ base: savedBuild(20, 1_000), ...profile });
     const farm = sim.parts.autoFarm();
-    farm.start(only("stat:health"));
+    farm.start(onlyStat("stat:health"));
     const kinds = new Set<string>();
     let walked = 0, closest = Infinity, last = { x: sim.parts.player.x, y: sim.parts.player.y };
     for (let second = 0; second < 60; second++) {
@@ -288,7 +177,7 @@ describe("Pull and Aggro switches (FARM-10)", () => {
       const wounded = sim.parts.enemies.find(enemy => enemy.type === "King Slime")!;
       wounded.hp = 1;
       sim.parts.autoFarm().setPriority(priority);
-      sim.parts.autoFarm().start(only("stat:health"));
+      sim.parts.autoFarm().start(onlyStat("stat:health"));
       await sim.play(8, { autofarm: false });
       return distance(wounded, start) - distance(wounded, sim.parts.player);
     };
@@ -299,7 +188,7 @@ describe("Pull and Aggro switches (FARM-10)", () => {
 
   it("an Aggro run's groups chase the player from arrival, as many as the run asks for, and Pull brings nothing else", async () => {
     for (const count of [1, 2]) {
-      const sim = simPlayer({ aggro: count, pull: true, base: build(20, 1_000) });
+      const sim = simPlayer({ aggro: count, pull: true, base: savedBuild(20, 1_000) });
       const farm = sim.parts.autoFarm();
       const chasing = new Set<string>();
       for (let second = 0; second < 10; second++) {
@@ -322,9 +211,9 @@ describe("Pull and Aggro switches (FARM-10)", () => {
 
 describe("Map changes Auto Farm did not make (FARM-06)", () => {
   it("walked through a portal by hand, it farms the next map with the same shares and stays there", async () => {
-    const sim = simPlayer({ bossBeaten: true, base: build(60, 5_000) });
+    const sim = simPlayer({ bossBeaten: true, base: savedBuild(60, 5_000) });
     const farm = sim.parts.autoFarm();
-    farm.start(only("stat:damage"));
+    farm.start(onlyStat("stat:damage"));
     await sim.play(10, { autofarm: false });
     // The player steers into the Forest's portal to the Desert while the farm runs.
     const portal = sim.parts.mapController.activePortal()!;

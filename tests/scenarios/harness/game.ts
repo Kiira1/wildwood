@@ -24,6 +24,24 @@ vi.mock("../../../src/module_bindings", async (importOriginal) => {
 
 type Callback = (...args: any[]) => void;
 
+/**
+ * Modules that only lay out constants when they load (the hills' rocks, the
+ * grove's trees) and keep no state: every page shares one copy instead of
+ * laying them out again, which was a sixth of a booted scenario's time.
+ */
+const KEPT_MODULES = [/\/shared\/mining\.ts$/, /\/shared\/woodcutting\.ts$/];
+
+/** vi.resetModules(), keeping KEPT_MODULES: the next import runs every other module afresh. */
+function freshModules() {
+  type ModuleNode = { promise?: unknown; exports?: unknown; evaluated: boolean; importers: Set<string> };
+  const modules = (globalThis as { __vitest_worker__?: { evaluatedModules?: { idToModuleMap?: Map<string, ModuleNode> } } })
+    .__vitest_worker__?.evaluatedModules?.idToModuleMap;
+  const kept = [...modules ?? []].filter(([path, node]) => node.evaluated && node.exports && KEPT_MODULES.some(pattern => pattern.test(path)))
+    .map(([, node]) => ({ node, promise: node.promise, exports: node.exports }));
+  vi.resetModules();
+  for (const { node, promise, exports } of kept) Object.assign(node, { promise, exports, evaluated: true });
+}
+
 afterEach(() => {
   delete (navigator as { onLine?: boolean }).onLine;
   vi.clearAllTimers();
@@ -177,7 +195,7 @@ export type GameOptions = {
  * side is the network (DbConnection). Use vi.useFakeTimers() first.
  */
 export async function bootGame(world: ScenarioWorld, options: GameOptions = {}) {
-  vi.resetModules();
+  freshModules();
   const base = stubGameBootEnvironment();
   // linkedom's window writes defined properties through to Node's globalThis, where
   // the client pins window.wildstatCoop for good; a window of this page's own takes them.
@@ -261,11 +279,13 @@ export async function bootGame(world: ScenarioWorld, options: GameOptions = {}) 
   let game: unknown = null;
   /** Runs game.js when the coop bundle has inserted its script tag, as the browser would. */
   async function loadGameScript() {
+    // Checked every frame: once loaded, skip the document search.
+    if (game) return true;
     const script = env.document.getElementById("wildstatGameScript");
-    if (!script || game) return Boolean(game);
+    if (!script) return false;
     currentScript = script;
     // game.js is a bundle of its own: fresh copies of every module it shares with coop-client.js.
-    vi.resetModules();
+    freshModules();
     try { game = await import("../../../src/main"); } finally { currentScript = null; }
     script.dispatchEvent(new (env.window as any).Event("load"));
     // The page finishes loading once the game's script has run.

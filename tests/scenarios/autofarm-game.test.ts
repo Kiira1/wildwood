@@ -5,64 +5,10 @@ import { AGGRO_GROUPS } from "../../src/game/runtime/auto-farm/aggro-picks";
 import { PLAYER_SPEED } from "../../shared/rules";
 import { createSpawnSites } from "../../src/game/world";
 import { ENEMY_TYPES } from "../../src/game/enemies";
-import type { ScenarioWorld } from "./harness/server";
+import { farmer, strong } from "./harness/farmer";
 
-// Auto Farm in the booted game: the card, its key and the windows around it.
-
-/** A player who has beaten the Dragon (Auto Farm unlocked), in the world; `stats` overrides the saved build. */
-async function farmer(world: ScenarioWorld, name = "Ann", stats: Record<string, unknown> = {}) {
-  const player = world.join(name);
-  player.patch("playerProgress", { desertUnlocked: true, ...stats });
-  player.disconnect();
-  const network = { down: false };
-  const tab = await playAs(world, name, { refuse: () => network.down ? new Error("server unreachable") : null });
-  return {
-    tab, player, network,
-    /** Other players see a farmer: the server holds the farm's puppet for them. */
-    farming: () => Boolean(world.db.playerAutoFarmPuppet.identity.find(player.identity)),
-    /** The stat group other players see it farm ("stat:health"), or null when it is not farming. */
-    group: () => (world.db.playerAutoFarmPuppet.identity.find(player.identity)?.group as string | undefined) ?? null,
-    /** Kills the server has accepted from this player. */
-    kills: () => Number(world.db.playerLifetime.identity.find(player.identity)?.enemyKills ?? 0),
-  };
-}
-
-/** A build that outlasts the Forest, so a minute of farming is a minute of kills. */
-const strong = { damage: 500, maxHp: 5_000 };
-
-describe("Auto Farm interruptions in the game (FARM-05)", () => {
-  it("holds while the game is paused for a lost connection and through a won duel, then farms on by itself", async () => {
-    const world = gameWorld();
-    const bob = world.join("Bob");
-    const ann = await farmer(world, "Ann", strong);
-    const { tab } = ann;
-
-    // F starts the farm: the world sees a farmer, and its kills come in (Auto Farm reports them once a minute).
-    pressKey(tab, "KeyF");
-    expect(await tab.until(ann.farming, 10_000)).toBe(true);
-    expect(await tab.until(() => ann.kills() > 0, 75_000)).toBe(true);
-
-    // The server goes out of reach: the game pauses behind the reconnect window. It comes back, Retry, and the farm carries on unasked.
-    ann.network.down = true;
-    tab.connection()!.fake.drop(new Error("network"));
-    await tab.play(3_000);
-    expect(tab.shown("reconnectOverlay")).toBe(true);
-    expect(ann.farming()).toBe(false);
-    ann.network.down = false;
-    tab.tap("reconnectRetryBtn");
-    expect(await tab.until(ann.farming, 10_000)).toBe(true);
-    let before = ann.kills();
-    expect(await tab.until(() => ann.kills() > before, 75_000)).toBe(true);
-
-    // A duel (Ann challenges Bob, as the profile's Duel button does) holds the farm through the arena and its result.
-    await (tab.connection() as any).reducers.requestDuel({ opponent: bob.identity });
-    expect(await tab.until(() => tab.shown("closeDuelResultBtn"), 60_000, 250)).toBe(true);
-    tab.tap("closeDuelResultBtn");
-    before = ann.kills();
-    expect(await tab.until(() => ann.kills() > before, 75_000)).toBe(true);
-    expect(ann.farming()).toBe(true);
-  }, 90_000);
-});
+// Auto Farm in the booted game: the card, its key and the windows around it
+// (through a lost connection and a duel: autofarm-interruptions.test.ts).
 
 /** The stat rows the open Auto Farm window offers, by group ("stat:health"). */
 const farmRows = (tab: GameTab) => [...tab.document.querySelectorAll<HTMLElement>("#autoFarmContent [data-group]")].map(row => row.dataset.group!);

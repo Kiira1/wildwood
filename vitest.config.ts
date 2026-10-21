@@ -1,4 +1,5 @@
 import { configDefaults, defineConfig } from 'vitest/config';
+import { WeightedSequencer } from './tests/shard-sequencer';
 
 // Opt-in runners: offline tools that use vitest as a harness, not tests. Each
 // runs only through its own command, never in the default suite.
@@ -18,5 +19,7 @@ export default defineConfig({
       ...configDefaults.exclude, 'mobile/.build/**', 'mobile/www/**', 'local-data/**', '.claude/**',
       ...runners.filter(runner => !runner.enabled).map(runner => runner.file),
     ],
+    // CI's --shard parts split by each file's time (tests/shard-weights.json), not file count.
+    sequence: { sequencer: WeightedSequencer },
   },
 });
