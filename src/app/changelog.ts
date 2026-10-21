@@ -3775,6 +3775,7 @@ const RELEASE_DATES: Record<string, string> = {
 };
 
 export const RELEASE_DAYS: Record<string, string> = {
+  "0.916.21": "2026-10-21",
   "0.916.20": "2026-10-21",
   "0.916.19": "2026-10-21",
   "0.916.18": "2026-10-20",
