@@ -16,6 +16,9 @@ type TextSprite = {
   pixels: number;
 };
 
+/** A run of text in one colour; a label's runs sit side by side on one sprite. */
+export type TextSegment = { text: string; color: string };
+
 type TextSpriteMetrics = {
   width: number;
   actualBoundingBoxAscent?: number;
@@ -60,12 +63,13 @@ type Matrix = { a: number; b: number; c: number; d: number; e: number; f: number
  * sprite's scale is the drawing scale, so it is never resampled.
  */
 export function createCanvasPrimitives(ctx: CanvasRenderingContext2D) {
-  const TEXT_CACHE_LIMIT = 256;
+  // Room for every label on a crowded screen: a wounded enemy's health numbers are a sprite each.
+  const TEXT_CACHE_LIMIT = 512;
   const TEXT_CACHE_PIXEL_LIMIT = 4_000_000;
   const textSprites = new Map<string, TextSprite>();
   let cachedTextPixels = 0;
 
-  function textSprite(text: string, fillColor: string, strokeWidth: number | null, scale: number) {
+  function textSprite(text: string, fillColor: string, strokeWidth: number | null, scale: number, segments?: readonly TextSegment[]) {
     const font = ctx.font;
     const direction = ctx.direction;
     const key = `${scale}\u0000${font}\u0000${direction}\u0000${fillColor}\u0000${strokeWidth ?? "fill"}\u0000${text}`;
@@ -84,9 +88,14 @@ export function createCanvasPrimitives(ctx: CanvasRenderingContext2D) {
       target.font = font;
       target.direction = direction;
     }
-    const metrics = target?.measureText(text) ?? ctx.measureText(text);
+    const measure = (value: string) => target?.measureText(value) ?? ctx.measureText(value);
+    const metrics = measure(text);
+    // Runs are laid side by side at their own widths, as one canvas would draw them.
+    const segmentWidths = segments?.map(segment => measure(segment.text).width);
+    const runWidth = segmentWidths?.reduce((sum, width) => sum + width, 0);
     const fontSize = Number.parseFloat(font.match(/([\d.]+)px/)?.[1] ?? "16");
-    const { textWidth, ascent, padding, logicalWidth, logicalHeight } = textSpriteLayout(metrics, fontSize, strokeWidth);
+    const { textWidth, ascent, padding, logicalWidth, logicalHeight } = textSpriteLayout(
+      runWidth === undefined ? metrics : { ...metrics, width: runWidth }, fontSize, strokeWidth);
     canvas.width = Math.ceil(logicalWidth * scale);
     canvas.height = Math.ceil(logicalHeight * scale);
     if (target) {
@@ -96,13 +105,17 @@ export function createCanvasPrimitives(ctx: CanvasRenderingContext2D) {
       target.textAlign = "left";
       target.textBaseline = "alphabetic";
       target.lineJoin = "round";
-      if (strokeWidth !== null) {
-        target.lineWidth = strokeWidth;
-        target.strokeStyle = "#000";
-        target.strokeText(text, padding, padding + ascent);
+      let x = padding;
+      for (const [index, run] of (segments ?? [{ text, color: fillColor }]).entries()) {
+        if (strokeWidth !== null) {
+          target.lineWidth = strokeWidth;
+          target.strokeStyle = "#000";
+          target.strokeText(run.text, x, padding + ascent);
+        }
+        target.fillStyle = run.color;
+        target.fillText(run.text, x, padding + ascent);
+        x += segmentWidths?.[index] ?? 0;
       }
-      target.fillStyle = fillColor;
-      target.fillText(text, padding, padding + ascent);
     }
     const sprite: TextSprite = {
       image: canvas, scale, pixelWidth: canvas.width, pixelHeight: canvas.height,
@@ -175,10 +188,10 @@ export function createCanvasPrimitives(ctx: CanvasRenderingContext2D) {
     target.setTransform(1, 0, 0, 1, 0, 0);
   }
 
-  function drawText(text: string, x: number, y: number, fillColor: string, strokeWidth: number | null) {
+  function drawText(text: string, x: number, y: number, fillColor: string, strokeWidth: number | null, segments?: readonly TextSegment[]) {
     const pixelRatio = canvasRenderPixelRatio(window.devicePixelRatio || 1);
     if (typeof ctx.getTransform !== "function") {
-      const sprite = textSprite(text, fillColor, strokeWidth, pixelRatio);
+      const sprite = textSprite(text, fillColor, strokeWidth, pixelRatio, segments);
       const { left, top } = spriteOrigin(sprite, x, y);
       const smoothing = ctx.imageSmoothingEnabled;
       ctx.imageSmoothingEnabled = true;
@@ -187,7 +200,7 @@ export function createCanvasPrimitives(ctx: CanvasRenderingContext2D) {
       return;
     }
     const m = ctx.getTransform();
-    const sprite = textSprite(text, fillColor, strokeWidth, rasterScale(Math.hypot(m.a, m.b), pixelRatio));
+    const sprite = textSprite(text, fillColor, strokeWidth, rasterScale(Math.hypot(m.a, m.b), pixelRatio), segments);
     const { left, top } = spriteOrigin(sprite, x, y);
     blit(ctx, m, sprite, left, top);
     ctx.setTransform(m);
@@ -228,6 +241,16 @@ export function createCanvasPrimitives(ctx: CanvasRenderingContext2D) {
     drawText(text, x, y, fillColor, strokeWidth);
   }
 
+  /** Outlined text in several colours, drawn and cached as one sprite, aligned as one piece of text. */
+  function outlinedWorldSegments(segments: readonly TextSegment[], x: number, y: number, strokeWidth = ctx.lineWidth) {
+    let text = "", colors = "";
+    for (const segment of segments) {
+      text += segment.text;
+      colors += `${segment.color}\u0001${segment.text.length}\u0001`;
+    }
+    drawText(text, x, y, colors, strokeWidth, segments);
+  }
+
   function fillWorldText(text: string, x: number, y: number) {
     if (typeof ctx.fillStyle !== "string") {
       ctx.fillText(text, x, y);
@@ -236,5 +259,5 @@ export function createCanvasPrimitives(ctx: CanvasRenderingContext2D) {
     drawText(text, x, y, ctx.fillStyle, null);
   }
 
-  return { outlinedWorldText, fillWorldText, pixelCircle, roundRect };
+  return { outlinedWorldText, outlinedWorldSegments, fillWorldText, pixelCircle, roundRect };
 }

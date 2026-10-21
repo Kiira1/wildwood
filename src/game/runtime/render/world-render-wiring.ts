@@ -145,6 +145,7 @@ export function createWorldRendering(deps: WorldRenderingDeps) {
     drawShadow: canvasRuntime.drawActorShadow,
     pixelCircle: canvasRuntime.pixelCircle,
     outlinedText: canvasRuntime.outlinedWorldText,
+    outlinedSegments: canvasRuntime.outlinedWorldSegments,
     fillText: canvasRuntime.fillWorldText,
     bossHpLossFlashDuration: BOSS_HP_LOSS_FLASH_DURATION,
     spiderWebRange: SPIDER_WEB_RANGE,

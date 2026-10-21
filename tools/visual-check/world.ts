@@ -215,6 +215,7 @@ export async function createWorld(ctx: CanvasRenderingContext2D, options: {
     enemyTextVisible: () => true,
     pixelCircle: primitives.pixelCircle,
     outlinedText: primitives.outlinedWorldText,
+    outlinedSegments: primitives.outlinedWorldSegments,
     drawShadow,
     drawStatus: identity.drawActorStatus,
     drawIdentity: identity.drawPlayerIdentity,

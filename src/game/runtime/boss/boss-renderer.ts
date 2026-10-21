@@ -64,7 +64,7 @@ import {
 } from "./boss-label-style";
 import { healthBarTextY } from "../render/health-bar-layout";
 import { BOSS_KINDS, type BossArtAssets, type BossHazards, type BossKind, type BossStates } from "./boss-registry";
-import { drawScreenSpaceAt, snapWorldRenderCoordinate } from "../render/render-space";
+import { drawScreenSpaceAt, fillPixelRect, snapWorldRenderCoordinate } from "../render/render-space";
 import { scorpionSpriteFrame } from "./scorpion-sprite";
 import { prismshellSpriteFrame } from "./prismshell-sprite";
 import { ironhornSpriteFrame } from "./ironhorn-sprite";
@@ -207,17 +207,17 @@ export function createBossRenderer(options: {
       const barY = -options_.barGap;
       const ratio = clamp(options_.hp / options_.maxHp, 0, 1);
       ctx.fillStyle = "rgba(0,0,0,.9)";
-      ctx.fillRect(barX - 2, barY - 2, options_.barWidth + 4, options_.barHeight + 4);
+      fillPixelRect(ctx, barX - 2, barY - 2, options_.barWidth + 4, options_.barHeight + 4);
       ctx.fillStyle = "#000";
-      ctx.fillRect(barX, barY, options_.barWidth, options_.barHeight);
+      fillPixelRect(ctx, barX, barY, options_.barWidth, options_.barHeight);
       ctx.fillStyle = options_.fillColor;
-      ctx.fillRect(barX, barY, Math.round(options_.barWidth * ratio), options_.barHeight);
+      fillPixelRect(ctx, barX, barY, Math.round(options_.barWidth * ratio), options_.barHeight);
       if (options_.hpLossFlashTimer > 0 && options_.hpLossFlashFrom > options_.hp) {
         const fromRatio = clamp(options_.hpLossFlashFrom / options_.maxHp, ratio, 1);
         ctx.save();
         ctx.globalAlpha = clamp(options_.hpLossFlashTimer / options.hpLossFlashDuration, 0, 1);
         ctx.fillStyle = "#fff";
-        ctx.fillRect(
+        fillPixelRect(ctx,
           barX + Math.round(options_.barWidth * ratio),
           barY,
           Math.max(1, Math.round(options_.barWidth * (fromRatio - ratio))),

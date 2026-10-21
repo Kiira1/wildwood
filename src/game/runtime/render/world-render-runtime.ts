@@ -41,11 +41,13 @@ import { drawOxSprite } from "./ox-sprite";
 import { isGuildHallMap } from "../../../../shared/guild-hall";
 import { GUILD_HALL_GROUND } from "../../guild-hall";
 import { createGuildCrestDrawer, createGuildHallRoomsDrawer, drawSeated, GUILD_HALL_SEAT_FACING, seatedAt } from "../guild-hall/guild-hall-render";
+import type { TextSegment } from "../../canvas";
 
 type Viewport = { width: number; height: number; dpr: number };
 type Portal = { x: number; y: number; width: number; height: number; depth: number; destination: MapId };
 type BootsPickup = { x: number; y: number; r: number; collected: boolean };
 type OutlinedText = (text: string, x: number, y: number, color: string, strokeWidth?: number) => void;
+type OutlinedSegments = (segments: readonly TextSegment[], x: number, y: number, strokeWidth?: number) => void;
 type DrawShadow = (x: number, y: number, width: number, alpha?: number) => void;
 
 export type WorldRenderRuntimeOptions = {
@@ -115,6 +117,7 @@ export type WorldRenderRuntimeOptions = {
   drawShadow: DrawShadow;
   pixelCircle: (x: number, y: number, radius: number) => void;
   outlinedText: OutlinedText;
+  outlinedSegments: OutlinedSegments;
   fillText: (text: string, x: number, y: number, color: string) => void;
   bossHpLossFlashDuration: number;
   spiderWebRange: number;
@@ -313,6 +316,7 @@ export function createWorldRenderRuntime(options: WorldRenderRuntimeOptions) {
     enemyTextVisible: options.enemyTextVisible,
     pixelCircle: options.pixelCircle,
     outlinedText: options.outlinedText,
+    outlinedSegments: options.outlinedSegments,
     drawShadow: drawEntityShadow,
     drawStatus: options.drawStatus,
     drawIdentity: options.drawIdentity,
