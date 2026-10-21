@@ -40,6 +40,7 @@ import { mergeMailboxReceipts, removeMailboxReceipts } from "./mailbox";
 import { mergeOnboarding } from "./onboarding";
 import { mergeAudioSettings, removeAudioSettings } from "./audio-settings";
 import { mergeAdGemReward, removeAdGemReward } from "./ad-gem-reward";
+import { mergeDailyGemBonus } from "./gem-wallet";
 import { mergeChatMute, removeChatMute } from "./chat-mute";
 import { mergeLootSettings, removeLootSettings } from "./loot-settings";
 import { mergeProfileSnapshot, removeProfileSnapshot } from "./profile-snapshot";
@@ -251,6 +252,7 @@ export function createAccountLifecycle(deps: AccountLifecycleDeps) {
     });
     mergeGuestGemWallet(ctx, link.guest, ctx.sender, link.code);
     mergeAdGemReward(ctx, link.guest, ctx.sender);
+    mergeDailyGemBonus(ctx, link.guest, ctx.sender);
     mergeChatMute(ctx, link.guest, ctx.sender);
     mergeBalanceApologyNotice(ctx, link.guest, ctx.sender);
     mergeItemGifts(ctx, link.guest, ctx.sender);

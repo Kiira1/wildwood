@@ -103,7 +103,7 @@ describe("Gem spends on the server", () => {
 });
 
 describe("Gifts that pay once", () => {
-  it("Daily Gems pay a guest once a day, and again the next day", () => {
+  it("Daily Gems pay a guest once a day, not again in the account it links to that day, and again the next day", () => {
     const world = scenarioWorld();
     const gina = world.join("Gina");
     expect(gina.view("my_daily_gem_bonus")[0]).toBeTruthy();
@@ -113,11 +113,15 @@ describe("Gifts that pay once", () => {
     expect(paid).toBeGreaterThan(0n);
     expect(gina.refusal("claimDailyGemBonus")).not.toBeNull();
     expect(gems(world, gina) - before).toBe(paid);
+    // Linked the same day, the account carries today's claim.
+    const al = linkGuest(world, gina, "Al");
+    expect(al.refusal("claimDailyGemBonus")).not.toBeNull();
+    expect(gems(world, al) - before).toBe(paid);
     world.advance(DAY);
-    gina.disconnect(); gina.connect();
-    gina.call("enterWorldWithTutorial", { tabId: `tab-${gina.hex.slice(0, 12)}`, forceTakeover: false });
-    gina.call("claimDailyGemBonus");
-    expect(gems(world, gina) - before).toBe(BigInt(paid) * 2n);
+    al.disconnect(); al.connect();
+    al.call("enterWorldWithTutorial", { tabId: `tab-${al.hex.slice(0, 12)}`, forceTakeover: false });
+    al.call("claimDailyGemBonus");
+    expect(gems(world, al) - before).toBe(BigInt(paid) * 2n);
   });
 
   it("a Gem letter is read without paying, pays once on claim, and is gone with its receipts a week after it was sent", () => {

@@ -110,3 +110,24 @@ export function ensureDailyGemBonusState(ctx: any, identity: any) {
   else ctx.db.dailyGemBonus.insert(next);
   return next;
 }
+
+/** A linked guest's daily claim carries over: the account keeps the later claim day, so one day never pays twice. */
+export function mergeDailyGemBonus(ctx: any, guest: any, account: any) {
+  const guestRow = ctx.db.dailyGemBonus.identity.find(guest);
+  if (!guestRow?.lastClaimedDayKey) return;
+  const accountRow = ctx.db.dailyGemBonus.identity.find(account);
+  const day = (key: string) => Number(key || 0);
+  if (accountRow && day(accountRow.lastClaimedDayKey) >= day(guestRow.lastClaimedDayKey)) return;
+  const lastClaimedDayKey = guestRow.lastClaimedDayKey;
+  const claimable = accountRow?.claimableDayKey ?? "";
+  const next = {
+    identity: account,
+    claimableDayKey: claimable && day(claimable) > day(lastClaimedDayKey) ? claimable : "",
+    lastClaimedDayKey,
+    claimCycle: accountRow?.claimCycle ?? guestRow.claimCycle,
+    revision: (accountRow?.revision ?? 0n) + 1n,
+    updatedAt: ctx.timestamp,
+  };
+  if (accountRow) ctx.db.dailyGemBonus.identity.update(next);
+  else ctx.db.dailyGemBonus.insert(next);
+}
