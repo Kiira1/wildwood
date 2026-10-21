@@ -42,6 +42,7 @@ import ConfigureGemCommerceReducer from "../configure_gem_commerce_reducer";
 import ConfigurePatreonReducer from "../configure_patreon_reducer";
 import ConvertItemToCosmeticReducer from "../convert_item_to_cosmetic_reducer";
 import CraftGradeGearReducer from "../craft_grade_gear_reducer";
+import CraftGradeItemReducer from "../craft_grade_item_reducer";
 import CreateGuildReducer from "../create_guild_reducer";
 import DeactivateCardReducer from "../deactivate_card_reducer";
 import DestroyEquipmentReducer from "../destroy_equipment_reducer";
@@ -109,6 +110,7 @@ import RecordConnectionDiagnosticReducer from "../record_connection_diagnostic_r
 import RecordPlayerDeathReducer from "../record_player_death_reducer";
 import RecordStartupTelemetryReducer from "../record_startup_telemetry_reducer";
 import RefineItemReducer from "../refine_item_reducer";
+import ReforgeWeaponReducer from "../reforge_weapon_reducer";
 import RefreshDailyQuestsReducer from "../refresh_daily_quests_reducer";
 import RegisterClientVersionReducer from "../register_client_version_reducer";
 import RegisterProtocolReducer from "../register_protocol_reducer";
@@ -225,6 +227,7 @@ export type ConfigureGemCommerceParams = __Infer<typeof ConfigureGemCommerceRedu
 export type ConfigurePatreonParams = __Infer<typeof ConfigurePatreonReducer>;
 export type ConvertItemToCosmeticParams = __Infer<typeof ConvertItemToCosmeticReducer>;
 export type CraftGradeGearParams = __Infer<typeof CraftGradeGearReducer>;
+export type CraftGradeItemParams = __Infer<typeof CraftGradeItemReducer>;
 export type CreateGuildParams = __Infer<typeof CreateGuildReducer>;
 export type DeactivateCardParams = __Infer<typeof DeactivateCardReducer>;
 export type DestroyEquipmentParams = __Infer<typeof DestroyEquipmentReducer>;
@@ -292,6 +295,7 @@ export type RecordConnectionDiagnosticParams = __Infer<typeof RecordConnectionDi
 export type RecordPlayerDeathParams = __Infer<typeof RecordPlayerDeathReducer>;
 export type RecordStartupTelemetryParams = __Infer<typeof RecordStartupTelemetryReducer>;
 export type RefineItemParams = __Infer<typeof RefineItemReducer>;
+export type ReforgeWeaponParams = __Infer<typeof ReforgeWeaponReducer>;
 export type RefreshDailyQuestsParams = __Infer<typeof RefreshDailyQuestsReducer>;
 export type RegisterClientVersionParams = __Infer<typeof RegisterClientVersionReducer>;
 export type RegisterProtocolParams = __Infer<typeof RegisterProtocolReducer>;

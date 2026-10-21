@@ -5,11 +5,10 @@ import {
 import { armorClassOf, bootStyleOf, gradeEquipmentKindOf, gradeOf, isGradeItemId, type GradeItemId } from "./grade-equipment";
 import { GEAR_GRADES, gradeIndex, type ArmorClass, type BootStyle, type GearGrade } from "./gear-grades";
 import { GRADE_SHOP_LINES, gradeShopItemId, type GradeShopLine } from "./grade-shop";
-import { isSkillWeapon } from "./weapon-skills";
 
 /**
- * Graded gear by crafting (craft_grade_gear): which craft makes each piece, what it takes, and the craft level its
- * grade needs. Any open grade can be crafted, and a weapon already held can be reforged for better skills. Shared so the
+ * Graded gear by crafting (craft_grade_item): which craft makes each piece, what it takes, and the craft level its
+ * grade needs. Any open grade can be crafted, and any weapon copy held can be reforged (reforge_weapon). Shared so the
  * Smith's window and the server judge a craft the same way.
  */
 export type CraftExperience = Readonly<Partial<Record<CraftSkill, number | bigint>>>;
@@ -81,14 +80,6 @@ export function gradeCraftOffer(line: GradeShopLine, level: number): GradeCraftO
   const grade = grades.at(-1) ?? GEAR_GRADES[0], next = GEAR_GRADES[gradeIndex(grade) + 1];
   return { itemId: gradeShopItemId(line, grade), grade, grades: grades.length ? grades : [grade], ...(next ? { next: gradeShopItemId(line, next) } : {}) };
 }
-
-/**
- * What crafting a piece does: a new piece; a Reforge of a weapon already held, rolling its skills again and
- * keeping the higher of each (as a duplicate drop once did); nothing for armor already held.
- */
-export type GradeCraftAction = "craft" | "reforge" | "owned";
-export const gradeCraftAction = (itemId: GradeItemId, held: ReadonlySet<string>): GradeCraftAction =>
-  !held.has(itemId) ? "craft" : isSkillWeapon(itemId) ? "reforge" : "owned";
 
 /** Materials as one string, keys sorted, so the window's recipe and the server's compare exactly. */
 export const craftMaterialsKey = (materials: Materials) =>

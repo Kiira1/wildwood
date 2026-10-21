@@ -100,7 +100,7 @@ const sameIdentity = (a: Identity, b: Identity) => a.toHexString() === b.toHexSt
 const byId = (a: { id: bigint }, b: { id: bigint }) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0);
 
 /** A kept copy's or an offer's roll: a staff's from player_staff_skill, any other from its own columns. */
-const copyRollOf = (ctx: Ctx, copy: any): WeaponSkillRoll => isSkillStaff(copy.itemId) ? staffCopyRoll(ctx, copy.id) : weaponSkillRollOf(copy);
+export const copyRollOf = (ctx: Ctx, copy: any): WeaponSkillRoll => isSkillStaff(copy.itemId) ? staffCopyRoll(ctx, copy.id) : weaponSkillRollOf(copy);
 const offerRollOf = (ctx: Ctx, offer: any): WeaponSkillRoll => isSkillStaff(offer.itemId) ? staffOfferRoll(ctx, offer.id) : weaponSkillRollOf(offer);
 export function deleteOffer(ctx: Ctx, offer: any) {
   ctx.db.pendingEquipmentOffer.id.delete(offer.id);
@@ -169,6 +169,29 @@ export function receiveDuplicateEquipment(ctx: Ctx, identity: Identity, itemId: 
     const merged = mergeSkillRolls(canonical, weaponSkillRollFor(ctx, identity, canonical), roll);
     if (merged) setFirstCopyRoll(ctx, identity, canonical, merged);
   }
+}
+
+/** A new kept copy of an item already in the bag, with its own roll and refine: a craft of a piece held. */
+export function insertKeptCopy(ctx: Ctx, identity: Identity, itemId: string, roll: WeaponSkillRoll, refine: number) {
+  const copy = ctx.db.playerEquipmentCopy.insert({ id: 0n, identity, itemId, ...weaponSkillColumns(roll), acquiredAt: ctx.timestamp });
+  setStaffCopyRoll(ctx, identity, itemId, copy.id, roll);
+  setRefineLevel(ctx, identity, itemId, copy.id, refine);
+  return copy;
+}
+
+/** A Reforge: `count` fresh rolls merged into one copy's skills, each keeping the higher. Copy 0 is the first copy. */
+export function reforgeCopySkills(ctx: Ctx, identity: Identity, itemId: string, copyId: bigint, count: number, skillLuck: number) {
+  const copy = copyId ? ctx.db.playerEquipmentCopy.id.find(copyId) : null;
+  let roll: WeaponSkillRoll = copy ? copyRollOf(ctx, copy) : weaponSkillRollFor(ctx, identity, itemId);
+  let changed = false;
+  for (let draw = 0; draw < count; draw += 1) {
+    const merged = mergeSkillRolls(itemId, roll, rollWeaponSkills(itemId, () => ctx.random(), skillLuck));
+    if (merged) { roll = merged; changed = true; }
+  }
+  if (!changed) return;
+  if (!copy) { setFirstCopyRoll(ctx, identity, itemId, roll); return; }
+  ctx.db.playerEquipmentCopy.id.update({ ...copy, ...weaponSkillColumns(roll) });
+  setStaffCopyRoll(ctx, identity, itemId, copy.id, roll);
 }
 
 /**
@@ -249,7 +272,7 @@ function forgetFirstCopyRoll(ctx: Ctx, identity: Identity, itemId: string) {
 }
 
 /** Writes the first copy's roll. Anything that is not a skill weapon has none to write. */
-function setFirstCopyRoll(ctx: Ctx, identity: Identity, itemId: string, roll: WeaponSkillRoll) {
+export function setFirstCopyRoll(ctx: Ctx, identity: Identity, itemId: string, roll: WeaponSkillRoll) {
   writeFirstCopyRoll(ctx, identity, itemId, roll);
   // The weapon in hand shows its skills on the player's profile.
   syncWornSkill(ctx, identity);

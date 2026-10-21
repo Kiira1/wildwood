@@ -70,6 +70,7 @@ import ConfigureGemCommerceReducer from "./configure_gem_commerce_reducer";
 import ConfigurePatreonReducer from "./configure_patreon_reducer";
 import ConvertItemToCosmeticReducer from "./convert_item_to_cosmetic_reducer";
 import CraftGradeGearReducer from "./craft_grade_gear_reducer";
+import CraftGradeItemReducer from "./craft_grade_item_reducer";
 import CreateGuildReducer from "./create_guild_reducer";
 import DeactivateCardReducer from "./deactivate_card_reducer";
 import DestroyEquipmentReducer from "./destroy_equipment_reducer";
@@ -137,6 +138,7 @@ import RecordConnectionDiagnosticReducer from "./record_connection_diagnostic_re
 import RecordPlayerDeathReducer from "./record_player_death_reducer";
 import RecordStartupTelemetryReducer from "./record_startup_telemetry_reducer";
 import RefineItemReducer from "./refine_item_reducer";
+import ReforgeWeaponReducer from "./reforge_weapon_reducer";
 import RefreshDailyQuestsReducer from "./refresh_daily_quests_reducer";
 import RegisterClientVersionReducer from "./register_client_version_reducer";
 import RegisterProtocolReducer from "./register_protocol_reducer";
@@ -1677,6 +1679,7 @@ const reducersSchema = __reducers(
   __reducerSchema("configure_patreon", ConfigurePatreonReducer),
   __reducerSchema("convert_item_to_cosmetic", ConvertItemToCosmeticReducer),
   __reducerSchema("craft_grade_gear", CraftGradeGearReducer),
+  __reducerSchema("craft_grade_item", CraftGradeItemReducer),
   __reducerSchema("create_guild", CreateGuildReducer),
   __reducerSchema("deactivate_card", DeactivateCardReducer),
   __reducerSchema("destroy_equipment", DestroyEquipmentReducer),
@@ -1744,6 +1747,7 @@ const reducersSchema = __reducers(
   __reducerSchema("record_player_death", RecordPlayerDeathReducer),
   __reducerSchema("record_startup_telemetry", RecordStartupTelemetryReducer),
   __reducerSchema("refine_item", RefineItemReducer),
+  __reducerSchema("reforge_weapon", ReforgeWeaponReducer),
   __reducerSchema("refresh_daily_quests", RefreshDailyQuestsReducer),
   __reducerSchema("register_client_version", RegisterClientVersionReducer),
   __reducerSchema("register_protocol", RegisterProtocolReducer),

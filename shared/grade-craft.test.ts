@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   CRAFT_LINES, craftLevels, craftMaterialsKey, craftMaterialsShort, craftProgress, gradeCraftLevel, gradeCraftMaterials, gradeCraftNeed,
-  gradeCraftAction, gradeCraftOffer, gradeCraftOpen, gradeCraftSkill, isCraftable,
+  gradeCraftOffer, gradeCraftOpen, gradeCraftSkill, isCraftable,
 } from "./grade-craft";
 import { CRAFT_LEVEL, CRAFT_MAX_LEVEL, craftExperience, craftExperienceForLevel, craftLevel } from "./crafting";
 import { GEAR_GRADES } from "./gear-grades";
@@ -71,14 +71,6 @@ describe("crafting graded gear", () => {
     const top = gradeCraftOffer(sword, 99);
     expect([top.itemId, top.grades.length, top.next]).toEqual(["eternal_sword", 15, undefined]);
     expect([gradeCraftOpen("rare_bow", 20), gradeCraftOpen("rare_bow", 19)]).toEqual([true, false]);
-  });
-
-  it("crafts a new piece, reforges a weapon already held, and has nothing for armor already held", () => {
-    const held = new Set(["fine_sword", "fine_medium_armor"]);
-    expect(gradeCraftAction("fine_sword", held)).toBe("reforge");
-    expect(gradeCraftAction("fine_medium_armor", held)).toBe("owned");
-    expect(gradeCraftAction("crude_sword", held)).toBe("craft");
-    expect(gradeCraftAction("fine_staff", new Set(["fine_staff"]))).toBe("reforge");
   });
 
   it("compares recipes in one form whatever their order, and lists what is short", () => {

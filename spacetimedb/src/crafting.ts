@@ -5,19 +5,18 @@ import {
   CRAFTED_REFINE, CRAFTED_SKILL_LUCK_RANKS, CRAFT_SKILLS, MATERIAL_NAMES, craftExperience, craftLevel, type CraftSkill, type Materials,
 } from "../../shared/crafting";
 import {
-  craftMaterialsKey, craftMaterialsShort, gradeCraftAction, gradeCraftLevel, gradeCraftMaterials, gradeCraftNeed, gradeCraftSkill, isCraftable,
+  craftMaterialsKey, craftMaterialsShort, gradeCraftLevel, gradeCraftMaterials, gradeCraftNeed, gradeCraftSkill, isCraftable,
 } from "../../shared/grade-craft";
-import { gradeOf } from "../../shared/grade-equipment";
+import { gradeOf, type GradeItemId } from "../../shared/grade-equipment";
 import type { WeaponSchool } from "../../shared/weapon-mastery";
 import { TOWN_FEET_OFFSET, TOWN_SCHOOL_POSITIONS, TOWN_SCHOOL_SERVER_REACH, isTownMap } from "../../shared/town";
 import type { OreId } from "../../shared/refine";
-import { isSkillWeapon } from "../../shared/weapon-skills";
+import { isSkillWeapon, mergeSkillRolls, rollWeaponSkills } from "../../shared/weapon-skills";
 import { withinStationReach } from "./door-reach";
 import { oreCount, setRefineLevel, standsAtTheSmith, takeOres } from "./item-refine";
 import { readPlayerProgress } from "./wide-stats";
-import { collectItem, freeBagSlots, receiveDuplicateEquipment } from "./equipment-copies";
+import { collectItem, freeBagSlots, insertKeptCopy, reforgeCopySkills, setFirstCopyRoll } from "./equipment-copies";
 import { activeItemUpgradeEntriesFor } from "./upgrade-bench-slots";
-import { ensureWeaponSkillRoll } from "./weapon-skills";
 import { luckInPlay } from "./luck-research";
 import { CRAFT_TOOL, toolExperience, toolSavedMaterials } from "../../shared/tools";
 import { toolLevelFor } from "./tools";
@@ -88,13 +87,13 @@ export type CraftingDeps = {
   writeProgressAndPresentation: (ctx: Ctx, progress: any) => void;
 };
 
+type CraftArgs = { itemId: string; expectedMaterials: string };
+
 /**
- * One graded piece crafted at the Smith, into a free bag slot as a bought one arrives (grade-shop.ts), but at
- * +2 and with better luck on a weapon's skills. Any grade the craft's level opens can be crafted, Mastery or not, below
- * the best held too; a weapon already held is reforged instead (its skills rolled again, keeping the higher), which
- * needs no bag room. `expectedMaterials` is the recipe the player saw.
+ * What a craft and a Reforge both check before taking anything: the piece, the Smith, no duel, the recipe the player
+ * saw, the craft level and the materials. Returns the player's progress and the craft's skill and recipe.
  */
-export function craftGradeGearFor(ctx: Ctx, args: { itemId: string; expectedMaterials: string }, deps: CraftingDeps) {
+function checkCraft(ctx: Ctx, args: CraftArgs, deps: CraftingDeps) {
   const player = deps.requireControllingPlayer(ctx);
   const { itemId } = args;
   if (!isCraftable(itemId)) throw new SenderError("That cannot be crafted.");
@@ -104,33 +103,85 @@ export function craftGradeGearFor(ctx: Ctx, args: { itemId: string; expectedMate
   if (craftMaterialsKey(materials) !== args.expectedMaterials) throw new SenderError("That recipe changed. Take another look.");
   const progress = readPlayerProgress(ctx, ctx.sender);
   if (!progress) throw new SenderError("Player unavailable.");
-  const inventory = deps.inventoryForProgress(progress);
-  // A piece on the Upgrade Bench is still the player's.
-  const owned = new Set([...inventory, ...activeItemUpgradeEntriesFor(ctx, ctx.sender).map(({ active }) => active.itemId)]);
-  const action = gradeCraftAction(itemId, owned);
-  if (action === "owned") throw new SenderError("You already have that.");
   if (craftLevel(craftSkillExperience(ctx, ctx.sender)[skill]) < gradeCraftLevel(itemId)) throw new SenderError(`You need ${gradeCraftNeed(itemId)}.`);
   const held = Object.fromEntries(Object.keys(materials).map(id => [id, oreCount(ctx, ctx.sender, id)]));
   const short = craftMaterialsShort(materials, held);
   if (short.length) throw new SenderError(`You need ${short.map(id => `${materials[id].toLocaleString("en-US")} ${MATERIAL_NAMES[id] ?? id}`).join(" and ")}.`);
+  return { progress, skill, materials, held };
+}
+
+/** Takes the materials (less what the tool saves) and trains the craft; returns the Skill Luck a weapon rolls with. */
+function chargeCraft(ctx: Ctx, itemId: GradeItemId, skill: CraftSkill, taken: Partial<Record<OreId, number>>, experience: number) {
+  if (!takeOres(ctx, ctx.sender, taken)) throw new SenderError("Your materials changed. Take another look.");
+  addCraftExperience(ctx, ctx.sender, skill, craftExperience(gradeOf(itemId)!) * experience);
+  return isSkillWeapon(itemId) ? luckInPlay(ctx, ctx.sender).skillLuck + CRAFTED_SKILL_LUCK_RANKS : 0;
+}
+
+/**
+ * One graded piece crafted at the Smith, always a new one, into a free bag slot as a bought one arrives
+ * (grade-shop.ts), but at +2 and with better luck on a weapon's skills. Any grade the craft's level opens can be
+ * crafted, Mastery or not. A piece already held arrives as another copy with its own roll and refine
+ * (equipment-copies.ts). `expectedMaterials` is the recipe the player saw.
+ */
+export function craftGradeItemFor(ctx: Ctx, args: CraftArgs, deps: CraftingDeps) {
+  const { progress, skill, materials, held } = checkCraft(ctx, args, deps);
+  const itemId = args.itemId as GradeItemId, inventory = deps.inventoryForProgress(progress);
   const tool = craftTool(ctx, skill, materials);
-  // A stack used up frees its slot for the piece; a Reforge needs no room.
+  // A stack used up frees its slot for the piece.
   const emptied = Object.entries(tool.taken).filter(([id, count]) => held[id] === count).length;
-  if (action === "craft" && freeBagSlots(ctx, ctx.sender, progress, inventory) + emptied <= 0) throw new SenderError("Your bag is full. Free a slot first.");
-  if (!takeOres(ctx, ctx.sender, tool.taken)) throw new SenderError("Your materials changed. Take another look.");
-  const skillLuck = isSkillWeapon(itemId) ? luckInPlay(ctx, ctx.sender).skillLuck + CRAFTED_SKILL_LUCK_RANKS : 0;
-  addCraftExperience(ctx, ctx.sender, skill, craftExperience(gradeOf(itemId)!) * tool.experience);
-  if (action === "reforge") {
-    // Two fresh rolls merged into the held weapon, each skill keeping the higher; its refine stays.
-    receiveDuplicateEquipment(ctx, ctx.sender, itemId, 2, skillLuck);
+  if (freeBagSlots(ctx, ctx.sender, progress, inventory) + emptied <= 0) throw new SenderError("Your bag is full. Free a slot first.");
+  const skillLuck = chargeCraft(ctx, itemId, skill, tool.taken, tool.experience);
+  collectItem(ctx, ctx.sender, itemId);
+  // Two rolls, each skill keeping the higher, so crafting helps even at the Skill Luck cap.
+  const roll = isSkillWeapon(itemId) ? reforgedRoll(ctx, itemId, skillLuck) : {};
+  if (inventory.includes(itemId)) {
+    insertKeptCopy(ctx, ctx.sender, itemId, roll, CRAFTED_REFINE);
     return;
   }
-  collectItem(ctx, ctx.sender, itemId);
-  ensureWeaponSkillRoll(ctx, ctx.sender, itemId, skillLuck);
-  // A second roll merged in, each skill keeping the higher, so crafting helps even at the Skill Luck cap.
-  if (skillLuck) receiveDuplicateEquipment(ctx, ctx.sender, itemId, 1, skillLuck);
-  setRefineLevel(ctx, ctx.sender, itemId, 0n, CRAFTED_REFINE);
   deps.writeProgressAndPresentation(ctx, deps.restoreItemToProgress(progress, itemId));
+  setFirstCopyRoll(ctx, ctx.sender, itemId, roll);
+  setRefineLevel(ctx, ctx.sender, itemId, 0n, CRAFTED_REFINE);
+}
+
+const reforgedRoll = (ctx: Ctx, itemId: string, skillLuck: number) => {
+  const first = rollWeaponSkills(itemId, () => ctx.random(), skillLuck);
+  return mergeSkillRolls(itemId, first, rollWeaponSkills(itemId, () => ctx.random(), skillLuck)) ?? first;
+};
+
+/**
+ * A Reforge of one held weapon copy (copy 0 is the first, the one a slot holds): the same materials and experience
+ * as crafting it, two fresh rolls merged into its skills, each keeping the higher. No new piece, no bag room needed;
+ * its refine, lock and cards stay.
+ */
+export function reforgeWeaponFor(ctx: Ctx, args: CraftArgs & { copyId: bigint }, deps: CraftingDeps) {
+  const { itemId, copyId } = args;
+  if (!isSkillWeapon(itemId)) throw new SenderError("Only a weapon can be reforged.");
+  const { progress, skill, materials } = checkCraft(ctx, args, deps);
+  if (copyId === 0n) {
+    // A piece on the Upgrade Bench is still the player's.
+    const owned = deps.inventoryForProgress(progress).includes(itemId)
+      || activeItemUpgradeEntriesFor(ctx, ctx.sender).some(({ active }) => active.itemId === itemId);
+    if (!owned) throw new SenderError("That weapon is not in your inventory.");
+  } else {
+    const copy = ctx.db.playerEquipmentCopy.id.find(copyId);
+    if (!copy || copy.identity.toHexString() !== ctx.sender.toHexString() || copy.itemId !== itemId) throw new SenderError("That weapon is not in your inventory.");
+  }
+  const tool = craftTool(ctx, skill, materials);
+  const skillLuck = chargeCraft(ctx, itemId as GradeItemId, skill, tool.taken, tool.experience);
+  reforgeCopySkills(ctx, ctx.sender, itemId, copyId, 2, skillLuck);
+}
+
+/**
+ * craft_grade_gear, as clients before 0.916.20 call it: a weapon already held is reforged (its first copy), armor
+ * already held is refused, anything else is crafted. Kept one release so an open old tab's buttons do what they say.
+ */
+export function craftGradeGearFor(ctx: Ctx, args: CraftArgs, deps: CraftingDeps) {
+  const progress = readPlayerProgress(ctx, ctx.sender);
+  const owned = new Set([...(progress ? deps.inventoryForProgress(progress) : []),
+    ...activeItemUpgradeEntriesFor(ctx, ctx.sender).map(({ active }) => active.itemId)]);
+  if (!isCraftable(args.itemId) || !owned.has(args.itemId)) { craftGradeItemFor(ctx, args, deps); return; }
+  if (!isSkillWeapon(args.itemId)) throw new SenderError("You already have that.");
+  reforgeWeaponFor(ctx, { ...args, copyId: 0n }, deps);
 }
 
 /** The craft's tool (shared/tools.ts): the recipe less what it saves, rolled here, and its experience multiplier. */
@@ -160,11 +211,16 @@ export function mergeCraftSkills(ctx: Ctx, guest: Identity, account: Identity) {
   for (const row of [...ctx.db.playerCraftLevel.identity.filter(guest)]) ctx.db.playerCraftLevel.key.delete(row.key);
 }
 
-/** The craft_grade_gear reducer, and the player's own craft experience. */
+/** The craft_grade_item and reforge_weapon reducers (craft_grade_gear for old tabs), and the player's own craft experience. */
 export function registerCrafting(spacetimedb: typeof spacetimedbType, deps: CraftingDeps) {
+  const craftGradeItem = spacetimedb.reducer({ itemId: t.string(), expectedMaterials: t.string() },
+    (ctx: any, args: CraftArgs) => craftGradeItemFor(ctx, args, deps));
+  const reforgeWeapon = spacetimedb.reducer({ itemId: t.string(), copyId: t.u64(), expectedMaterials: t.string() },
+    (ctx: any, args: CraftArgs & { copyId: bigint }) => reforgeWeaponFor(ctx, args, deps));
+  // Retire after 0.916.20: clients from before it call this.
   const craftGradeGear = spacetimedb.reducer({ itemId: t.string(), expectedMaterials: t.string() },
-    (ctx: any, args: { itemId: string; expectedMaterials: string }) => craftGradeGearFor(ctx, args, deps));
+    (ctx: any, args: CraftArgs) => craftGradeGearFor(ctx, args, deps));
   const myCraftSkills = spacetimedb.view({ name: "my_craft_skills", public: true }, t.array(playerCraftSkill.rowType),
     (ctx: any) => [...ctx.db.playerCraftSkill.identity.filter(ctx.sender)]);
-  return { craftGradeGear, myCraftSkills };
+  return { craftGradeItem, reforgeWeapon, craftGradeGear, myCraftSkills };
 }

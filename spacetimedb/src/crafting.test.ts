@@ -44,45 +44,58 @@ function crafter(station: Station, options: { levels?: Partial<Record<WeaponScho
       f.db.playerCraftSkill.insert({ key: craftKey(f.ctx.sender, skill as CraftSkill), identity: f.ctx.sender, skill, experience: BigInt(craftExperienceForLevel(level)) });
     }
   });
-  const craft = (itemId: string, expected = craftMaterialsKey(gradeCraftMaterials(itemId) ?? {})) =>
-    f.run(server.craftGradeGear, { itemId, expectedMaterials: expected });
+  const craft = (itemId: string, expected = craftMaterialsKey(gradeCraftMaterials(itemId) ?? {}), reducer: "craftGradeItem" | "craftGradeGear" = "craftGradeItem") =>
+    f.run(server[reducer], { itemId, expectedMaterials: expected });
+  const reforge = (itemId: string, copyId: bigint) =>
+    f.run(server.reforgeWeapon, { itemId, copyId, expectedMaterials: craftMaterialsKey(gradeCraftMaterials(itemId)!) });
   const bag = () => inventoryForProgress(progressOf(f));
   const ore = (oreId: string) => oreCount(f.ctx, f.ctx.sender, oreId);
   const experience = () => craftSkillExperience(f.ctx, f.ctx.sender);
-  return { ...f, stand, craft, bag, ore, experience };
+  return { ...f, stand, craft, reforge, bag, ore, experience };
 }
 
 // The skill rolls a craft makes, which need the draws pinned; the craft flow itself is tests/scenarios/gear-shop.test.ts (GEAR-10).
 describe("crafted weapon skills", () => {
   const crude = craftExperience("crude");
 
-  it("reforges a weapon already held: its skills only go up, the materials and experience as a craft, no new piece, no room needed", () => {
+  it("crafts another copy of a weapon held, and reforges the copy picked: its skills only go up, the materials and experience as a craft, no room needed", () => {
     const f = crafter("archery", { levels: { archery: 5 } });
-    const rollOf = () => { const row = f.db.playerBowSkill.key.find(`${f.ctx.sender.toHexString()}:crude_bow`); return [row.arrowStorm, row.ricochet, row.piercingShot]; };
+    const firstRoll = () => { const row = f.db.playerBowSkill.key.find(`${f.ctx.sender.toHexString()}:crude_bow`); return [row.arrowStorm, row.ricochet, row.piercingShot]; };
+    const copies = () => [...f.db.playerEquipmentCopy.iter()].filter((copy: any) => copy.itemId === "crude_bow") as any[];
     const draws = (value: number) => Object.assign(f.ctx, { random: Object.assign(() => value, { integerInRange: (_min: number, max: number) => max }) });
-    // Crafted with every appear draw missing: no skills.
+    // Crafted twice with every appear draw missing: two bows, neither with skills, both at the crafted refine.
     draws(.999);
     f.craft("crude_bow");
-    expect(rollOf()).toEqual([0, 0, 0]);
+    f.craft("crude_bow");
+    const [copy] = copies();
+    expect(copies().length).toBe(1);
+    expect(firstRoll()).toEqual([0, 0, 0]);
+    expect(refineLevelFor(f.ctx, f.ctx.sender, "crude_bow", copy.id)).toBe(CRAFTED_REFINE);
     const bag = f.bag().length;
     // Fill the bag: a Reforge takes no slot.
-    for (let index = bagSlotsUsed(f.bag(), [], 0) + 2; index < inventorySlotCapacity(0); index++) {
+    for (let index = bagSlotsUsed(f.bag(), [], copies().length) + 2; index < inventorySlotCapacity(0); index++) {
       f.seed("playerEquipmentCopy", { id: 0n, identity: f.ctx.sender, itemId: IRON_BOW, arrowStorm: 0, ricochet: 0, piercingShot: 0, acquiredAt: f.ctx.timestamp });
     }
     expect(() => f.craft("crude_light_armor")).toThrow("Your bag is full.");
+    // The second copy reforged: only it changes.
     draws(0);
-    f.craft("crude_bow");
-    const best = rollOf();
-    expect(best.every(chance => chance > 0)).toBe(true);
-    // A poor roll never lowers them.
+    f.reforge("crude_bow", copy.id);
+    const best = copies()[0];
+    expect([best.arrowStorm, best.ricochet, best.piercingShot].every(chance => chance > 0)).toBe(true);
+    expect(firstRoll()).toEqual([0, 0, 0]);
+    // A poor roll never lowers them; a copy not the player's is refused.
     draws(.999);
-    f.craft("crude_bow");
-    expect(rollOf()).toEqual(best);
+    f.reforge("crude_bow", copy.id);
+    expect(copies()[0]).toEqual(best);
+    expect(() => f.reforge("crude_bow", 999n)).toThrow();
+    // A tab from before 0.916.20 crafting a bow held reforges its first copy.
+    draws(0);
+    f.craft("crude_bow", undefined, "craftGradeGear");
+    expect(firstRoll().every(chance => chance > 0)).toBe(true);
     expect(f.bag().length).toBe(bag);
-    expect(f.ore("pine_log")).toBe(100_000 - 3 * 10);
-    expect(f.experience().fletching).toBe(BigInt(3 * crude));
-    expect(refineLevelFor(f.ctx, f.ctx.sender, "crude_bow")).toBe(CRAFTED_REFINE);
-    expect([...f.db.playerEquipmentCopy.iter()].filter((copy: any) => copy.itemId === "crude_bow")).toEqual([]);
+    expect(f.ore("pine_log")).toBe(100_000 - 5 * 10);
+    expect(f.experience().fletching).toBe(BigInt(5 * crude));
+    expect(copies().length).toBe(1);
   });
 
   it("rolls a weapon's skills with three more ranks of Skill Luck than a bought one", () => {
