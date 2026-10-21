@@ -1,4 +1,7 @@
 export const RELEASE_NOTES: Record<string, string[]> = {
+  "0.916.28": [
+    "Skeleton archers and reapers hold their bows properly",
+  ],
   "0.916.27": [
     "Sword swings move the hilt along with the blade",
   ],

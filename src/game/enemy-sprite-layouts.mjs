@@ -57,6 +57,8 @@ import wormPoisonAtlas from "./enemy-atlases/worm-poison.mjs";
 // These loose bow sprites fire down in their source pose. Turn that axis
 // toward actor-local right when a ranged enemy tracks a target.
 export const ENEMY_BOW_AIM_OFFSET_RADIANS = -Math.PI / 2;
+// The skeleton bow is drawn tilted: it fires down and to the left (about 120 degrees).
+const SKELETON_BOW_AIM_OFFSET_RADIANS = -120 * Math.PI / 180;
 export const REGULAR_ENEMY_SPRITE_SIZE = 54;
 export const ELITE_ENEMY_SPRITE_SIZE = 78;
 const PARTS = "assets/wildstat/2D Character - Casual Monsters/_PNG";
@@ -141,7 +143,8 @@ function skeletonSprite(poison, { elite = false, ranged = false, armored = false
     { file: "leg2", x: 1, y: 19, w: 17, h: 22 },
     { file: "body", x: -20, y: -5, w: 40, h: 40 },
     { file: "head", x: -32, y: -37, w: 64, h: 46 },
-    { file: "bow", x: 15, y: -6, w: 43, h: 33, aimPivot: { x: 20, y: 8 }, aimOffsetRadians: ENEMY_BOW_AIM_OFFSET_RADIANS },
+    // Held low across the body as in the source art; pivots on its grip.
+    { file: "bow", x: -22, y: -6, w: 55, h: 41.6, aimPivot: { x: 0, y: 21 }, aimOffsetRadians: SKELETON_BOW_AIM_OFFSET_RADIANS },
   ] : armored ? [
     { file: "leg", x: -16, y: 24, w: 18, h: 26 },
     { file: "leg2", x: 1, y: 27, w: 17, h: 23 },
