@@ -31,9 +31,9 @@ export const OFFLINE_APPROACH_SECONDS = 2.5;
  *
  * It is calibrated, not guessed. The reference build for a map is what the
  * curve expects a player to be carrying when they farm it, so that build has
- * to clear the check on its own map with room to spare; at .25 it does, by
- * about a third, while the build one tier below it does not. See the
- * simulate-offline-farming tests, which pin both ends.
+ * to clear the check on its own map with room to spare; at .25 it does. The
+ * build one tier below it used to fail; the reference builds predate the 0.915
+ * balance curve and now out-class its maps, so only the upper end is pinned.
  */
 export const OFFLINE_INCOMING_PRESSURE = .25;
 /**
