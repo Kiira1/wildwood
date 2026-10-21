@@ -16,7 +16,7 @@ import { createCoopAccess } from "../../src/game/runtime/coop-access";
 import { createCombatEffects } from "../../src/game/runtime/combat-effects";
 import { applyMapBalance } from "../../src/game/runtime/map-balance-loader";
 import { mapWorldLayout } from "../../src/game/map-layout";
-import { createSpawnSites, TUTORIAL_FOREST_MAP_ID, type MapId } from "../../src/game/world";
+import { createSpawnSites, type MapId } from "../../src/game/world";
 import { WORLD } from "../../src/game/constants";
 import { GAME_BALANCE } from "../../src/balance/game-balance";
 import { resolveMapBalance } from "../../shared/map-balance";
@@ -137,9 +137,7 @@ export async function mapView(options: MapViewOptions) {
   };
   let gameTime = options.gameTime ?? 0;
   const mapController = createMapController({
-    mapConfig: mapConfig as never, tutorialMapId: TUTORIAL_FOREST_MAP_ID, desertMapId: "beginner_desert" as MapId, snowMapId: "intermediate_snowlands" as MapId,
-    lavaMapId: "advanced_lava_wastes" as MapId, infernalMapId: "infernal_depths" as MapId, waterMapId: "water_reach" as MapId,
-    dragonCutsceneSeenKey: "", snowlandsCutsceneSeenKey: "", lavaCutsceneSeenKey: "", infernalCutsceneSeenKey: "", waterCutsceneSeenKey: "", samuraiCutsceneSeenKey: "",
+    mapConfig: mapConfig as never,
     markPortalCutsceneSeen: noop, getCurrentMapId: () => mapId, setCurrentMapId: noop, prepareMapAssets: async () => {},
     player, camera, viewport: () => viewport, keys: { clear: noop }, stopTouchMove: noop, cutsceneOverlay: { hidden: true } as HTMLElement,
     resizeViewport: noop, isDueling: () => false, running: () => false, localMapState: () => ({ mapId, x: player.x, y: player.y, facing: player.facing }),

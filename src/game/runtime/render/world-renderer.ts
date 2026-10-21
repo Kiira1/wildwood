@@ -203,6 +203,13 @@ const PORTAL_GLIMPSE_LIMIT = 3;
 /** How long after stepping through the glimpse may stand in for ground tiles still being painted. */
 const PORTAL_ARRIVAL_COVER_MS = 4_000;
 
+/** Maps whose roads are drawn by their own painter instead of the plain path tiles. */
+const MAP_ROADS: Partial<Record<MapId, typeof drawNeonRoads>> = {
+  [NEON_BASTION_MAP_ID]: drawNeonRoads,
+  [VERDANT_CATACOMBS_MAP_ID]: drawVerdantRoads,
+  [ION_CITADEL_MAP_ID]: drawIonRoads,
+};
+
 export function createWorldRenderer(options: WorldRendererOptions) {
   const { ctx, camera } = options;
   const STATIC_TILE_MIN_LIMIT = 12;
@@ -725,9 +732,8 @@ export function createWorldRenderer(options: WorldRendererOptions) {
     if (options.getMapId() === "home_exterior") {
       ctx.save(); ctx.translate(-camera.x, -camera.y); drawHomeCourtyard(ctx); ctx.restore(); return;
     }
-    if (options.getMapId() === NEON_BASTION_MAP_ID) { drawNeonRoads(ctx, options.paths, camera, visible); return; }
-if (options.getMapId() === VERDANT_CATACOMBS_MAP_ID) { drawVerdantRoads(ctx, options.paths, camera, visible); return; }
-if (options.getMapId() === ION_CITADEL_MAP_ID) { drawIonRoads(ctx, options.paths, camera, visible); return; }
+    const drawRoads = MAP_ROADS[options.getMapId()];
+    if (drawRoads) { drawRoads(ctx, options.paths, camera, visible); return; }
     for (const path of options.paths) {
       const x = snapToWorldPixel(path.x - camera.x);
       const y = snapToWorldPixel(path.y - camera.y);

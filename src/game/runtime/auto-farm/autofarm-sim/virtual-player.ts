@@ -44,7 +44,7 @@ import { setPlayerBaseMaxHealth } from '../../player-health';
 import { weaponAttackRange } from '../../../weapon-combat';
 import { WORLD } from '../../../constants';
 import { ENEMY_TYPES } from '../../../enemies';
-import { TUTORIAL_FOREST_MAP_ID, type MapId } from '../../../world';
+import type { MapId } from '../../../world';
 import { resolveMapBalance } from '../../../../../shared/map-balance';
 import { runtimeMapBalance } from '../../../../../shared/map-balance-runtime';
 import { GAME_BALANCE } from '../../../../balance/game-balance';
@@ -490,9 +490,6 @@ export function createVirtualPlayer(profile: VirtualPlayerProfile, options: {
     travelWanted: destination => autoFarm.headingTo(destination), onTravelRefused: destination => autoFarm.travelRefused(destination),
     markPortalCutsceneSeen: noop,
     mapConfig: mapConfig as never,
-    tutorialMapId: TUTORIAL_FOREST_MAP_ID, desertMapId: 'beginner_desert' as MapId, snowMapId: 'intermediate_snowlands' as MapId,
-    lavaMapId: 'advanced_lava_wastes' as MapId, infernalMapId: 'infernal_depths' as MapId, waterMapId: 'water_reach' as MapId,
-    dragonCutsceneSeenKey: '', snowlandsCutsceneSeenKey: '', lavaCutsceneSeenKey: '', infernalCutsceneSeenKey: '', waterCutsceneSeenKey: '', samuraiCutsceneSeenKey: '',
     getCurrentMapId: () => currentMapId, setCurrentMapId: setCurrentMap, prepareMapAssets: async () => {},
     player, camera: { x: 0, y: 0, zoom: 1 }, viewport: () => ({ width: 1280, height: 720 }), keys: { clear: noop }, stopTouchMove: noop,
     cutsceneOverlay: { hidden: true } as HTMLElement, resizeViewport: noop, isDueling: () => false, running: () => running,

@@ -3,7 +3,8 @@ import { createPortalCutscene } from "./cutscene";
 import { snapCameraToPlayer, type Camera } from "./render/camera";
 import type { EnemyState, PlayerState } from "./types";
 import { BOSS_KINDS, clearBossAttack, type BossHazards, type BossStates } from "./boss/boss-registry";
-import type { MapId, SpawnSite } from "../world";
+import { TUTORIAL_FOREST_MAP_ID, type MapId, type SpawnSite } from "../world";
+import { BOSS_PORTAL_CUTSCENES, type PortalCutsceneBoss } from "./boss/boss-portal-cutscenes";
 import { portalTravelScene } from "./render/portal-glimpse";
 import { exitPortalFor, portalArrival, portalExitPoint } from "../../../shared/map-gateways";
 import { MAP_IDS } from "../../../shared/rules";
@@ -67,12 +68,7 @@ export type MapController = {
   serverMovePending: () => boolean;
   queuePortalReveal: (mapId: MapId) => void;
   startProceduralPortalCutscene: () => boolean;
-  startDragonPortalCutscene: () => boolean;
-  startSnowlandsPortalCutscene: () => boolean;
-  startLavaPortalCutscene: () => boolean;
-  startInfernalPortalCutscene: () => boolean;
-  startWaterPortalCutscene: () => boolean;
-  startSamuraiPortalCutscene: () => boolean;
+  startBossPortalCutscene: (boss: PortalCutsceneBoss) => boolean;
   updatePortalCutscene: (dt: number) => boolean;
   isCutsceneActive: () => boolean;
   isMapTransitioning: () => boolean;
@@ -96,18 +92,6 @@ export function createMapController(options: {
   /** The server refused a crossing to this map. */
   onTravelRefused?: (destination: string) => void;
   mapConfig: MapConfig;
-  tutorialMapId: MapId;
-  desertMapId: MapId;
-  snowMapId: MapId;
-  lavaMapId: MapId;
-  infernalMapId: MapId;
-  waterMapId: MapId;
-  dragonCutsceneSeenKey: string;
-  snowlandsCutsceneSeenKey: string;
-  lavaCutsceneSeenKey: string;
-  infernalCutsceneSeenKey: string;
-  waterCutsceneSeenKey: string;
-  samuraiCutsceneSeenKey: string;
   markPortalCutsceneSeen: (cutscene: string) => void;
   getCurrentMapId: () => MapId;
   setCurrentMapId: (mapId: MapId) => void;
@@ -142,7 +126,7 @@ export function createMapController(options: {
   onServerMove?: (from: MapId, to: string) => boolean;
 }): MapController {
   const {
-    mapConfig, tutorialMapId, desertMapId, snowMapId, lavaMapId, infernalMapId, waterMapId, dragonCutsceneSeenKey, snowlandsCutsceneSeenKey, lavaCutsceneSeenKey, infernalCutsceneSeenKey, waterCutsceneSeenKey, samuraiCutsceneSeenKey,
+    mapConfig,
     getCurrentMapId, setCurrentMapId, player, camera, viewport, keys, stopTouchMove, cutsceneOverlay, resizeViewport,
     isDueling, running, localMapState, changeMap, syncStoppedPosition, resetPresentationState, fadeToWorld, mapUnlocked, syncMapMusic,
     rebuildWorld, spawnFromSite, enemies, spawnSites, clearTransientCombat,
@@ -171,8 +155,8 @@ export function createMapController(options: {
   let portalCutsceneBlackoutOpacity = 0;
   let portalCutsceneDestinationOpacity = 0;
   let pendingPortalReveal: { mapId: MapId; portal: MapPortal } | null = null;
-  let portalCutsceneSeenKey = dragonCutsceneSeenKey;
-  const initialPortal = mapConfig[tutorialMapId].portal;
+  let portalCutsceneSeenKey = BOSS_PORTAL_CUTSCENES.dragon.seenKey as string;
+  const initialPortal = mapConfig[TUTORIAL_FOREST_MAP_ID].portal;
   if (!initialPortal) throw new Error("Tutorial map requires an introductory portal.");
   let portalCutscenePortal: MapPortal = initialPortal;
   // A glimpse is painted before anyone walks in: centred where the player steps out.
@@ -264,7 +248,7 @@ export function createMapController(options: {
 
   function activePortal() { return mapConfig[getCurrentMapId()].portal; }
   function secondaryPortal() { return mapConfig[getCurrentMapId()].secondaryPortal ?? null; }
-  function portalIsUnlocked(portal: MapPortal) { return portal.destination === tutorialMapId || mapUnlocked(portal.destination); }
+  function portalIsUnlocked(portal: MapPortal) { return portal.destination === TUTORIAL_FOREST_MAP_ID || mapUnlocked(portal.destination); }
 
   function portalDistance(portal: MapPortal) {
     return Math.hypot(player.x - portal.x, player.y - (portal.y - portal.height * .32));
@@ -347,7 +331,7 @@ export function createMapController(options: {
       && mapUnlocked(pendingPortalReveal.portal.destination)) {
       const reveal = pendingPortalReveal;
       pendingPortalReveal = null;
-      startMapPortalCutscene(reveal.mapId, reveal.portal, "");
+      startMapPortalCutscene(reveal.portal, "");
     }
     portalCooldown = Math.max(0, portalCooldown - dt);
     if (mapTransitioning || arrivalPending || portalCutscene.active || portalCooldown > 0 || isDueling()) return;
@@ -497,7 +481,7 @@ export function createMapController(options: {
     });
   }
 
-  function startMapPortalCutscene(mapId: MapId, portal = mapConfig[mapId].portal, seenKey = dragonCutsceneSeenKey) {
+  function startMapPortalCutscene(portal: MapPortal | null, seenKey: string) {
     if (!portal || portalCutscene.active || !mapUnlocked(portal.destination)) return false;
     // A local boss death is provisional until its reward unlock is acknowledged.
     // Warming destination art must not turn a failed request into an unhandled rejection.
@@ -516,26 +500,9 @@ export function createMapController(options: {
     return true;
   }
 
-  function startDragonPortalCutscene() { return startMapPortalCutscene(tutorialMapId); }
-  function startSnowlandsPortalCutscene() {
-    const portal = mapConfig[desertMapId].secondaryPortal;
-    return portal ? startMapPortalCutscene(desertMapId, portal, snowlandsCutsceneSeenKey) : false;
-  }
-  function startLavaPortalCutscene() {
-    const portal = mapConfig[snowMapId].secondaryPortal;
-    return portal ? startMapPortalCutscene(snowMapId, portal, lavaCutsceneSeenKey) : false;
-  }
-  function startInfernalPortalCutscene() {
-    const portal = mapConfig[lavaMapId].secondaryPortal;
-    return portal ? startMapPortalCutscene(lavaMapId, portal, infernalCutsceneSeenKey) : false;
-  }
-  function startWaterPortalCutscene() {
-    const portal = mapConfig[infernalMapId].secondaryPortal;
-    return portal ? startMapPortalCutscene(infernalMapId, portal, waterCutsceneSeenKey) : false;
-  }
-  function startSamuraiPortalCutscene() {
-    const portal = mapConfig[waterMapId].secondaryPortal;
-    return portal ? startMapPortalCutscene(waterMapId, portal, samuraiCutsceneSeenKey) : false;
+  function startBossPortalCutscene(boss: PortalCutsceneBoss) {
+    const scene = BOSS_PORTAL_CUTSCENES[boss];
+    return startMapPortalCutscene(mapConfig[scene.mapId][scene.portal] ?? null, scene.seenKey);
   }
 
   function updatePortalCutscene(dt: number) {
@@ -595,14 +562,9 @@ export function createMapController(options: {
       const mapId = getCurrentMapId();
       const portal = mapConfig[mapId].secondaryPortal;
       if (!mapId.startsWith("endless_") || !portal) return false;
-      return startMapPortalCutscene(mapId, portal, "");
+      return startMapPortalCutscene(portal, "");
     },
-    startDragonPortalCutscene,
-    startSnowlandsPortalCutscene,
-    startLavaPortalCutscene,
-    startInfernalPortalCutscene,
-    startWaterPortalCutscene,
-    startSamuraiPortalCutscene,
+    startBossPortalCutscene,
     updatePortalCutscene,
     isCutsceneActive: () => portalCutscene.active,
     isMapTransitioning: () => mapTransitioning,
