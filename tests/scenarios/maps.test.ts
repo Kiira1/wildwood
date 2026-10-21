@@ -2,7 +2,7 @@
 import { scenarioWorld } from "./harness/server";
 import { describe, expect, it } from "vitest";
 import { CAMPAIGN_MAPS } from "../../shared/campaign-registry";
-import { CAMPAIGN_GATEWAYS, campaignLanding, endlessEntryPortal, portalExitPoint, portalUsePoint } from "../../shared/map-gateways";
+import { CAMPAIGN_GATEWAYS, campaignLanding, endlessEntryPortal, exitPortalFor, portalArrival, portalExitPoint, portalUsePoint, PORTAL_EXIT_SPREAD } from "../../shared/map-gateways";
 import { generateMap } from "../../shared/procedural-maps";
 import { HOME_BENCH_POSITION } from "../../shared/home";
 import { TOWN_ARRIVAL, TOWN_BENCH_POSITION, TOWN_DOORS, TOWN_FEET_OFFSET, TOWN_SMITH_POSITION } from "../../shared/town";
@@ -37,6 +37,22 @@ const PORTAL_AGGRO_MARGIN = 75;
 const BOSS_ARENA = 900;
 const BOSS_CLEARANCE = BOSS_ARENA + 775;
 const EDGE = 150;
+/** A portal takes a player within this of its use point (map-controller.ts). */
+const PORTAL_TRIGGER = 48;
+/** Points across a portal's landing circle: its middle and three rings round it. */
+const landingCircle = (exit: { x: number; y: number }) => {
+  const middle = portalExitPoint(exit);
+  return [middle, ...[1, 2, 3].flatMap(ring => Array.from({ length: 24 }, (_, i) => ({
+    x: middle.x + Math.cos(i / 24 * Math.PI * 2) * PORTAL_EXIT_SPREAD * ring / 3,
+    y: middle.y + Math.sin(i / 24 * Math.PI * 2) * PORTAL_EXIT_SPREAD * ring / 3 })))];
+};
+/** Out of `exit` from spots across the way in: every draw inside the circle, and travellers spread over it. */
+function expectSpreadLandings(exit: { x: number; y: number }, wayIn: { x: number; y: number }) {
+  const middle = portalExitPoint(exit);
+  const landings = Array.from({ length: 40 }, (_, i) => portalArrival(exit, { x: wayIn.x - 20 + i % 8 * 5.3, y: wayIn.y - 20 + Math.floor(i / 8) * 9.7 }));
+  for (const landing of landings) expect(distance(landing, middle)).toBeLessThanOrEqual(PORTAL_EXIT_SPREAD + 1e-9);
+  expect(Math.max(...landings.map(a => Math.max(...landings.map(b => distance(a, b)))))).toBeGreaterThan(PORTAL_EXIT_SPREAD);
+}
 /** Cloudspire's sky roads have never joined up as shipped: held as they are, so a change either way shows. */
 const ROADS_APART = new Set<string>(["cloudspire"]);
 
@@ -84,6 +100,21 @@ describe("every campaign map is playable", () => {
     const standing = createWorldLayout(arrival, mapId).decor.filter(item => !["grass", "petal", "cherryPetal", "desertGrass", "snowTuft", "shell"].includes(item.type));
     for (const item of standing) for (const spot of spots) expect(distance(item, spot), `${item.type} at ${item.x},${item.y}`).toBeGreaterThanOrEqual(gatewayDecorReach(item));
     const sites = createSpawnSites({ x: 0, y: 0 }, mapId);
+    // Out of each portal (the way back for travellers from where it leads; the Town's from the first): the whole
+    // landing circle inside the map, off the arena, clear of standing decor, every enemy's aggro and every portal.
+    expect(exitPortalFor(mapId, portalsOf(mapId), "town", true)).toBe(index === 0 ? null : portalsOf(mapId)[0]);
+    for (const exit of portalsOf(mapId)) {
+      expectSpreadLandings(exit, portalUsePoint(portalsOf(exit.destination).find(portal => portal.destination === mapId)!));
+      for (const point of landingCircle(exit)) {
+        const where = `landing out of the ${exit.destination} portal at ${Math.round(point.x)},${Math.round(point.y)}`;
+        expect(distance(point, boss), where).toBeGreaterThan(BOSS_CLEARANCE);
+        expect(point.x).toBeGreaterThan(EDGE); expect(point.x).toBeLessThan(WORLD_WIDTH - EDGE);
+        expect(point.y).toBeGreaterThan(EDGE); expect(point.y).toBeLessThan(WORLD_HEIGHT - EDGE);
+        for (const item of standing) expect(distance(item, point), `${where}: ${item.type} at ${item.x},${item.y}`).toBeGreaterThanOrEqual(gatewayDecorReach(item));
+        for (const site of sites) expect(distance(site, point), `${where}: ${site.type}`).toBeGreaterThanOrEqual(aggroOf(site) + PORTAL_AGGRO_MARGIN);
+        for (const portal of portalsOf(mapId)) expect(distance(point, portalUsePoint(portal)), where).toBeGreaterThan(PORTAL_TRIGGER);
+      }
+    }
     for (const site of sites) {
       const label = `${site.campName} ${site.type} at ${Math.round(site.x)},${Math.round(site.y)}`;
       expect(distance(site, arrival), label).toBeGreaterThanOrEqual(Math.max(ARRIVAL_CLEARANCE, aggroOf(site) + PORTAL_AGGRO_MARGIN));
@@ -137,6 +168,16 @@ describe("every Endless map is playable", () => {
       expect(distance(site, arrival)).toBeGreaterThanOrEqual(ARRIVAL_CLEARANCE);
       expect(distance(site, boss)).toBeGreaterThan(BOSS_ARENA);
     }
+    // Out of either portal: the whole landing circle clear of the arena, the rocks, every enemy's aggro and both portals.
+    for (const exit of portalsOf(id)) {
+      expectSpreadLandings(exit, portalUsePoint(portalsOf(exit.destination).find(portal => portal.destination === id)!));
+      for (const point of landingCircle(exit)) {
+        expect(distance(point, boss)).toBeGreaterThan(BOSS_ARENA);
+        for (const rock of content.decor.filter(item => item.type === "rock")) expect(distance(rock, point)).toBeGreaterThanOrEqual(gatewayDecorReach(rock));
+        for (const site of content.sites) expect(distance(site, point)).toBeGreaterThanOrEqual(aggroOf(site) + PORTAL_AGGRO_MARGIN);
+        for (const portal of portalsOf(id)) expect(distance(point, portalUsePoint(portal))).toBeGreaterThan(PORTAL_TRIGGER);
+      }
+    }
     // One species, the boss's, on six reward stats; the art for it loads with the map.
     expect(new Set(content.sites.map(site => site.type))).toEqual(new Set([generatedBossArt(id)]));
     expect(new Set(content.sites.map(site => site.definition!.reward.type)).size).toBe(6);
@@ -171,9 +212,17 @@ describe("the server's travel rules", () => {
     // Open, but from across the map: refused.
     expect(ann.refusal("changeMap", { mapId: "beginner_desert", x: 1_400, y: 1_400 })).not.toBeNull();
     expect(ann.row("player")!.mapId).toBe("tutorial_forest");
-    // From beside it: across, a step in front of the Desert's portal home.
+    // From beside it: across, out in front of the Desert's portal back home, at the point the client draws too.
     expect(ann.refusal("changeMap", { mapId: "beginner_desert", ...walkInto(toDesert) })).toBeNull();
-    expect(ann.row("player")).toMatchObject({ mapId: "beginner_desert", ...portalExitPoint(gate("beginner_desert", "tutorial_forest")) });
+    expect(ann.row("player")).toMatchObject({ mapId: "beginner_desert", ...portalArrival(gate("beginner_desert", "tutorial_forest"), walkInto(toDesert)) });
+    // Bob, through a step to the side, lands elsewhere in the same circle.
+    const bob = world.join("Bob");
+    bob.patch("playerProgress", { desertUnlocked: true, bossRewardClaims: 1 });
+    const bobIn = { x: walkInto(toDesert).x + 12, y: walkInto(toDesert).y + 5 };
+    bob.patch("player", { mapId: "tutorial_forest", ...bobIn });
+    expect(bob.refusal("changeMap", { mapId: "beginner_desert", ...bobIn })).toBeNull();
+    expect(bob.row("player")).toMatchObject({ mapId: "beginner_desert", ...portalArrival(gate("beginner_desert", "tutorial_forest"), bobIn) });
+    expect(bob.row("player")).not.toMatchObject({ x: ann.row("player")!.x, y: ann.row("player")!.y });
     // A map two along is not connected to this one.
     ann.patch("playerProgress", { snowlandsUnlocked: true, lavaUnlocked: true, bossRewardClaims: 7 });
     expect(ann.refusal("changeMap", { mapId: "advanced_lava_wastes", ...walkInto(gate("beginner_desert", "intermediate_snowlands")) })).not.toBeNull();
@@ -213,7 +262,7 @@ describe("the server's travel rules", () => {
     ann.patch("playerProgress", { bossRewardClaims: BOSS_REWARD_CLAIM_BITS.aegisPrime });
     expect(ann.refusal("changeMap", { mapId: "endless_1", ...into })).toBeNull();
     const stage = generateMap("endless_1");
-    expect(ann.row("player")).toMatchObject({ mapId: "endless_1", ...portalExitPoint(stage.portals.find(portal => portal.destination === "ion_citadel")!) });
+    expect(ann.row("player")).toMatchObject({ mapId: "endless_1", ...portalArrival(stage.portals.find(portal => portal.destination === "ion_citadel")!, into) });
     // The next stage waits on this stage's boss.
     const onward = stage.portals.find(portal => portal.destination === "endless_2")!;
     expect(ann.refusal("changeMap", { mapId: "endless_2", ...walkInto(onward) })).not.toBeNull();

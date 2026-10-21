@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import { crystalFixture, server } from "../../tests/helpers/crystal-hollows-fixture";
 import { BOSS_REWARD_CLAIM_BITS } from "../../shared/rules";
-import { portalExitPoint } from "../../shared/map-gateways";
+import { portalArrival } from "../../shared/map-gateways";
 import { reducerParameters } from "../../tests/helpers/spacetime-module";
 import { progressOf } from "../../tests/helpers/progress";
 vi.mock("spacetimedb/server", () => import("../../tests/helpers/spacetime-module"));
@@ -43,11 +43,12 @@ it("enforces the complete portal chain and survives repeated forward/return trip
   expect(() => travel("duskfall_orchard", 2510)).toThrow("Ironhorn");
   f.patch("playerProgress", { duskfallOrchardUnlocked: true });
   for (let repeat = 0; repeat < 3; repeat++) {
-    // Each trip comes out a step in front of the destination's portal back: forward of its back portal, back of its next.
+    // Each trip comes out in front of the destination's portal back: forward of its back portal, back of its next.
     for (const [mapId, x, exitX] of [["duskfall_orchard", 2510, 2290], ["clockwork_ruins", 2290, 2510], ["crystal_hollows", 2290, 2510], ["clockwork_ruins", 2510, 2290]] as const) {
       travel(mapId, x);
-      const out = portalExitPoint({ x: exitX, y: 2400 });
-      expect(f.db.player.identity.find(f.ctx.sender)).toMatchObject({ mapId, x: out.x });
+      const out = portalArrival({ x: exitX, y: 2400 }, { x, y: 2337 });
+      expect(f.db.player.identity.find(f.ctx.sender)).toMatchObject({ mapId });
+      expect(f.db.player.identity.find(f.ctx.sender).x).toBeCloseTo(out.x);
       expect(f.db.player.identity.find(f.ctx.sender).y).toBeCloseTo(out.y);
       expect(f.db.playerMotion.identity.find(f.ctx.sender).mapId).toBe(mapId);
     }

@@ -1,6 +1,7 @@
 import { CAMPAIGN_MAPS } from "./campaign-registry";
 import { MAP_EDITOR_GAMEPLAY_OVERRIDES } from "./map-editor-overrides";
-import { TUTORIAL_FOREST_MAP_ID, PLAYER_SPAWN, WORLD_HEIGHT, WORLD_WIDTH } from "./rules";
+import { TUTORIAL_FOREST_MAP_ID, PLAYER_RADIUS, PLAYER_SPAWN, WORLD_HEIGHT, WORLD_WIDTH } from "./rules";
+import { mapRandom } from "./procedural-map-core";
 
 /**
  * Where each campaign map's portals stand and where a player arriving lands.
@@ -81,8 +82,10 @@ export function campaignLanding(mapId: string) {
   return mapId === TUTORIAL_FOREST_MAP_ID ? { ...PLAYER_SPAWN } : CAMPAIGN_GATEWAYS[mapId] && { ...CAMPAIGN_GATEWAYS[mapId].arrival };
 }
 
-/** How far in front of a portal's feet a traveller steps out of it: clear of its trigger, so they are on the map, not in the portal. */
-export const PORTAL_EXIT_DROP = 24;
+/** How far in front of a portal's feet the middle of a traveller's landing stands: clear of its trigger and pillars. */
+export const PORTAL_EXIT_DROP = 74;
+/** Travellers land anywhere within this of that middle, so several coming through together stand apart. */
+export const PORTAL_EXIT_SPREAD = 45;
 
 /**
  * The portal a traveller from `from` comes out of: the one leading back there. From the Town, a campaign map's
@@ -94,17 +97,41 @@ export function exitPortalFor<P extends { destination: string }>(mapId: string, 
 }
 
 /**
- * Where a traveller comes out of `exit`: a step in front of it, outside its trigger. 0.905.1 to 0.914.4 brought
- * them out inside it, where they stood in the one they walked into; standing in a portal on arrival, walking
- * into it did nothing until they had stepped out, and players thought it broken.
+ * The middle of where a traveller comes out of `exit`: in front of it, outside its trigger. 0.905.1 to 0.914.4
+ * brought them out inside it; walking into it then did nothing until they had stepped out.
  */
 export function portalExitPoint(exit: { x: number; y: number }) {
   return { x: exit.x, y: exit.y + PORTAL_EXIT_DROP };
 }
 
+/**
+ * Where a traveller comes out of `exit`: a point in the circle round its middle, drawn from where they stood
+ * when they used the way in (`from`). The server is sent that spot and the client knows it, so both pick the same point.
+ */
+export function portalArrival(exit: { x: number; y: number }, from: { x: number; y: number }) {
+  const middle = portalExitPoint(exit);
+  let seed = 0x811c9dc5;
+  for (const value of [from.x, from.y, exit.x, exit.y]) seed = Math.imul(seed ^ (Math.round(value * 1000) | 0), 0x01000193);
+  const random = mapRandom(seed);
+  // Square samples kept inside the circle and the map; pure arithmetic, so every engine draws the same point.
+  for (let tries = 0; tries < 16; tries++) {
+    const dx = random() * 2 - 1, dy = random() * 2 - 1;
+    const x = middle.x + dx * PORTAL_EXIT_SPREAD, y = middle.y + dy * PORTAL_EXIT_SPREAD;
+    if (dx * dx + dy * dy <= 1 && x >= PLAYER_RADIUS && y >= PLAYER_RADIUS && x <= WORLD_WIDTH - PLAYER_RADIUS && y <= WORLD_HEIGHT - PLAYER_RADIUS) return { x, y };
+  }
+  return middle;
+}
+
 /** The last campaign map's portal into Endless (`destination`, its first map): where a next portal would stand. */
 export function endlessEntryPortal(destination: string): MapGatewayPortal {
   return middleGateways(gatewayPoint(LAST_CAMPAIGN_MAP.id), CAMPAIGN_MAPS[CAMPAIGN_MAPS.length - 2].id, destination).portals[1];
+}
+
+/** The middles of where travellers come out of a campaign map's portals (the Endless one too). */
+export function gatewayLandings(mapId: string): { x: number; y: number }[] {
+  const gateways = CAMPAIGN_GATEWAYS[mapId];
+  if (!gateways) return [];
+  return [...gateways.portals, ...(mapId === LAST_CAMPAIGN_MAP.id ? [endlessEntryPortal("")] : [])].map(portalExitPoint);
 }
 
 /** The spots on a campaign map that stand clear of decor: each portal's gate (the Endless one too) and the arrival. */

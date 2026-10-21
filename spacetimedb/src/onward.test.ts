@@ -22,15 +22,16 @@ const where = (f: Fixture) => { const { mapId, x, y } = f.db.player.identity.fin
 
 describe("Onward (Warden II card)", () => {
   it("takes the player through to the map their boss kill opened, landing where its portal would", () => {
+    const portal = MAP_PORTALS.crystal_hollows.find(candidate => candidate.destination === "clockwork_ruins")!;
     const f = onMap("crystal_hollows");
+    f.patch("player", { x: portal.x, y: portal.y });
     reportEnemy(f, "boss");
     const landed = where(f);
     expect(landed.mapId).toBe("clockwork_ruins");
     expect(f.db.playerLastLocation.identity.find(f.ctx.sender)).toMatchObject(landed);
-    // Walking through the portal by hand lands on the same spot.
+    // Walking through the portal by hand from where the boss fell lands on the same spot.
     const walked = onMap("crystal_hollows", false);
     reportEnemy(walked, "boss");
-    const portal = MAP_PORTALS.crystal_hollows.find(candidate => candidate.destination === "clockwork_ruins")!;
     walked.run(server.changeMap, { mapId: "clockwork_ruins", x: portal.x, y: portal.y });
     expect(where(walked)).toEqual(landed);
   });
