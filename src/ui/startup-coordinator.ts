@@ -2,6 +2,7 @@ import { reloadWithUpdateResume } from "../coop/services/update-resume-browser";
 import { recordConnectionDiagnostic } from "../coop/services/connection-diagnostic-runtime";
 import { enforceLatestVersion, reloadStaleSession, updateReloadPending } from "../app/version";
 import { createRefusedSessionRecovery } from "./refused-session-recovery";
+import type { UpdateScreen } from "./reconnect-overlay";
 import {
   createStartupStateMachine,
   type StartupAccountSnapshot,
@@ -15,7 +16,7 @@ type AccountState = StartupAccountSnapshot & {
 
 type StartupCoordinatorDependencies = {
   version: string;
-  gameUpdateGate: HTMLElement;
+  updateScreen: Pick<UpdateScreen, "setUpdating">;
   accountState: () => AccountState | undefined;
   pageLoadComplete: () => boolean;
   /** The character's map: loaded before play even when the Terms ended the loading screen first. */
@@ -62,7 +63,7 @@ export function createStartupCoordinator(dependencies: StartupCoordinatorDepende
       dependencies.prepareUpdateReload(latestVersion);
     }
     machine.dispatch({ type: "update-detected", version: latestVersion });
-    dependencies.gameUpdateGate.hidden = false;
+    dependencies.updateScreen.setUpdating(true);
   }
 
   function isSignInScreenReady() {
@@ -105,7 +106,7 @@ export function createStartupCoordinator(dependencies: StartupCoordinatorDepende
         }
         return;
       case "updating":
-        dependencies.gameUpdateGate.hidden = false;
+        dependencies.updateScreen.setUpdating(true);
         return;
       case "running":
         if (changed) dependencies.hideStart();
@@ -186,7 +187,7 @@ export function createStartupCoordinator(dependencies: StartupCoordinatorDepende
       machine.dispatch({ type: "update-cleared" });
       finishStartup();
     }
-    dependencies.gameUpdateGate.hidden = machine.state().value !== "updating";
+    dependencies.updateScreen.setUpdating(machine.state().value === "updating");
     if (account?.updating) enforceLatestVersion(dependencies.version, showGameUpdating, dependencies.updateHandoff);
   }
 

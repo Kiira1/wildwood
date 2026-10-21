@@ -508,8 +508,6 @@ describe("Guild join requests", () => {
 });
 
 describe("The Guild window", () => {
-  const nameOf = (world: ScenarioWorld, player: ScenarioPlayer) => world.db.playerProfile.identity.find(player.identity).displayName as string;
-  const socialHub = (player: ScenarioPlayer) => JSON.parse(player.procedure("getSocialHub") as string);
 
   it("the President appoints and removes a Vice President from the roster, each once however often the button is tapped; Back cancels a pending leave; a battle waits for its confirmation", async () => {
     const world = gameWorld();
@@ -555,29 +553,16 @@ describe("The Guild window", () => {
     expect(guildHub(cara).battles).toHaveLength(1);
   });
 
-  it("friend requests are answered and sent from the Friends tab, a guild is joined from the list, and an officer answers join requests from guild chat with a note", async () => {
+  it("a guild is joined from the list, and an officer answers join requests from guild chat with a note", async () => {
     const world = gameWorld();
-    const [ann, bob, cara, dan, eve] = ["Ann", "Bob", "Cara", "Dan", "Eve"].map(name => world.join(name));
+    const [ann, dan, eve] = ["Ann", "Dan", "Eve"].map(name => world.join(name));
     const moon = foundGuild(world, dan, "Moon");
     ann.disconnect();
-    bob.call("friendAction", { action: "request", target: nameOf(world, ann) });
     const tab = await playAs(world, "Ann");
     const annNow = tab.network.players.get("Ann")!;
     const guild = guildWindow(tab), chat = chatPanel(tab);
-    // Chat's private messages hold the way to her friends.
     await chat.expand();
-    await chat.press("Private");
-    await chat.press("Manage friends");
-    expect(guild.shown()).toBe(true);
-    const incoming = socialHub(annNow).incomingRequests[0];
-    await guild.press(`accept-${incoming.id}`);
-    expect(socialHub(annNow).friends.map((friend: any) => friend.identity)).toEqual([bob.hex]);
-    expect(guild.has(`message-${bob.hex}`)).toBe(true);
-    // She asks Cara; Cara sees it.
-    await guild.submit("friend", `  ${nameOf(world, cara)}  `);
-    expect(socialHub(cara).incomingRequests.map((request: any) => request.identity)).toEqual([annNow.hex]);
     // She joins Moon from the guild list.
-    await guild.back();
     await guild.open();
     await guild.press(`join-${moon}`);
     expect(world.db.guildMember.identity.find(annNow.identity)?.guildId).toBe(moon);

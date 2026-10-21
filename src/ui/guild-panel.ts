@@ -677,15 +677,12 @@ export function createGuildPanel(options: Options) {
   };
   doc.defaultView?.addEventListener("wildwood:open-guild-replay", openChatReplay);
   const guildClick = () => root.hidden ? open() : close();
-  const friendsClick = () => open("friends");
-  doc.defaultView?.addEventListener("wildwood:open-friends", friendsClick);
   doc.addEventListener("keydown", onKey, true);
   root.addEventListener("click", event => { if (event.target === root) close(); });
   doc.getElementById("guildBtn")?.addEventListener("click", guildClick);
   return { open, close, tick, isOpen: () => !root.hidden, openGuildPreview: (id: string) => void otherGuild.open(id), dispose() {
     otherGuild.dispose();
     doc.defaultView?.removeEventListener("wildwood:open-guild-replay", openChatReplay);
-    doc.defaultView?.removeEventListener("wildwood:open-friends", friendsClick);
     close(); root.remove(); doc.removeEventListener("keydown", onKey, true);
     doc.getElementById("guildBtn")?.removeEventListener("click", guildClick);
   } };

@@ -79,9 +79,9 @@ describe("updates and releases", () => {
     dropSession(tab.connection()!.connectionId);
     tab.tap("townBtn");
     await tab.play(1_000);
-    expect(tab.shown("gameUpdateGate")).toBe(true);
+    expect(tab.shown("reconnectOverlay")).toBe(true);
     await idle(tab, 45_000);
-    expect(tab.shown("gameUpdateGate")).toBe(false);
+    expect(tab.shown("reconnectOverlay")).toBe(false);
     expect(tab.playing()).toBe(true);
     expect(tab.navigations).toEqual([]);
 
@@ -103,12 +103,12 @@ describe("updates and releases", () => {
     tab = await tab.follow();
     expect(handoff(tab)).toBeNull();
     expect(tab.connection()!.fake.player.name).toBe("Ann");
-    expect(await tab.until(() => tab.shown("gameUpdateGate"), 20_000)).toBe(true);
+    expect(await tab.until(() => tab.shown("reconnectOverlay"), 20_000)).toBe(true);
     // The version marker comes off the address once that version has loaded.
     expect(versionIn(tab.location.href)).toBeNull();
     await idle(tab, 3 * 60_000);
     expect(tab.navigations).toEqual([]);
-    expect(tab.shown("gameUpdateGate")).toBe(true);
+    expect(tab.shown("reconnectOverlay")).toBe(true);
   }, 60_000);
 
   it("OPS-01 the Android app says a downloaded update is waiting, restarts into it on request, and reports its updater state once per change", async () => {

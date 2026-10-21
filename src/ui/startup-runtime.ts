@@ -2,6 +2,7 @@ import { installCanvasPurgeRecovery } from "../app/canvas-purge-recovery";
 import { enforceLatestVersion, reloadAtVersion } from "../app/version";
 import type { CoopAccess } from "../game/runtime/coop-access";
 import { createScheduledUpdateController, createScheduledUpdateView } from "./scheduled-update-controller";
+import type { UpdateScreen } from "./reconnect-overlay";
 import { createStartupController } from "./startup-controller";
 import { createStartupCoordinator } from "./startup-coordinator";
 
@@ -83,7 +84,7 @@ export function createStartupScreen(deps: StartupScreenDeps) {
 export type StartupCoordinationDeps = {
   coop: CoopAccess;
   version: string;
-  gameUpdateGate: HTMLElement;
+  updateScreen: UpdateScreen;
   canvas: HTMLCanvasElement;
   screen: ReturnType<typeof createStartupScreen>;
   session: { hasStarted: () => boolean; isRunning: () => boolean };
@@ -130,7 +131,7 @@ export function createStartupCoordination(deps: StartupCoordinationDeps) {
     drain: async () => await client?.drainForUpdate?.() ?? true,
     acknowledge: async id => { await client?.acknowledgeRelease?.(id); },
     rememberSession: latestVersion => client?.prepareUpdateReload?.(latestVersion) ?? false,
-    render: createScheduledUpdateView(),
+    render: createScheduledUpdateView(deps.updateScreen),
     checkVersion: () => enforceLatestVersion(version, latestVersion => {
       deps.suspendPlayerVisibility();
       coordinator.showGameUpdating(latestVersion);
@@ -151,7 +152,7 @@ export function createStartupCoordination(deps: StartupCoordinationDeps) {
   const coordinator = createStartupCoordinator({
     updateHandoff,
     version,
-    gameUpdateGate: deps.gameUpdateGate,
+    updateScreen: deps.updateScreen,
     accountState: coop.accountState,
     pageLoadComplete: deps.screen.pageLoaded,
     currentMapReady: deps.screen.currentMapReady,
