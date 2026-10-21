@@ -76,3 +76,17 @@ export async function town() {
   ];
   for (const view of views) await view.draw();
 }
+
+/** The Forest's grass and the Town's, side by side at the phone framing and at 150%: the same tufts at one size. */
+export async function forest() {
+  const phones = strip();
+  const mapId = "tutorial_forest" as MapId, town = TOWN_MAP_ID as MapId;
+  const countryside = { x: TOWN_CENTER.x + 3_000, y: TOWN_CENTER.y - 1_500 };
+  const views = [
+    await mapView({ mapId, ...PHONE, parent: phones, title: "forest · arrival" }),
+    await mapView({ mapId, ...PHONE, parent: phones, title: "forest · zoom 150%", zoomSteps: 10 }),
+    await mapView({ mapId, ...PHONE, parent: phones, title: "forest · east", at: { x: 1_400, y: 900 }, zoomSteps: 10 }),
+    await mapView({ mapId: town, ...PHONE, parent: phones, title: "town · countryside 150%", at: countryside, zoomSteps: 10 }),
+  ];
+  for (const view of views) await view.draw();
+}
