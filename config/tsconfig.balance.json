@@ -12,9 +12,6 @@
     ]
   },
   "include": [
-    "../tools/balance-lab.ts",
-    "../tools/balance-stat-graph.ts",
-    "../tools/reward-health-graph.ts",
     "../src/balance/stat-graph.ts",
     "../scripts/balance-report.ts",
     "../src/balance/**/*.ts",
