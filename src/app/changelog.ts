@@ -1,4 +1,7 @@
 export const RELEASE_NOTES: Record<string, string[]> = {
+  "0.916.22": [
+    "The Smith's and the sellers' windows close when you walk away from them",
+  ],
   "0.916.21": [
     "The game loads a little faster",
     "Players entering a map arrive a little away from the portal and spread out",

@@ -170,6 +170,9 @@ describe("Tools at the Smith", () => {
     expect([held.gold(), ...materials.map(id => held.ore(id))]).toEqual([0n, ...materials.map(() => 0)]);
     // Fully upgraded: nothing left to press.
     expect(pickaxeButton(ann.tab)).toBeNull();
+    // Walking off with his window open closes it once she is past his reach, where its buttons would be refused.
+    await ann.tab.hold("KeyA", 1_000);
+    expect(ann.tab.shown("smithTitle")).toBe(false);
   });
 });
 
