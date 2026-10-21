@@ -6,6 +6,10 @@ export const RELEASE_NOTES: Record<string, string[]> = {
     "The Shop shows the Diamond Galaxy set under the Diamond frame",
     "Patreon supporters can start a 15-minute 2x Rewards Server Boost once a day",
     "Removed the Upgrade All button from the Weapon and Armor Sellers",
+    "Guild invites arrive as a private chat from the player who sent them",
+    "Removed friends; private chats work with anyone",
+    "One simpler Reconnecting screen, without a Retry button",
+    "Chat and guild buttons are black and white",
   ],
   "0.916.27": [
     "Sword swings move the hilt along with the blade",
