@@ -271,7 +271,7 @@
   border: 2px solid var(--hud-frame);
   border-radius: var(--hud-radius-small);
   background: var(--hud-surface);
-  box-shadow: var(--ui-shadow);
+  box-shadow: var(--ui-shadow); outline: var(--ui-seam); outline-offset: -1px;
   font: 700 13px/1.3 "Wildstat Chat", sans-serif;
   pointer-events: auto;
 }
