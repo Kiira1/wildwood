@@ -211,7 +211,8 @@ export function createPlayerController(options: {
     rebuildWorld,
     reset,
     update,
-    isDuelResultHeld: () => duelResultHeld,
+    // Held from the moment the arena ends, so the loser's 0 health never reads as a death before the result shows.
+    isDuelResultHeld: () => duelResultHeld || duelWasActive,
     resetMovementSync: () => { movementSyncActive = false; },
     finishDuelResult: () => {
       duelResultHeld = false;

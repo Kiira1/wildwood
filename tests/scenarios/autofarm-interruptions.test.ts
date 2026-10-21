@@ -3,10 +3,10 @@ import { gameWorld } from "./harness/game";
 import { farmer, strong } from "./harness/farmer";
 import { pressKey } from "./harness/farm";
 
-// Auto Farm in the booted game through a lost connection and a duel.
+// Auto Farm in the booted game through a lost connection and a won and a lost duel.
 
 describe("Auto Farm interruptions in the game (FARM-05)", () => {
-  it("holds while the game is paused for a lost connection and through a won duel, then farms on by itself", async () => {
+  it("holds while the game is paused for a lost connection and through a won and a lost duel, then farms on by itself", async () => {
     const world = gameWorld();
     const bob = world.join("Bob");
     const ann = await farmer(world, "Ann", strong);
@@ -36,5 +36,18 @@ describe("Auto Farm interruptions in the game (FARM-05)", () => {
     before = ann.kills();
     expect(await tab.until(() => ann.kills() > before, 75_000)).toBe(true);
     expect(ann.farming()).toBe(true);
-  }, 90_000);
+
+    // Once the duel cooldown is over, Ann challenges a far stronger Bob and loses: her 0 health is the duel's, not a death.
+    const cooldownOver = () => world.now() - Number(world.db.duelRequestCooldown.identity.find(ann.player.identity).requestedAt.microsSinceUnixEpoch / 1000n) > 121_000;
+    expect(await tab.until(cooldownOver, 130_000, 250)).toBe(true);
+    bob.patch("playerProgress", { damage: 1_000_000, maxHp: 10_000_000 });
+    await (tab.connection() as any).reducers.requestDuel({ opponent: bob.identity });
+    let stopped = false;
+    expect(await tab.until(() => { stopped ||= !ann.farming(); return tab.shown("closeDuelResultBtn"); }, 60_000, 250)).toBe(true);
+    expect(stopped).toBe(false);
+    tab.tap("closeDuelResultBtn");
+    before = ann.kills();
+    expect(await tab.until(() => ann.kills() > before, 75_000)).toBe(true);
+    expect(ann.farming()).toBe(true);
+  }, 240_000);
 });
