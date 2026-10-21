@@ -1,74 +1,34 @@
-import { carapaceAnglerSpriteFrame } from "./carapace-angler-sprite";
-import { BOSS_ART } from "./boss-art";
-import { DRAGON_SPRITE_Y_OFFSET, DRAGON_SPRITE_GROUND_OFFSET, DRAGON_ART_TOP, PRISMSHELL_SPRITE_GROUND_OFFSET, PRISMSHELL_ART_TOP, IRONHORN_ART_TOP, DREADREAPER_ART_TOP } from "../../constants";
 import { drawVerdantAttacks } from "./verdant-attack-art";
 import { drawIonAttacks } from "./ion-attack-art";
 import { drawNeonAttacks } from "./neon-attack-art";
-import { drawVoltwardenArt, VOLTWARDEN_ART_TOP } from "./neon-boss-art";
-import { drawGravebloomArt, GRAVEBLOOM_ART_TOP } from "./verdant-boss-art";
-import { drawAegisPrimeArt, AEGIS_PRIME_ART_TOP } from "./ion-boss-art";
+import { BOSS_ART } from "./boss-art";
+import { BOSS_LOOKS, type BossLook, type BossPaint } from "./boss-looks";
 import { drawBossAtlasFrame } from "./boss-atlas-drawing";
 import { bossFrameCrop, drawBossSheetFrame } from "./boss-frame-crop";
-import { createGloomrootSpriteCache, GLOOMROOT_SPRITE_FILTER, paintGloomrootAura } from "./gloomroot-sprite-cache";
+import { createGloomrootSpriteCache } from "./gloomroot-sprite-cache";
 import { bossVerticalRadius } from "../../../../shared/boss-hitbox";
 import {
-  BOSS_CONE_HALF_ANGLE,
-  BOSS_CONE_RANGE,
-  FROSTCLAW_RIFT_RANGE,
-  FROSTCLAW_ROAR_RANGE,
-  FROSTCLAW_SPRITE_GROUND_OFFSET,
-  FROSTCLAW_SPRITE_Y_OFFSET,
-  GLOOMROOT_SPRITE_GROUND_OFFSET,
-  GLOOMROOT_SPRITE_Y_OFFSET,
-  GLOOMROOT_SWEEP_HALF_ANGLE,
-  GLOOMROOT_SWEEP_RANGE,
-  MAGMALISK_BITE_HALF_ANGLE,
-  MAGMALISK_BITE_RANGE,
-  MAGMALISK_SPRITE_GROUND_OFFSET,
-  MAGMALISK_SPRITE_Y_OFFSET,
-  FROSTCLAW_ART_TOP,
-  GLOOMROOT_ART_TOP,
-  MAGMALISK_ART_TOP,
-  MIREMAW_ART_TOP,
-  SPIDER_ART_TOP,
-  SPIDER_SPRITE_GROUND_OFFSET,
-  TEMPEST_KIRIN_ART_TOP,
-  MIREMAW_SPRITE_GROUND_OFFSET,
-  MIREMAW_SPRITE_Y_OFFSET,
-  KOI_SHOGUN_ART_TOP,
-  PRISMSHELL_SPRITE_Y_OFFSET, IRONHORN_SPRITE_Y_OFFSET, DREADREAPER_SPRITE_Y_OFFSET, VOLTWARDEN_SPRITE_Y_OFFSET, GRAVEBLOOM_SPRITE_Y_OFFSET, AEGIS_PRIME_SPRITE_Y_OFFSET,
-  MIREMAW_TONGUE_HALF_ANGLE,
+  BOSS_CONE_HALF_ANGLE, BOSS_CONE_RANGE, FROSTCLAW_RIFT_RANGE, FROSTCLAW_ROAR_RANGE, GLOOMROOT_SWEEP_HALF_ANGLE,
+  GLOOMROOT_SWEEP_RANGE, MAGMALISK_BITE_HALF_ANGLE, MAGMALISK_BITE_RANGE, MIREMAW_TONGUE_HALF_ANGLE, MIREMAW_TONGUE_RANGE,
   PRISMSHELL_SHATTER_HALF_ANGLE, IRONHORN_SHATTER_HALF_ANGLE, DREADREAPER_SHATTER_HALF_ANGLE,
-  MIREMAW_TONGUE_RANGE,
-  PRISMSHELL_SHATTER_RANGE, IRONHORN_SHATTER_RANGE, DREADREAPER_SHATTER_RANGE,
-  KOI_SHOGUN_SLASH_HALF_ANGLE,
-  KOI_SHOGUN_SLASH_RANGE,
-  KOI_SHOGUN_SPRITE_GROUND_OFFSET,
-  KOI_SHOGUN_SPRITE_Y_OFFSET,
-  TIDEWYRM_SPRITE_Y_OFFSET,
-  TIDEWYRM_SURGE_HALF_ANGLE,
-  TIDEWYRM_SURGE_RANGE,
-  TEMPEST_KIRIN_CHARGE_HALF_ANGLE,
-  TEMPEST_KIRIN_CHARGE_RANGE,
-  TEMPEST_KIRIN_SPRITE_GROUND_OFFSET,
-  TEMPEST_KIRIN_SPRITE_Y_OFFSET,
-  TAU,
+  PRISMSHELL_SHATTER_RANGE, IRONHORN_SHATTER_RANGE, DREADREAPER_SHATTER_RANGE, KOI_SHOGUN_SLASH_HALF_ANGLE,
+  KOI_SHOGUN_SLASH_RANGE, TIDEWYRM_SURGE_HALF_ANGLE, TIDEWYRM_SURGE_RANGE, TEMPEST_KIRIN_CHARGE_HALF_ANGLE,
+  TEMPEST_KIRIN_CHARGE_RANGE, TAU,
 } from "../../constants";
 import { clamp } from "../../math";
 import { formatCompactNumber } from "../../../../shared/compact-number";
 import type { Camera } from "../render/camera";
+import type { BossCone } from "../types";
 import {
   BOSS_NAME_FONT_SIZE,
   BOSS_STATUS_HEALTH_FONT_SIZE,
   bossStatusLabelOffsets,
 } from "./boss-label-style";
 import { healthBarTextY } from "../render/health-bar-layout";
-import { BOSS_KINDS, type BossArtAssets, type BossHazards, type BossKind, type BossStates } from "./boss-registry";
+import {
+  BOSS_KINDS, type BossArtAssets, type BossHazards, type BossKind, type BossPageArt, type BossSheetArt, type BossStates,
+} from "./boss-registry";
 import { drawScreenSpaceAt, fillPixelRect, snapWorldRenderCoordinate } from "../render/render-space";
-import { scorpionSpriteFrame } from "./scorpion-sprite";
-import { prismshellSpriteFrame } from "./prismshell-sprite";
-import { ironhornSpriteFrame } from "./ironhorn-sprite";
-import { dreadreaperSpriteFrame } from "./dreadreaper-sprite";
 
 type PixelCircle = (x: number, y: number, radius: number) => void;
 type OutlinedText = (text: string, x: number, y: number, color: string, strokeWidth?: number) => void;
@@ -133,7 +93,6 @@ export function createBossRenderer(options: {
   } = bosses;
   const screenX = (worldX: number) => snapWorldRenderCoordinate(worldX - camera.x, camera.zoom, options.devicePixelRatio());
   const screenY = (worldY: number) => snapWorldRenderCoordinate(worldY - camera.y, camera.zoom, options.devicePixelRatio());
-  const gloomrootSprites = createGloomrootSpriteCache();
   /**
    * The collision shape the server hits a boss with, drawn over its artwork.
    *
@@ -168,26 +127,6 @@ export function createBossRenderer(options: {
     ctx.restore();
   }
 
-  /** The stand-in for a horned boss whose art did not load: a body and two horns. */
-  function drawHornedSilhouette(body: string, outline: string, horns: string) {
-    ctx.fillStyle = body;
-    ctx.strokeStyle = outline;
-    ctx.lineWidth = 10;
-    ctx.beginPath();
-    ctx.ellipse(0, 55, 160, 105, 0, 0, TAU);
-    ctx.fill();
-    ctx.stroke();
-    ctx.fillStyle = horns;
-    ctx.beginPath();
-    ctx.moveTo(-105, -5);
-    ctx.lineTo(-70, -130);
-    ctx.lineTo(-25, -5);
-    ctx.moveTo(25, -5);
-    ctx.lineTo(70, -130);
-    ctx.lineTo(105, -5);
-    ctx.fill();
-    ctx.stroke();
-  }
   function drawBossStatus(options_: {
     x: number;
     spriteTopY: number;
@@ -251,66 +190,10 @@ export function createBossRenderer(options: {
     }
     for (const strike of hazards.dragon) { const x = screenX(strike.x); const y = screenY(strike.y); const progress = 1 - clamp(strike.timer / strike.maxTimer, 0, 1); const fallY = y - 150 * (1 - progress); ctx.save(); ctx.strokeStyle = "rgba(255,70,54,.92)"; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(x, y, strike.r, 0, TAU); ctx.stroke(); ctx.fillStyle = "#ff5b36"; options.pixelCircle(x, fallY, 9); ctx.fillStyle = "#ffd05c"; options.pixelCircle(x, fallY, 5); ctx.restore(); }
   }
-  function drawBoss() {
-    if (boss.dead || !art.dragon.ready()) return;
-    const canvas = art.dragon.canvas; const cellW = canvas.width / 4; const drawW = BOSS_ART.DRAGON.drawWidth; const drawH = BOSS_ART.DRAGON.drawHeight; const x = screenX(boss.x); const y = screenY(boss.y);
-    const frame = Math.floor(options.gameTime() * 4) % 4;
-    options.drawShadow(x, y + DRAGON_SPRITE_Y_OFFSET + DRAGON_SPRITE_GROUND_OFFSET, BOSS_ART.DRAGON.shadowWidth, .24);
-    ctx.save(); ctx.translate(x, y + DRAGON_SPRITE_Y_OFFSET);
-    drawBossSheetFrame(ctx, canvas, { bossId: "DRAGON", frame, cellWidth: cellW, cellHeight: canvas.height, drawWidth: drawW, drawHeight: drawH }); ctx.restore();
-    drawBossStatus({
-      x,
-      spriteTopY: y + DRAGON_SPRITE_Y_OFFSET + DRAGON_ART_TOP + (bossFrameCrop("DRAGON", frame).statusOffsetY ?? 0),
-      barGap: 20,
-      barWidth: 220,
-      barHeight: 20,
-      hp: boss.hp,
-      maxHp: boss.maxHp,
-      hpLossFlashTimer: boss.hpLossFlashTimer,
-      hpLossFlashFrom: boss.hpLossFlashFrom,
-      fillColor: "#d8352d",
-      name: { text: "Dragon", color: "#f5e9c4" },
-      rewardBottomOffsetY: -5,
-    });
-  }
   function drawSpiderTelegraphs() {
     if (spiderBoss.dead) return; const x = screenX(spiderBoss.x); const y = screenY(spiderBoss.y);
     if (spiderBoss.web) { const radius = spiderBoss.r + (options.spiderWebRange - spiderBoss.r) * clamp(1 - spiderBoss.web.timer / spiderBoss.web.duration, 0, 1); ctx.save(); ctx.strokeStyle = "rgba(235,239,218,.9)"; ctx.lineWidth = 7; ctx.setLineDash([13, 10]); ctx.beginPath(); ctx.arc(x, y, radius, 0, TAU); ctx.stroke(); ctx.restore(); }
     for (const pool of hazards.spider) { const progress = 1 - clamp(pool.timer / pool.maxTimer, 0, 1); ctx.save(); ctx.fillStyle = `rgba(113,214,71,${.12 + progress * .18})`; ctx.strokeStyle = "rgba(155,238,88,.95)"; ctx.lineWidth = 4; ctx.beginPath(); ctx.arc(screenX(pool.x), screenY(pool.y), pool.r, 0, TAU); ctx.fill(); ctx.stroke(); ctx.restore(); }
-  }
-  function drawSpiderBoss() {
-    if (spiderBoss.dead || !art.spider.ready()) return;
-    const canvas = art.spider.canvas;
-    const frame = scorpionSpriteFrame(options.gameTime(), canvas.width, canvas.height);
-    const x = screenX(spiderBoss.x);
-    const y = screenY(spiderBoss.y);
-    const spriteTopY = y + frame.topOffset;
-    options.drawShadow(x, y + SPIDER_SPRITE_GROUND_OFFSET, BOSS_ART.SPIDER.shadowWidth, .24);
-    // Through the same path as every other sheet boss, so its frames can be
-    // corrected too. The scorpion is placed from its feet, hence the top.
-    ctx.save();
-    ctx.translate(x, 0);
-    drawBossSheetFrame(ctx, canvas, {
-      bossId: "SPIDER", frame: frame.index,
-      sourceX: frame.sourceX, sourceY: frame.sourceY,
-      cellWidth: frame.sourceWidth, cellHeight: frame.sourceHeight,
-      drawWidth: frame.drawWidth, drawHeight: frame.drawHeight, top: spriteTopY,
-    });
-    ctx.restore();
-    drawBossStatus({
-      x,
-      spriteTopY: y + SPIDER_ART_TOP + (bossFrameCrop("SPIDER", frame.index).statusOffsetY ?? 0),
-      barGap: 32,
-      barWidth: 250,
-      barHeight: 22,
-      hp: spiderBoss.hp,
-      maxHp: spiderBoss.maxHp,
-      hpLossFlashTimer: spiderBoss.hpLossFlashTimer,
-      hpLossFlashFrom: spiderBoss.hpLossFlashFrom,
-      fillColor: "#9f5c2f",
-      name: { text: "Desert Scorpion", color: "#f5e9c4" },
-      rewardBottomOffsetY: -5,
-    });
   }
 
   function drawFrostclawTelegraphs() {
@@ -397,34 +280,6 @@ export function createBossRenderer(options: {
     }
   }
 
-  function drawFrostclawBoss() {
-    if (frostclawBoss.dead || !art.frostclaw.ready()) return;
-    const canvas = art.frostclaw.canvas;
-    const cellW = canvas.width / 4;
-    const drawW = BOSS_ART.FROSTCLAW.drawWidth;
-    const drawH = BOSS_ART.FROSTCLAW.drawHeight;
-    const x = screenX(frostclawBoss.x);
-    const y = screenY(frostclawBoss.y);
-    const visualY = y + FROSTCLAW_SPRITE_Y_OFFSET;
-    const frame = frostclawBoss.roar ? 2 : frostclawBoss.rift ? 1 : hazards.frostclaw.length ? 3 : Math.floor(options.gameTime() * 3.5) % 4;
-    const pulse = frostclawBoss.roar ? 1 + Math.sin(options.gameTime() * 15) * .018 : 1;
-    options.drawShadow(x, visualY + FROSTCLAW_SPRITE_GROUND_OFFSET, BOSS_ART.FROSTCLAW.shadowWidth, .27);
-    ctx.save(); ctx.translate(x, visualY + 2); ctx.scale(pulse, pulse);
-    drawBossSheetFrame(ctx, canvas, { bossId: "FROSTCLAW", frame, cellWidth: cellW, cellHeight: canvas.height, drawWidth: drawW, drawHeight: drawH }); ctx.restore();
-    drawBossStatus({
-      x,
-      spriteTopY: visualY + FROSTCLAW_ART_TOP + (bossFrameCrop("FROSTCLAW", frame).statusOffsetY ?? 0),
-      barGap: 34,
-      barWidth: 270,
-      barHeight: 22,
-      hp: frostclawBoss.hp,
-      maxHp: frostclawBoss.maxHp,
-      hpLossFlashTimer: frostclawBoss.hpLossFlashTimer,
-      hpLossFlashFrom: frostclawBoss.hpLossFlashFrom,
-      fillColor: "#42c9f5",
-      name: { text: "Frostclaw", color: "#dff8ff" },
-    });
-  }
 
   function drawMagmaliskTelegraphs() {
     if (magmaliskBoss.dead) return;
@@ -473,39 +328,6 @@ export function createBossRenderer(options: {
     }
   }
 
-  function drawMagmaliskBoss() {
-    if (magmaliskBoss.dead || !art.magmalisk.ready()) return;
-    const canvas = art.magmalisk.canvas;
-    const cellW = canvas.width / 4;
-    // The selected Magmalisk animation deliberately uses only source frames 0–2.
-    const frame = hazards.magmalisk.length > 0 ? 2 : magmaliskBoss.bite ? 1 : 0;
-    // Preprocessing isolates and re-packs each connected pose before rendering.
-    const drawW = BOSS_ART.MAGMALISK.drawWidth;
-    const drawH = BOSS_ART.MAGMALISK.drawHeight;
-    const x = screenX(magmaliskBoss.x);
-    const y = screenY(magmaliskBoss.y);
-    const visualY = y + MAGMALISK_SPRITE_Y_OFFSET;
-    const pulse = hazards.magmalisk.length > 0 ? 1 + Math.sin(options.gameTime() * 14) * .016 : 1;
-    options.drawShadow(x, visualY + MAGMALISK_SPRITE_GROUND_OFFSET, BOSS_ART.MAGMALISK.shadowWidth, .29);
-    ctx.save();
-    ctx.translate(x, visualY);
-    ctx.scale(pulse, pulse);
-    drawBossSheetFrame(ctx, canvas, { bossId: "MAGMALISK", frame, cellWidth: cellW, cellHeight: canvas.height, drawWidth: drawW, drawHeight: drawH });
-    ctx.restore();
-    drawBossStatus({
-      x,
-      spriteTopY: visualY + MAGMALISK_ART_TOP + (bossFrameCrop("MAGMALISK", frame).statusOffsetY ?? 0),
-      barGap: 34,
-      barWidth: 290,
-      barHeight: 23,
-      hp: magmaliskBoss.hp,
-      maxHp: magmaliskBoss.maxHp,
-      hpLossFlashTimer: magmaliskBoss.hpLossFlashTimer,
-      hpLossFlashFrom: magmaliskBoss.hpLossFlashFrom,
-      fillColor: "#ef6428",
-      name: { text: "Magmalisk", color: "#ffe0ad" },
-    });
-  }
 
   function drawGloomrootTelegraphs() {
     if (gloomrootBoss.dead) return;
@@ -556,72 +378,6 @@ export function createBossRenderer(options: {
     }
   }
 
-  function drawGloomrootBoss() {
-    if (gloomrootBoss.dead) return;
-    const canvas = art.gloomroot.canvas;
-    const frame = hazards.gloomroot.length > 0 ? 3 : gloomrootBoss.sweep ? 1 : 0;
-    const drawW = BOSS_ART.GLOOMROOT.drawWidth;
-    const drawH = BOSS_ART.GLOOMROOT.drawHeight;
-    const x = screenX(gloomrootBoss.x);
-    const y = screenY(gloomrootBoss.y);
-    const visualY = y + GLOOMROOT_SPRITE_Y_OFFSET;
-    const pulse = hazards.gloomroot.length > 0 ? 1 + Math.sin(options.gameTime() * 13) * .018 : 1;
-    options.drawShadow(x, visualY + GLOOMROOT_SPRITE_GROUND_OFFSET, BOSS_ART.GLOOMROOT.shadowWidth, .3);
-
-    // A soft moon-sap aura separates the dark treant from the Night Forest,
-    // while the fallback guarantees a visible target if its art fails to load.
-    // The aura and the filtered frames are baked once and copied each frame.
-    if (!gloomrootSprites.drawAura(ctx, x, visualY)) paintGloomrootAura(ctx, x, visualY);
-
-    ctx.save();
-    ctx.translate(x, visualY);
-    if (art.gloomroot.ready() && canvas.width >= 2 && canvas.height >= 2) {
-      const cellW = canvas.width / 2;
-      const cellH = canvas.height / 2;
-      const sheetFrame = { bossId: "GLOOMROOT", frame, cellWidth: cellW, cellHeight: cellH, columns: 2, drawWidth: drawW, drawHeight: drawH };
-      if (!gloomrootSprites.drawFrame(ctx, canvas, sheetFrame, pulse)) {
-        ctx.scale(pulse, pulse);
-        ctx.filter = GLOOMROOT_SPRITE_FILTER;
-        drawBossSheetFrame(ctx, canvas, sheetFrame);
-      }
-    } else {
-      gloomrootSprites.reset();
-      ctx.scale(pulse, pulse);
-      ctx.fillStyle = "#172c3d";
-      ctx.strokeStyle = "#65eee9";
-      ctx.lineWidth = 9;
-      ctx.beginPath();
-      ctx.moveTo(-68, 176);
-      ctx.quadraticCurveTo(-118, 92, -70, 18);
-      ctx.lineTo(-132, -58);
-      ctx.lineTo(-42, -18);
-      ctx.quadraticCurveTo(-24, -138, 0, -184);
-      ctx.quadraticCurveTo(28, -132, 42, -18);
-      ctx.lineTo(132, -58);
-      ctx.lineTo(70, 18);
-      ctx.quadraticCurveTo(118, 92, 68, 176);
-      ctx.closePath();
-      ctx.fill();
-      ctx.stroke();
-      ctx.fillStyle = "#9ffff9";
-      ctx.fillRect(-40, -78, 22, 14);
-      ctx.fillRect(18, -78, 22, 14);
-    }
-    ctx.restore();
-    drawBossStatus({
-      x,
-      spriteTopY: visualY + GLOOMROOT_ART_TOP + (bossFrameCrop("GLOOMROOT", frame).statusOffsetY ?? 0),
-      barGap: 34,
-      barWidth: 300,
-      barHeight: 23,
-      hp: gloomrootBoss.hp,
-      maxHp: gloomrootBoss.maxHp,
-      hpLossFlashTimer: gloomrootBoss.hpLossFlashTimer,
-      hpLossFlashFrom: gloomrootBoss.hpLossFlashFrom,
-      fillColor: "#39cbd3",
-      name: { text: "Gloomroot", color: "#b9fbf5" },
-    });
-  }
 
   function drawTidewyrmTelegraphs() {
     if (tidewyrmBoss.dead) return;
@@ -678,58 +434,6 @@ export function createBossRenderer(options: {
     }
   }
 
-  function drawTidewyrmBoss() {
-    if (tidewyrmBoss.dead) return;
-    const surge = tidewyrmBoss.surge;
-    const attackElapsed = tidewyrmBoss.spriteAttackElapsed;
-    const frame = carapaceAnglerSpriteFrame(options.gameTime(), attackElapsed);
-    const page = art.tidewyrm.pages[frame.page];
-    const x = screenX(tidewyrmBoss.x);
-    const y = screenY(tidewyrmBoss.y);
-    const visualY = y + TIDEWYRM_SPRITE_Y_OFFSET;
-    // The Unity capture already includes the Angler’s ground shadow.
-    ctx.save();
-    ctx.translate(x, visualY);
-    if (surge && Math.cos(surge.angle) > 0) ctx.scale(-1, 1);
-    if (art.tidewyrm.ready() && page?.naturalWidth > 0) {
-      // Separate crop identity preserves the user's original Tidewyrm adjustments.
-      drawBossAtlasFrame(ctx, page, frame, "CARAPACE_ANGLER");
-    } else {
-      ctx.fillStyle = "#147f9d";
-      ctx.strokeStyle = "#b9f8ff";
-      ctx.lineWidth = 9;
-      ctx.beginPath();
-      ctx.ellipse(0, 35, 150, 88, 0, 0, TAU);
-      ctx.fill();
-      ctx.stroke();
-      ctx.fillStyle = "#0d405d";
-      for (let fin = -2; fin <= 2; fin += 1) {
-        ctx.beginPath();
-        ctx.moveTo(fin * 42 - 12, -46);
-        ctx.lineTo(fin * 42 + 2, -91);
-        ctx.lineTo(fin * 42 + 20, -42);
-        ctx.closePath();
-        ctx.fill();
-      }
-      ctx.fillStyle = "#e7ffff";
-      ctx.fillRect(-76, -3, 18, 13);
-      ctx.fillRect(58, -3, 18, 13);
-    }
-    ctx.restore();
-    drawBossStatus({
-      x,
-      spriteTopY: visualY + frame.top + (bossFrameCrop("CARAPACE_ANGLER", frame.tuningFrame).statusOffsetY ?? 0),
-      barGap: 34,
-      barWidth: 310,
-      barHeight: 23,
-      hp: tidewyrmBoss.hp,
-      maxHp: tidewyrmBoss.maxHp,
-      hpLossFlashTimer: tidewyrmBoss.hpLossFlashTimer,
-      hpLossFlashFrom: tidewyrmBoss.hpLossFlashFrom,
-      fillColor: "#35cce5",
-      name: { text: "Carapace Angler", color: "#c7faff" },
-    });
-  }
 
   function drawKoiShogunTelegraphs() {
     if (koiShogunBoss.dead) return;
@@ -786,56 +490,6 @@ export function createBossRenderer(options: {
     }
   }
 
-  function drawKoiShogunBoss() {
-    if (koiShogunBoss.dead) return;
-    const canvas = art.koiShogun.canvas;
-    const frame = hazards.koiShogun.length > 0 ? 3 : koiShogunBoss.slash ? (koiShogunBoss.slash.windup > 0 ? 2 : 1) : 0;
-    const drawW = BOSS_ART.KOI_SHOGUN.drawWidth;
-    const drawH = BOSS_ART.KOI_SHOGUN.drawHeight;
-    const x = screenX(koiShogunBoss.x);
-    const y = screenY(koiShogunBoss.y);
-    const visualY = y + KOI_SHOGUN_SPRITE_Y_OFFSET;
-    const pulse = hazards.koiShogun.length > 0 ? 1 + Math.sin(options.gameTime() * 14) * .016 : 1;
-    const flipHorizontally = frame === 0 || frame === 1;
-    options.drawShadow(x, visualY + KOI_SHOGUN_SPRITE_GROUND_OFFSET, BOSS_ART.KOI_SHOGUN.shadowWidth, .3);
-    ctx.save();
-    ctx.translate(x, visualY);
-    ctx.scale(flipHorizontally ? -pulse : pulse, pulse);
-    if (art.koiShogun.ready() && canvas.width >= 4 && canvas.height >= 2) {
-      const cellW = canvas.width / 4;
-      drawBossSheetFrame(ctx, canvas, { bossId: "KOI_SHOGUN", frame, cellWidth: cellW, cellHeight: canvas.height, drawWidth: drawW, drawHeight: drawH });
-    } else {
-      ctx.fillStyle = "#d87825";
-      ctx.strokeStyle = "#4c2917";
-      ctx.lineWidth = 9;
-      ctx.beginPath();
-      ctx.ellipse(0, 30, 145, 90, 0, 0, TAU);
-      ctx.fill();
-      ctx.stroke();
-      ctx.fillStyle = "#e6b84d";
-      ctx.beginPath();
-      ctx.moveTo(-145, -28);
-      ctx.lineTo(0, -112);
-      ctx.lineTo(145, -28);
-      ctx.closePath();
-      ctx.fill();
-      ctx.stroke();
-    }
-    ctx.restore();
-    drawBossStatus({
-      x,
-      spriteTopY: visualY + KOI_SHOGUN_ART_TOP + (bossFrameCrop("KOI_SHOGUN", frame).statusOffsetY ?? 0),
-      barGap: 34,
-      barWidth: 310,
-      barHeight: 23,
-      hp: koiShogunBoss.hp,
-      maxHp: koiShogunBoss.maxHp,
-      hpLossFlashTimer: koiShogunBoss.hpLossFlashTimer,
-      hpLossFlashFrom: koiShogunBoss.hpLossFlashFrom,
-      fillColor: "#e2832d",
-      name: { text: "Koi Shogun", color: "#ffe6a4" },
-    });
-  }
 
   function drawTempestKirinTelegraphs() {
     if (tempestKirinBoss.dead) return;
@@ -888,59 +542,6 @@ export function createBossRenderer(options: {
     }
   }
 
-  function drawTempestKirinBoss() {
-    if (tempestKirinBoss.dead) return;
-    const canvas = art.tempestKirin.canvas;
-    const frame = hazards.tempestKirin.length > 0
-      ? 3
-      : tempestKirinBoss.charge
-        ? (tempestKirinBoss.charge.windup > 0 ? 1 : 2)
-        : 0;
-    const drawW = BOSS_ART.TEMPEST_KIRIN.drawWidth;
-    const drawH = BOSS_ART.TEMPEST_KIRIN.drawHeight;
-    const x = screenX(tempestKirinBoss.x);
-    const y = screenY(tempestKirinBoss.y);
-    const visualY = y + TEMPEST_KIRIN_SPRITE_Y_OFFSET;
-    const pulse = hazards.tempestKirin.length > 0 ? 1 + Math.sin(options.gameTime() * 15) * .016 : 1;
-    options.drawShadow(x, visualY + TEMPEST_KIRIN_SPRITE_GROUND_OFFSET, BOSS_ART.TEMPEST_KIRIN.shadowWidth, .3);
-    ctx.save();
-    ctx.translate(x, visualY);
-    ctx.scale(pulse, pulse);
-    if (art.tempestKirin.ready() && canvas.width >= 4 && canvas.height >= 2) {
-      const cellW = canvas.width / 4;
-      drawBossSheetFrame(ctx, canvas, { bossId: "TEMPEST_KIRIN", frame, cellWidth: cellW, cellHeight: canvas.height, drawWidth: drawW, drawHeight: drawH });
-    } else {
-      ctx.fillStyle = "#ecfaff";
-      ctx.strokeStyle = "#23466e";
-      ctx.lineWidth = 9;
-      ctx.beginPath();
-      ctx.ellipse(0, 36, 144, 88, -.08, 0, TAU);
-      ctx.fill();
-      ctx.stroke();
-      ctx.fillStyle = "#74c8ff";
-      ctx.beginPath();
-      ctx.moveTo(-95, -15);
-      ctx.lineTo(-12, -150);
-      ctx.lineTo(45, -15);
-      ctx.closePath();
-      ctx.fill();
-      ctx.stroke();
-    }
-    ctx.restore();
-    drawBossStatus({
-      x,
-      spriteTopY: visualY + TEMPEST_KIRIN_ART_TOP + (bossFrameCrop("TEMPEST_KIRIN", frame).statusOffsetY ?? 0),
-      barGap: 34,
-      barWidth: 320,
-      barHeight: 23,
-      hp: tempestKirinBoss.hp,
-      maxHp: tempestKirinBoss.maxHp,
-      hpLossFlashTimer: tempestKirinBoss.hpLossFlashTimer,
-      hpLossFlashFrom: tempestKirinBoss.hpLossFlashFrom,
-      fillColor: "#65c8ff",
-      name: { text: "Tempest Kirin", color: "#e9fbff" },
-    });
-  }
 
   function drawMiremawTelegraphs() {
     if (miremawBoss.dead) return;
@@ -1086,204 +687,77 @@ export function createBossRenderer(options: {
     if (!aegisPrimeBoss.dead) drawIonAttacks(ctx, aegisPrimeBoss, hazards.aegisPrime, camera);
   }
 
-  function drawMiremawBoss() {
-    if (miremawBoss.dead) return;
-    const canvas = art.miremaw.canvas;
-    const frame = hazards.miremaw.length > 0
-      ? 3
-      : miremawBoss.tongue
-        ? (miremawBoss.tongue.windup > 0 ? 1 : 2)
-        : 0;
-    const drawW = BOSS_ART.MIREMAW.drawWidth;
-    const drawH = BOSS_ART.MIREMAW.drawHeight;
-    const x = screenX(miremawBoss.x);
-    const y = screenY(miremawBoss.y);
-    const visualY = y + MIREMAW_SPRITE_Y_OFFSET;
-    const pulse = hazards.miremaw.length > 0 ? 1 + Math.sin(options.gameTime() * 14) * .018 : 1;
-    options.drawShadow(x, visualY + MIREMAW_SPRITE_GROUND_OFFSET, BOSS_ART.MIREMAW.shadowWidth, .3);
-    ctx.save();
-    ctx.translate(x, visualY);
-    ctx.scale(pulse, pulse);
-    if (art.miremaw.ready() && canvas.width >= 4 && canvas.height >= 2) {
-      const cellW = canvas.width / 4;
-      drawBossSheetFrame(ctx, canvas, { bossId: "MIREMAW", frame, cellWidth: cellW, cellHeight: canvas.height, drawWidth: drawW, drawHeight: drawH });
-    } else {
-      drawHornedSilhouette("#3caa86", "#102b27", "#b788f4");
+  type CommonBoss = { dead: boolean; x: number; y: number; hp: number; maxHp: number; hpLossFlashTimer: number; hpLossFlashFrom: number; shatter?: BossCone | null; hurt: number };
+  const paint: BossPaint = { ctx, time: 0, art, drawShadow: options.drawShadow, gloomrootSprites: createGloomrootSpriteCache() };
+
+  /** The art's status-line top for one boss after painting it, or null when it is not drawn yet. */
+  function paintBossBody(kind: BossKind, look: BossLook<CommonBoss, { length: number }>, state: CommonBoss, x: number, y: number) {
+    const hazardList = hazards[kind];
+    const time = options.gameTime();
+    if (look.body === "custom") {
+      paint.time = time;
+      return look.paint(paint, state, hazardList, x, y);
     }
-    ctx.restore();
-    drawBossStatus({
-      x,
-      spriteTopY: visualY + MIREMAW_ART_TOP + (bossFrameCrop("MIREMAW", frame).statusOffsetY ?? 0),
-      barGap: 34,
-      barWidth: 330,
-      barHeight: 23,
-      hp: miremawBoss.hp,
-      maxHp: miremawBoss.maxHp,
-      hpLossFlashTimer: miremawBoss.hpLossFlashTimer,
-      hpLossFlashFrom: miremawBoss.hpLossFlashFrom,
-      fillColor: "#55d6a8",
-      name: { text: "Miremaw", color: "#e9fff5" },
-    });
-  }
-  function drawPrismshellBoss() {
-    if (prismshellBoss.dead) return;
-    const shatter = prismshellBoss.shatter;
-    const attackElapsed = shatter
-      ? 1.65 - shatter.windup - shatter.timer
-      : hazards.prismshell.length > 0
-        ? Math.max(...hazards.prismshell.map((burst) => burst.maxTimer - burst.timer))
-        : undefined;
-    const frame = prismshellSpriteFrame(options.gameTime(), attackElapsed);
-    const page = art.prismshell.pages[frame.page];
-    const x = screenX(prismshellBoss.x);
-    const y = screenY(prismshellBoss.y);
-    const visualY = y + PRISMSHELL_SPRITE_Y_OFFSET;
-    ctx.save();
-    ctx.translate(x, visualY);
-    // Ground the transparent artwork with a soft contact shadow. Keep it
-    // independent of breathing and attack scaling so it stays on the floor.
-    ctx.save();
-    ctx.translate(0, PRISMSHELL_SPRITE_GROUND_OFFSET);
-    ctx.scale(175, 48);
-    const shadow = ctx.createRadialGradient(0, 0, 0, 0, 0, 1);
-    shadow.addColorStop(0, "rgba(15, 9, 24, 0.42)");
-    shadow.addColorStop(0.55, "rgba(15, 9, 24, 0.28)");
-    shadow.addColorStop(1, "rgba(15, 9, 24, 0)");
-    ctx.fillStyle = shadow;
-    ctx.fillRect(-1, -1, 2, 2);
-    ctx.restore();
-    // The amethyst artwork faces left.
-    if (shatter && Math.cos(shatter.angle) > 0) ctx.scale(-1, 1);
-    if (art.prismshell.ready() && page?.naturalWidth > 0) {
-      drawBossAtlasFrame(ctx, page, frame, "PRISMSHELL");
-    } else {
-      // A readable armored silhouette remains if the network fails an image.
-      drawHornedSilhouette("#74749c", "#25273e", "#9adff0");
+    const visualY = y + look.yOffset;
+    if (look.body === "posed") {
+      const pulsing = hazardList.length > 0;
+      const pages = (art[kind] as BossPageArt);
+      look.drawArt(ctx, x, visualY, time, state.shatter ? "laser" : pulsing ? "emp" : "idle", state.hurt, pages.ready() ? pages.pages[0] : undefined);
+      const statusFrame = look.posedStatus ? (state.shatter ? 1 : pulsing ? 2 : 0) : 0;
+      return visualY + look.artTop + (bossFrameCrop(look.cropId, statusFrame).statusOffsetY ?? 0);
     }
+    if (look.body === "atlas") {
+      const frame = look.spriteFrame(time, look.attackElapsed(state, hazardList));
+      const pages = art[kind] as BossPageArt;
+      const page = pages.pages[frame.page];
+      const facing = look.facing(state);
+      ctx.save();
+      ctx.translate(x, visualY);
+      look.groundShadow?.(ctx);
+      if (facing && Math.cos(facing.angle) > 0) ctx.scale(-1, 1);
+      if (pages.ready() && page?.naturalWidth > 0) drawBossAtlasFrame(ctx, page, frame, look.atlasId);
+      else look.fallback(ctx);
+      ctx.restore();
+      return visualY + (look.artTop ?? frame.top) + (bossFrameCrop(look.atlasId, frame.tuningFrame).statusOffsetY ?? 0);
+    }
+    const sheet = art[kind] as BossSheetArt;
+    const canvas = sheet.canvas;
+    const ready = sheet.ready() && (!look.fallback || (canvas.width >= 4 && canvas.height >= 2));
+    if (!ready && !look.fallback) return null;
+    const size = BOSS_ART[look.sheetId];
+    const frame = look.frame(state, hazardList, time);
+    const pulseOn = look.pulse && (look.pulse.when ? look.pulse.when(state) : hazardList.length > 0);
+    const pulse = look.pulse && pulseOn ? 1 + Math.sin(time * look.pulse.speed) * look.pulse.amplitude : 1;
+    options.drawShadow(x, visualY + look.groundOffset, size.shadowWidth, look.shadowAlpha);
+    ctx.save();
+    ctx.translate(x, visualY + (look.nudgeY ?? 0));
+    if (look.pulse || look.mirror) ctx.scale(look.mirror?.(frame) ? -pulse : pulse, pulse);
+    if (ready) {
+      drawBossSheetFrame(ctx, canvas, { bossId: look.sheetId, frame, cellWidth: canvas.width / 4, cellHeight: canvas.height, drawWidth: size.drawWidth, drawHeight: size.drawHeight });
+    } else look.fallback?.(ctx);
     ctx.restore();
-    drawBossStatus({
-      x,
-      spriteTopY: visualY + PRISMSHELL_ART_TOP + (bossFrameCrop("PRISMSHELL", frame.tuningFrame).statusOffsetY ?? 0),
-      barGap: 34,
-      barWidth: 330,
-      barHeight: 23,
-      hp: prismshellBoss.hp,
-      maxHp: prismshellBoss.maxHp,
-      hpLossFlashTimer: prismshellBoss.hpLossFlashTimer,
-      hpLossFlashFrom: prismshellBoss.hpLossFlashFrom,
-      fillColor: "#ab8be6",
-      name: { text: "Prismshell", color: "#f1e9ff" },
-    });
+    return visualY + look.artTop + (bossFrameCrop(look.sheetId, frame).statusOffsetY ?? 0);
   }
-  /** An imported atlas prefab, which faces left and carries its own shadow. */
-  function drawAtlasClipBoss(
-    state: typeof ironhornBoss | typeof dreadreaperBoss,
-    kind: "ironhorn" | "dreadreaper",
-    look: {
-      atlasId: "IRONHORN" | "DREADREAPER";
-      spriteFrame: typeof ironhornSpriteFrame;
-      spriteYOffset: number;
-      artTop: number;
-      fillColor: string;
-      name: string;
-    },
-  ) {
+
+  /** One boss through its BOSS_LOOKS entry: body, then health bar and name. */
+  function drawBossKind(kind: BossKind) {
+    const state = bosses[kind] as CommonBoss;
     if (state.dead) return;
-    const shatter = state.shatter;
-    const attackElapsed = state.spriteAttackElapsed;
-    const frame = look.spriteFrame(options.gameTime(), attackElapsed);
-    const page = art[kind].pages[frame.page];
+    const look = BOSS_LOOKS[kind] as unknown as BossLook<CommonBoss, { length: number }>;
     const x = screenX(state.x);
     const y = screenY(state.y);
-    const visualY = y + look.spriteYOffset;
-    ctx.save();
-    ctx.translate(x, visualY);
-    // The imported prefab faces left and already contains its own shadow.
-    if (shatter && Math.cos(shatter.angle) > 0) ctx.scale(-1, 1);
-    if (art[kind].ready() && page?.naturalWidth > 0) {
-      drawBossAtlasFrame(ctx, page, frame, look.atlasId);
-    } else {
-      // A readable armored silhouette remains if the network fails an image.
-      drawHornedSilhouette("#74749c", "#25273e", "#9adff0");
-    }
-    ctx.restore();
+    const spriteTopY = paintBossBody(kind, look, state, x, y);
+    if (spriteTopY === null) return;
+    const { name, nameColor, ...bar } = look.status;
     drawBossStatus({
-      x,
-      spriteTopY: visualY + look.artTop + (bossFrameCrop(look.atlasId, frame.tuningFrame).statusOffsetY ?? 0),
-      barGap: 34,
-      barWidth: 330,
-      barHeight: 23,
-      hp: state.hp,
-      maxHp: state.maxHp,
-      hpLossFlashTimer: state.hpLossFlashTimer,
-      hpLossFlashFrom: state.hpLossFlashFrom,
-      fillColor: look.fillColor,
-      name: { text: look.name, color: "#f1e9ff" },
+      x, spriteTopY, ...bar,
+      hp: state.hp, maxHp: state.maxHp, hpLossFlashTimer: state.hpLossFlashTimer, hpLossFlashFrom: state.hpLossFlashFrom,
+      name: { text: name, color: nameColor },
     });
   }
-  const drawIronhornBoss = () => drawAtlasClipBoss(ironhornBoss, "ironhorn", {
-    atlasId: "IRONHORN", spriteFrame: ironhornSpriteFrame, spriteYOffset: IRONHORN_SPRITE_Y_OFFSET, artTop: IRONHORN_ART_TOP,
-    fillColor: "#d9a64e", name: "Ironhorn",
-  });
-  const drawDreadreaperBoss = () => drawAtlasClipBoss(dreadreaperBoss, "dreadreaper", {
-    atlasId: "DREADREAPER", spriteFrame: dreadreaperSpriteFrame, spriteYOffset: DREADREAPER_SPRITE_Y_OFFSET, artTop: DREADREAPER_ART_TOP,
-    fillColor: "#a3c563", name: "Dreadreaper",
-  });
-  /** The expansion bosses pose by attack: a laser while the cone plays, a pulse while hazards stand. */
-  function drawPosedBoss(
-    state: typeof voltwardenBoss | typeof gravebloomBoss | typeof aegisPrimeBoss,
-    kind: "voltwarden" | "gravebloom" | "aegisPrime",
-    look: {
-      drawArt: typeof drawVoltwardenArt;
-      cropId: "VOLTWARDEN" | "GRAVEBLOOM" | "AEGIS_PRIME";
-      /** Voltwarden's status sits on its posed frame; the others keep their idle frame's. */
-      posedStatus: boolean;
-      spriteYOffset: number;
-      artTop: number;
-      name: string;
-    },
-  ) {
-    if (state.dead) return;
-    const x = screenX(state.x);
-    const y = screenY(state.y);
-    const visualY = y + look.spriteYOffset;
-    const pulsing = hazards[kind].length > 0;
-    look.drawArt(ctx, x, visualY, options.gameTime(), state.shatter ? "laser" : pulsing ? "emp" : "idle",
-      state.hurt, art[kind].ready() ? art[kind].pages[0] : undefined);
-    const statusFrame = look.posedStatus ? (state.shatter ? 1 : pulsing ? 2 : 0) : 0;
-    drawBossStatus({
-      x,
-      spriteTopY: visualY + look.artTop + (bossFrameCrop(look.cropId, statusFrame).statusOffsetY ?? 0),
-      barGap: 34,
-      barWidth: 330,
-      barHeight: 23,
-      hp: state.hp,
-      maxHp: state.maxHp,
-      hpLossFlashTimer: state.hpLossFlashTimer,
-      hpLossFlashFrom: state.hpLossFlashFrom,
-      fillColor: "#35dae6",
-      name: { text: look.name, color: "#f1e9ff" },
-    });
-  }
-  const drawVoltwardenBoss = () => drawPosedBoss(voltwardenBoss, "voltwarden", {
-    drawArt: drawVoltwardenArt, cropId: "VOLTWARDEN", posedStatus: true,
-    spriteYOffset: VOLTWARDEN_SPRITE_Y_OFFSET, artTop: VOLTWARDEN_ART_TOP, name: "Voltwarden",
-  });
-  const drawGravebloomBoss = () => drawPosedBoss(gravebloomBoss, "gravebloom", {
-    drawArt: drawGravebloomArt, cropId: "GRAVEBLOOM", posedStatus: false,
-    spriteYOffset: GRAVEBLOOM_SPRITE_Y_OFFSET, artTop: GRAVEBLOOM_ART_TOP, name: "Gravebloom",
-  });
-  const drawAegisPrimeBoss = () => drawPosedBoss(aegisPrimeBoss, "aegisPrime", {
-    drawArt: drawAegisPrimeArt, cropId: "AEGIS_PRIME", posedStatus: false,
-    spriteYOffset: AEGIS_PRIME_SPRITE_Y_OFFSET, artTop: AEGIS_PRIME_ART_TOP, name: "Aegis Prime",
-  });
+
   return {
-    drawBoss: {
-      dragon: drawBoss, spider: drawSpiderBoss, frostclaw: drawFrostclawBoss, magmalisk: drawMagmaliskBoss,
-      gloomroot: drawGloomrootBoss, tidewyrm: drawTidewyrmBoss, koiShogun: drawKoiShogunBoss, tempestKirin: drawTempestKirinBoss,
-      miremaw: drawMiremawBoss, prismshell: drawPrismshellBoss, ironhorn: drawIronhornBoss, dreadreaper: drawDreadreaperBoss,
-      voltwarden: drawVoltwardenBoss, gravebloom: drawGravebloomBoss, aegisPrime: drawAegisPrimeBoss,
-    } satisfies Record<BossKind, () => void>,
+    drawBoss: Object.fromEntries(BOSS_KINDS.map((kind) => [kind, () => drawBossKind(kind)])) as Record<BossKind, () => void>,
     drawBossTelegraphs: {
       dragon: drawBossTelegraphs, spider: drawSpiderTelegraphs, frostclaw: drawFrostclawTelegraphs, magmalisk: drawMagmaliskTelegraphs,
       gloomroot: drawGloomrootTelegraphs, tidewyrm: drawTidewyrmTelegraphs, koiShogun: drawKoiShogunTelegraphs, tempestKirin: drawTempestKirinTelegraphs,
