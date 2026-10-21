@@ -28,7 +28,7 @@ function target(ctx: SocialReadCtx, value: string) {
   }
   // Existing profiles have no name index; reject ambiguous display names rather than choosing an arbitrary account.
   const matches = [...ctx.db.playerProfile.iter()].filter(row => hex(row.identity).toLowerCase() === needle || row.displayName.normalize("NFKC").toLowerCase() === needle);
-  if (matches.length !== 1) return fail(matches.length ? "That username is ambiguous. Choose the player from your friends list." : "Player not found.");
+  if (matches.length !== 1) return fail(matches.length ? "That username is ambiguous. Choose the player from search." : "Player not found.");
   if (same(matches[0].identity, ctx.sender)) fail("Choose another player.");
   return matches[0];
 }

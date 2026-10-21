@@ -9,9 +9,9 @@ import type { PlayerDirectoryEntry } from "../../shared/player-search";
 export type ChatChannel = "public" | "guild" | "private";
 export type ChatConversation = import("../../shared/social").SocialConversation;
 
-export function mergeChatConversations(friends: ChatConversation[], conversations: ChatConversation[]) {
+export function mergeChatConversations(conversations: ChatConversation[]) {
   const names = new Map<string, ChatConversation>();
-  for (const person of [...conversations, ...friends]) {
+  for (const person of conversations) {
     if (person.name.trim()) {
       const key = person.identity || person.name.trim().toLowerCase();
       names.set(key, { ...names.get(key), ...person });
@@ -124,8 +124,8 @@ export function createChatChannelPicker(
     onChange(selected, peer, peerIdentity);
   }
   let contactSignature = "";
-  function refresh(friends: ChatConversation[], conversations: ChatConversation[], guildName: string, unread: ChatUnreadCounts) {
-    people = mergeChatConversations(friends, conversations);
+  function refresh(conversations: ChatConversation[], guildName: string, unread: ChatUnreadCounts) {
+    people = mergeChatConversations(conversations);
     peerIdentity ??= people.find(person => person.name.toLowerCase() === peer.toLowerCase())?.identity;
     const currentPeer = people.find(person => person.identity === peerIdentity);
     if (currentPeer && currentPeer.name !== peer) {

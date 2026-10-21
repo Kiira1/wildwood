@@ -112,7 +112,6 @@ export function createGamePanels(deps: GamePanelsDeps) {
       trees: deps.assets.treeSpritesheet, treeBounds: deps.assets.treeSpriteBounds,
     },
     api: () => client?.guild,
-    socialApi: () => client?.social,
     sessionKey: () => `${coop.identity()}:${client?.sessionGeneration?.() ?? 0}:${client?.isConnected?.() ?? false}`,
     beforeOpen: () => {
       deps.clearInput();

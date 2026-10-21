@@ -467,21 +467,10 @@ describe("chat on the server", () => {
     expect(hearts()).toBe(credited);
   });
 
-  it("friends need both to agree, private messages reach only their two players, a link carries friends and messages, and a year-old message ages out", () => {
+  it("private messages reach only their two players with no friendship, a link carries the messages, and a year-old message ages out", () => {
     const world = scenarioWorld();
     const ann = world.join("Ann"), moss = world.join("Moss"), cy = world.join("Cy");
-    const hub = (who: typeof ann) => JSON.parse(who.view("my_social_hub")[0].snapshot) as { friends: { identity: string }[];
-      incomingRequests: { id: string }[]; outgoingRequests: unknown[]; conversations: { identity: string }[] };
     const messages = (who: typeof ann) => who.view("my_social_messages_with_reactions").map(row => row.message);
-
-    // A request waits for Moss; Cy cannot answer it for him.
-    ann.call("friendAction", { action: "request", target: moss.hex });
-    expect(hub(ann).friends).toEqual([]);
-    const [request] = hub(moss).incomingRequests;
-    expect(cy.refusal("friendAction", { action: "accept", target: request.id })).not.toBeNull();
-    moss.call("friendAction", { action: "accept", target: request.id });
-    expect(hub(ann).friends.map(friend => friend.identity)).toEqual([moss.hex]);
-    expect(hub(moss).friends.map(friend => friend.identity)).toEqual([ann.hex]);
 
     // Private messages need no friendship, and only the two players read them; a filtered one is kept as evidence.
     sayIn(cy, "dm", "hi stranger", ann.hex);
@@ -498,20 +487,12 @@ describe("chat on the server", () => {
     expect(moss.refusal("reportSocialMessage", { messageId: filtered, reason: "harassment" })).not.toBeNull();
     expect(world.db.playerReport.count()).toBe(1n);
 
-    // Removing a friend removes it for both.
-    moss.call("friendAction", { action: "remove", target: ann.hex });
-    expect(hub(ann).friends).toEqual([]);
-    ann.call("friendAction", { action: "request", target: moss.hex });
-    moss.call("friendAction", { action: "accept", target: hub(moss).incomingRequests[0].id });
-
-    // Ann signs in to an account: her friend and her conversations come with her.
+    // Ann signs in to an account: her conversations come with her.
     const code = "d".repeat(40);
     ann.call("beginAccountLink", { code });
     const account = world.player("Ann's account", "account").connect();
     account.call("claimGuestAccount", { code });
-    expect(hub(account).friends.map(friend => friend.identity)).toEqual([moss.hex]);
     expect(messages(account)).toHaveLength(2);
-    expect(hub(moss).friends.map(friend => friend.identity)).toEqual([account.hex]);
 
     // A year and a day on, the old messages age out and the new ones stay.
     world.advance(366 * 86_400_000);

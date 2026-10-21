@@ -131,19 +131,7 @@
 .guild-replay-controls[hidden] { display: none; }
 .guild-replay-controls .guild-button { min-width: 70px; padding-inline: 10px; background: #1f1f1fee; }
 .guild-replay > .window-back-footer { position: absolute; z-index: 1; bottom: 0; left: 0; right: 0; padding-bottom: calc(env(safe-area-inset-bottom, 0px) + var(--window-back-bottom-gap)); }
-/* Social controls share the guild panel's focus, scrolling, and mobile shell. */
-.social-actions { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 6px; }
-.social-row { flex-wrap: wrap; }
-.social-row .guild-row-copy { flex: 1 1 120px; }
-.social-manage { position: relative; }
-.social-manage summary { cursor: pointer; padding: 12px; font-size: 12px; color: var(--guild-muted); }
-.social-manage[open] { display: flex; flex-direction: column; align-items: flex-end; }
-.social-invite { margin-bottom: 18px; }
-.social-invite > summary { padding: 12px 0; }
-.social-form { margin-bottom: 18px; }
-.social-form > button { margin-top: 10px; }
 @media (max-width: 480px) {
-  .social-actions { width: 100%; justify-content: flex-start; }
   .guild-tabs { gap: 0; }
   .guild-tabs .guild-button { padding-inline: 9px; }
 }
@@ -156,9 +144,6 @@
 .guild-battle-tabs { display: flex; gap: 18px; margin-bottom: 20px; border-bottom: 1px solid var(--guild-line); }
 .guild-battle-tabs .guild-button { flex: 1; border-radius: 0; border-bottom: 2px solid transparent; }
 .guild-battle-tabs .guild-button[aria-pressed="true"] { color: #fff; border-bottom-color: var(--guild-accent); }
-.social-invite { margin: 16px 0 0; border-top: 0; }
-.social-invite > summary { color: #fff; font-weight: 900; }
-.social-invite[open] { padding-bottom: 12px; border-bottom: 1px solid var(--guild-line); }
 
 .guild-row-copy > .guild-presence--online { color: #65d66d; }
 .guild-row-copy > .guild-presence--offline { color: #a7aba8; }

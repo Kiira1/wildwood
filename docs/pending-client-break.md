@@ -29,3 +29,17 @@ remove their declarations, in the next release that breaks clients:
 - `advanceOnboarding` (`spacetimedb/src/onboarding.ts`) still accepts the retired portrait lesson
   (step 2) after Move, for 0.916.14 tabs. Delete `oldClientPortrait` in the next release that
   reloads every client. Rows already saved on step 2 keep working without it.
+
+## Waiting (friends removed from the client, 0.916.28)
+
+The client no longer shows friends, friend requests or guild invitations, and never calls their
+reducers. Private messages never needed a friendship. The server keeps them so tabs still on
+0.916.27 work. In the next release that breaks clients:
+
+- Drop the private tables `social_friend`, `social_request` and `social_guild_invite`.
+- Drop the reducers `friendAction` and `guildInviteAction` (`spacetimedb/src/index.ts`,
+  `social-service.ts`), and the friend and invitation parts of `socialSnapshot`: `friends`,
+  `incomingRequests`, `outgoingRequests`, `guildInvitations`, `outgoingGuildInvitations`.
+- Remove them from account erasure (`account-erasure.ts`), guild cleanup (`guild-service.ts`), the guest-to-account merge
+  (`social-service.ts`), and `shared/social.ts` (`SocialAction`, `SOCIAL_FRIEND_LIMIT`,
+  `SOCIAL_REQUEST_LIMIT` once nothing reads them).

@@ -77,7 +77,6 @@ type CoopClient = {
     revision: () => number;
     guildMessages: () => ChatMessage[];
     privateMessages: (username: string) => ChatMessage[];
-    friends: () => ChatConversation[];
     privateConversations: () => ChatConversation[];
     currentGuild: () => { id: string | bigint; name: string } | null;
     loadSocial: () => Promise<unknown>;
@@ -209,7 +208,7 @@ export function createChatController({ elements, getCoop, showMessage, onOpenRep
     channel = nextChannel;
     privatePeer = username;
     const social = getCoop()?.social;
-    privatePeerIdentity = identity ?? social?.friends().find(person => person.name.toLowerCase() === username.toLowerCase())?.identity
+    privatePeerIdentity = identity
       ?? social?.privateConversations().find(person => person.name.toLowerCase() === username.toLowerCase())?.identity ?? "";
     elements.input.value = drafts.get(conversationKey()) ?? "";
     messageActions.close(false);
@@ -507,9 +506,8 @@ export function createChatController({ elements, getCoop, showMessage, onOpenRep
     if (metadata !== metadataRevision || renderedRevision === "") {
       metadataRevision = metadata;
       const conversations = coop?.social?.privateConversations() ?? [];
-      const friends = coop?.social?.friends() ?? [];
       if (privatePeer && !privatePeerIdentity) {
-        privatePeerIdentity = [...friends, ...conversations]
+        privatePeerIdentity = conversations
           .find(person => person.name.toLowerCase() === privatePeer.toLowerCase())?.identity ?? "";
       }
       const readConversation = readingLatest ? channel === "public" ? "world" : channel === "guild" ? "guild"
@@ -536,8 +534,8 @@ export function createChatController({ elements, getCoop, showMessage, onOpenRep
       setChatHidden(unreadBadge, large || unreadTotal === 0);
       setChatAttribute(unreadBadge, "aria-label", `${unreadTotal} unread messages`);
       const guildName = coop?.social?.currentGuild()?.name ?? "";
-      if (pickerInputs.changed([unreadCounts, friends, conversations, guildName]) || renderedRevision === "") {
-        channelPicker.refresh(friends, conversations, guildName, unreadCounts);
+      if (pickerInputs.changed([unreadCounts, conversations, guildName]) || renderedRevision === "") {
+        channelPicker.refresh(conversations, guildName, unreadCounts);
       }
     }
     const channelMessages = history.messages(currentMessages());
