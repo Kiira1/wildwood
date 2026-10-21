@@ -46,7 +46,7 @@ import { activateCardsFromGear } from "./active-cards";
 import { payOutAllOldGear } from "./old-gear-payout";
 import { giveEveryoneStarterWeapons } from "./starter-chest";
 
-export const MODULE_MIGRATION_VERSION = 65;
+export const MODULE_MIGRATION_VERSION = 66;
 
 /**
  * Migration 50 (0.856): the ranking snapshot moves to leaderboard_entry_v2,
@@ -554,6 +554,8 @@ export function createModuleMigrations(deps: ModuleMigrationDeps) {
     if (currentVersion < 64) repinMapBalances(ctx);
     // 65 (0.916.6): the Dragon hits 5x harder (curve-shape.ts); visits already in the Forest move onto it now.
     if (currentVersion < 65) repinMapBalances(ctx);
+    // 66 (0.916.23): Forest Brambles, King Slimes and Spitters re-tuned (enemy-base-values.ts); visits in the Forest move onto it now.
+    if (currentVersion < 66) repinMapBalances(ctx);
     const next = { id: 0, version: MODULE_MIGRATION_VERSION };
     if (state) ctx.db.moduleMigrationState.id.update(next);
     else ctx.db.moduleMigrationState.insert(next);

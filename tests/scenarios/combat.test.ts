@@ -23,12 +23,12 @@ describe("combat in the booted game", { timeout: 60_000 }, () => {
     const before = ann.progress()!;
     const tab = await playAs(world, "Ann");
 
-    // Auto-attack throws on its own; the first Spitter falls to the third throw.
+    // Auto-attack throws on its own; the first Spitter falls to the fifth throw.
     const started = Date.now();
     expect(await tab.until(() => popupAmount(tab) !== null, 10_000, 20)).toBe(true);
     const killedAfter = (Date.now() - started) / 1000;
-    expect(killedAfter).toBeGreaterThanOrEqual(2 * before.attackRate);
-    expect(killedAfter).toBeLessThan(2 * before.attackRate + .5);
+    expect(killedAfter).toBeGreaterThanOrEqual(4 * before.attackRate);
+    expect(killedAfter).toBeLessThan(4 * before.attackRate + .5);
 
     // The tab sends what it queued: one Spitter, and the server pays it.
     await sendQueuedKills(tab);

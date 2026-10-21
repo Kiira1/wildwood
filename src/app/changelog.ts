@@ -1,4 +1,8 @@
 export const RELEASE_NOTES: Record<string, string[]> = {
+  "0.916.23": [
+    "Small balancing",
+    "Skipping the tutorial gives the same starting stats as finishing it",
+  ],
   "0.916.22": [
     "While You Were Away shows the gold you earned",
     "Guild tags are hidden by default; turn them on in Settings",

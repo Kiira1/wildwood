@@ -119,15 +119,15 @@ describe('Endless carries on from map 15', () => {
   });
 });
 
-it("holds the baseline: map 1's Spitters have 8 health and pay 1.5 damage a kill", () => {
+it("holds the baseline: map 1's Spitters have 18 health and pay 1 damage a kill", () => {
   const spitter = resolveMapBalance('tutorial_forest', defaultBalanceSettings(), 0).enemies.Spitter;
-  expect(spitter.hp).toBe(8);
-  expect(spitter.reward).toEqual({ type: 'damage', amount: 1.5 });
+  expect(spitter.hp).toBe(18);
+  expect(spitter.reward).toEqual({ type: 'damage', amount: 1 });
 });
 
 it("keeps map 1's Brambles at 42 health so a fresh Reflect Only run can kill one", () => {
   const bramble = resolveMapBalance('tutorial_forest', defaultBalanceSettings(), 0).enemies.Bramble;
-  expect(bramble).toMatchObject({ hp: 42, damage: 14, reward: { type: 'health', amount: 42 } });
+  expect(bramble).toMatchObject({ hp: 42, damage: 14, reward: { type: 'health', amount: 11 } });
 });
 
 it('grows every map by the curve steps, each role a fixed multiple of its damage camp', () => {
@@ -148,7 +148,8 @@ it('grows every map by the curve steps, each role a fixed multiple of its damage
       const role = CURVE_ROLES[`${enemy.elite ? 'elite' : 'regular'}:${enemy.reward.type}`];
       expect(enemy.hp / camp.hp, `${id} ${kind}`).toBeCloseTo(role.hp, 9);
       expect(enemy.damage / camp.damage, `${id} ${kind}`).toBeCloseTo(role.damage, 9);
-      expect(enemy.reward.amount / camp.reward.amount, `${id} ${kind}`).toBeCloseTo(role.reward, 9);
+      // The Forest's King Slime pays its authored 50 health.
+      if (kind !== 'King Slime') expect(enemy.reward.amount / camp.reward.amount, `${id} ${kind}`).toBeCloseTo(role.reward, 9);
     }
   }
 });

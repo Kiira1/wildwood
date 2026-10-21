@@ -7,13 +7,13 @@ import { ENEMY_HIT_RADIUS } from "./enemy-hitbox";
 
 export const ENEMY_BASE_VALUES = {
   ...ENDLESS_ENEMY_BASE_VALUES,
-  "Bramble": {"speed": 205, "attackSpeed": 1, "r": ENEMY_HIT_RADIUS, "color": "#d95738", "outline": "#5c1b13", "hp": 42, "damage": 14, "reward": {"type": "health", "amount": 42}},
+  "Bramble": {"speed": 205, "attackSpeed": 1, "r": ENEMY_HIT_RADIUS, "color": "#d95738", "outline": "#5c1b13", "hp": 42, "damage": 14, "reward": {"type": "health", "amount": 11}},
   "Needle": {"speed": 205, "attackSpeed": 1, "r": ENEMY_HIT_RADIUS, "color": "#ffd34d", "outline": "#6f4a12", "hp": 90, "damage": 24, "reward": {"type": "speed", "amount": ratingRewardPerKill(1)}},
   "Mossback": {"speed": 205, "attackSpeed": 1, "r": ENEMY_HIT_RADIUS, "color": "#768d51", "outline": "#2c3b20", "hp": 180, "damage": 29, "reward": {"type": "armor", "amount": 9}},
-  "Spitter": {"speed": 205, "attackSpeed": 1, "r": ENEMY_HIT_RADIUS, "color": "#b16ac8", "outline": "#4b235d", "hp": 8, "damage": 20, "reward": {"type": "damage", "amount": 1.5}},
+  "Spitter": {"speed": 205, "attackSpeed": 1, "r": ENEMY_HIT_RADIUS, "color": "#b16ac8", "outline": "#4b235d", "hp": 18, "damage": 20, "reward": {"type": "damage", "amount": 1}},
   "Brood": {"speed": 205, "attackSpeed": 0.69, "r": ENEMY_HIT_RADIUS, "color": "#45b6c2", "outline": "#174a54", "ranged": true, "hp": 220, "damage": 56, "reward": {"type": "regen", "amount": 2}},
   "Cindermaw": {"speed": 205, "attackSpeed": 1, "r": ENEMY_HIT_RADIUS, "color": "#d95738", "outline": "#5c1b13", "hp": 360, "damage": 86, "reward": {"type": "damage", "amount": 3}},
-  "King Slime": {"speed": 205, "attackSpeed": 1, "r": ENEMY_HIT_RADIUS, "color": "#70a94f", "outline": "#2d5127", "elite": true, "aggro": 300, "hp": 500, "damage": 143, "reward": {"type": "health", "amount": 90}},
+  "King Slime": {"speed": 205, "attackSpeed": 1, "r": ENEMY_HIT_RADIUS, "color": "#70a94f", "outline": "#2d5127", "elite": true, "aggro": 300, "hp": 500, "damage": 143, "reward": {"type": "health", "amount": 50}},
   "Dread Warden": {"speed": 205, "attackSpeed": 1, "r": ENEMY_HIT_RADIUS, "color": "#a52e3a", "outline": "#47101a", "elite": true, "aggro": 340, "hp": 500, "damage": 275, "reward": {"type": "damage", "amount": 7}},
   "Dune Raider": {"speed": 205, "attackSpeed": 0.65, "r": ENEMY_HIT_RADIUS, "color": "#d6a13a", "outline": "#5f3c18", "hp": 3120.0000000000005, "damage": 499.8697007283747, "reward": {"type": "damage", "amount": 6}},
   "Dune Archer": {"speed": 205, "attackSpeed": 0.55, "r": ENEMY_HIT_RADIUS, "color": "#d5b04d", "outline": "#61481d", "ranged": true, "hp": 4368.000000000001, "damage": 374.90227554628103, "reward": {"type": "health", "amount": 108}},

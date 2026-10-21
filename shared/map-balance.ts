@@ -23,6 +23,8 @@ const combatRole = (row: { elite?: boolean; reward: { type: string } }) =>
   `${row.elite ? 'elite' : 'regular'}:${paysRating(row.reward.type) ? 'damage' : row.reward.type}`;
 /** Forest enemies kept at their authored numbers (enemy-base-values.ts). */
 const OFF_CURVE = new Set<string>(['Spitter', 'Bramble']);
+/** Forest enemies that fight on the curve but pay their authored reward (0.916.23: King Slime pays 50 health). */
+const AUTHORED_REWARD = new Set<string>(['King Slime']);
 const AUTHORED_ENEMIES: typeof ENEMY_TYPES = JSON.parse(JSON.stringify(ENEMY_TYPES));
 export const BALANCE_MAPS: readonly (readonly [string, string, string])[] = [
   ...CAMPAIGN_MAPS.map((map, index) => [map.id, `${index + 1} · ${map.name}`, map.bossArt] as const),
@@ -118,9 +120,11 @@ export function resolveMapBalance(mapId: string, settings: BalanceSettings, revi
     for (const kind of Object.keys(ENEMY_TYPES) as EnemyKind[]) {
       if (!campaignPopulation(mapId)?.get(kind)) continue;
       const row = AUTHORED_ENEMIES[kind];
-      const shape = OFF_CURVE.has(kind) ? { hp: row.hp / camp.hp, damage: row.damage / camp.damage, reward: row.reward.amount / camp.reward } : CURVE_ROLES[combatRole(row)];
-      result.enemies[kind] = { ...row, hp: camp.hp * shape.hp * factors.enemyHealth, damage: camp.damage * shape.damage * factors.enemyDamage,
-        speed: row.speed * factors.enemySpeed, reward: { ...row.reward, amount: camp.reward * shape.reward * factors.enemyRewards } };
+      const shape = CURVE_ROLES[combatRole(row)], authored = OFF_CURVE.has(kind);
+      const hp = authored ? row.hp : camp.hp * shape.hp, damage = authored ? row.damage : camp.damage * shape.damage;
+      const reward = authored || AUTHORED_REWARD.has(kind) ? row.reward.amount : camp.reward * shape.reward;
+      result.enemies[kind] = { ...row, hp: hp * factors.enemyHealth, damage: damage * factors.enemyDamage,
+        speed: row.speed * factors.enemySpeed, reward: { ...row.reward, amount: reward * factors.enemyRewards } };
     }
     const mapNumber = index + 1;
     for (const enemy of Object.values(result.enemies)) {
