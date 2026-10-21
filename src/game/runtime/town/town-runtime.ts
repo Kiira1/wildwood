@@ -63,8 +63,8 @@ export const TOWN_SOLIDS: readonly SoulSolid[] = [...TOWN_VILLAGE_SOLIDS, ...fur
 /** Where the feet are below the player's position (depth-world-renderer sorts the player there too), and how wide. */
 const FEET_OFFSET = TOWN_FEET_OFFSET;
 export const TOWN_FEET_RADIUS = 12;
-/** A door swings open while feet are this near its sill. */
-const DOOR_OPEN_RANGE = 120;
+/** A door swings open only once the player walks into it: feet between its posts, this close to its sill. */
+const DOOR_PUSH_REACH = 20;
 /** Doors onto empty rooms stay shut: walking into them does nothing. Anyone already inside still walks out. */
 export const TOWN_LOCKED_DOORS: ReadonlySet<number> = new Set([0, 7]);
 /** Going through: a few steps into the doorway while the screen goes dark. */
@@ -266,8 +266,8 @@ export function createTownRuntime(deps: {
     if (doorway.elapsed > 1.5) finishDoorway();
   }
   /**
-   * Doors near the player stand open; walking on into an open one (feet at its sill, between its posts, still
-   * heading in) or out of a room's doorway goes through.
+   * A door opens when the player pushes into it (feet at its sill, between its posts); walking on into the open
+   * door, or out of a room's doorway, goes through.
    */
   function checkDoors() {
     const { player } = deps;
@@ -275,7 +275,10 @@ export function createTownRuntime(deps: {
     if (player.hp <= 0) return;
     const feetX = player.x, feetY = player.y + FEET_OFFSET;
     const heading = Number.isFinite(lastY) ? player.y - lastY : 0;
-    for (const door of TOWN_DOORS) if (!TOWN_LOCKED_DOORS.has(door.index) && Math.hypot(feetX - door.x, feetY - door.y) < DOOR_OPEN_RANGE) SOUL_DOORS_OPEN.add(door.index);
+    for (const door of TOWN_DOORS) {
+      const pushing = Math.abs(feetX - door.x) < door.half && feetY < door.enter + TOWN_FEET_RADIUS + DOOR_PUSH_REACH;
+      if (pushing && !TOWN_LOCKED_DOORS.has(door.index)) SOUL_DOORS_OPEN.add(door.index);
+    }
     const into = TOWN_DOORS.find(door => SOUL_DOORS_OPEN.has(door.index) && Math.abs(feetX - door.x) < door.half && feetY < door.enter + TOWN_FEET_RADIUS + 8);
     if (into && heading < 0) { startDoorway(into, true); return; }
     const room = townRoomAt(player.x, player.y);
