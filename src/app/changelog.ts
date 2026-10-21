@@ -1,4 +1,7 @@
 export const RELEASE_NOTES: Record<string, string[]> = {
+  "0.916.26": [
+    "Profiles show Attack Speed as attacks per second and Crit Damage as a multiplier",
+  ],
   "0.916.25": [
     "Walking through a portal no longer blacks out an open inventory or window",
     "Quests appear once you've visited the quest board in Town",
@@ -3799,6 +3802,7 @@ const RELEASE_DATES: Record<string, string> = {
 };
 
 export const RELEASE_DAYS: Record<string, string> = {
+  "0.916.26": "2026-10-21",
   "0.916.25": "2026-10-21",
   "0.916.24": "2026-10-21",
   "0.916.23": "2026-10-21",

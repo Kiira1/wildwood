@@ -5,8 +5,7 @@ import { CRITICAL_DAMAGE_BASE } from "../../shared/critical-damage";
 import { computePlayerStats, playerStatPower, type PlayerStatInputs } from "../../shared/player-stats";
 import { itemLevelFor, slotTierFor } from "../../shared/item-level";
 import { formatCompactNumber, formatRate } from "./number-format";
-import { attackSpeedLabel, attackSpeedRatingForInterval, critDamageLabel, type AttackCapArg } from "../../shared/stat-rating";
-import { formatRating } from "./rating-text";
+import { attackSpeedLabel, critDamageLabel, type AttackCapArg } from "../../shared/stat-rating";
 import { cleanSoulStats, withSoulStats, type SoulStats } from "../../shared/soul-dimension";
 import { cardStatFactors, cardTotals } from "../../shared/card-effects";
 import { STAT_NAMES } from "../../shared/card-text";
@@ -164,13 +163,6 @@ export function profileStatDisplayRows(
     return sources;
   };
   const minAttackInterval = stats.capInterval, baseAttackInterval = stats.attackInterval;
-  // Attack Speed is a rating on a curve that only closes in on the cap (shared/stat-rating.ts): the
-  // expanded line names the rating behind the rate, as Armor names its Block, and "(Max)" shows once
-  // the rate reads the same as the cap.
-  const speedRating = attackSpeedRatingForInterval(baseAttackInterval, attackCap);
-  // Attack speed and crit damage read like armor: their number, and what it gives in brackets. No "rating".
-  const ratingText = formatRating;
-  const bracket = (label: string) => `(${label.replace(" (Max)", " Max")})`;
   const baseAttackSpeed = attackSpeedLabel(1 / baseAttackInterval, 1 / minAttackInterval);
   const attackSpeed = `${stats.attackRate.toFixed(2)}/s`;
   // A sword reaches its own range, with the same Tech, Long Shot, cards and Archery on top (weaponAttackRange).
@@ -209,9 +201,9 @@ export function profileStatDisplayRows(
     {
       kind: "attack", label: "Attack Speed:", base: baseAttackSpeed,
       equationOperator: "×",
-      multiplier: multiplierValue(1), total: ratingText(speedRating), equationTotal: attackSpeed,
-      // The cap beside the rate, as critical damage shows its own: how close the player is to the fastest.
-      expandedDetail: `${bracket(attackSpeedLabel(stats.attackRate, 1 / minAttackInterval))} · ${(1 / minAttackInterval).toFixed(2)}/s Cap`,
+      multiplier: multiplierValue(1), total: attackSpeedLabel(stats.attackRate, 1 / minAttackInterval), equationTotal: attackSpeed,
+      // Attacks a second, never the rating behind them; the cap beside it shows how close the player is.
+      expandedDetail: `${(1 / minAttackInterval).toFixed(2)}/s Cap`,
       // The soul's own share, which adds to the run's and is kept through prestige.
       // The soul adds attacks a second flat (soulAttackSpeedBonus), so its line is that, not a rating.
       sources: soulSource(from.attackSpeed.soul, value => Number.isFinite(value) ? `${value.toFixed(3)}/s` : "Max"),
@@ -285,8 +277,8 @@ export function profileStatDisplayRows(
   const bonusShare = (part: number) => crit.research + crit.perk > 0 ? crit.fromBonuses * part / (crit.research + crit.perk) : 0;
   rows.push({
     kind: "critical-damage", label: "Critical Damage:", base: `${CRITICAL_DAMAGE_BASE.toFixed(2)}×`, equationOperator: "+",
-    multiplier: `${(crit.multiplier - CRITICAL_DAMAGE_BASE).toFixed(2)}×`, total: ratingText(crit.rating + crit.soul),
-    equationTotal: `${crit.multiplier.toFixed(2)}×`, expandedDetail: `${bracket(critDamageLabel(crit.multiplier, crit.cap))} · ${crit.cap}× Cap`,
+    multiplier: `${(crit.multiplier - CRITICAL_DAMAGE_BASE).toFixed(2)}×`, total: critDamageLabel(crit.multiplier, crit.cap),
+    equationTotal: `${crit.multiplier.toFixed(2)}×`, expandedDetail: `${crit.cap}× Cap`,
     sources: [
       ...(crit.research ? [{ label: "Tech" as const, value: shown(bonusShare(crit.research)) }] : []),
       ...(crit.perk ? [{ label: "Prestige" as const, value: shown(bonusShare(crit.perk)) }] : []),
