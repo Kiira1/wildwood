@@ -26,7 +26,7 @@ Picked by URL hash in `visual-check.html`:
 | `hud` | The in-game HUD: player card, toolbar icons, gem wallet, minimap |
 | `wordmark` | The start screen with the wordmark |
 | `profile-own`, `profile-other` | The profile window's header: your own with the pencil and gear, another player's with the guild row and the ⋯ menu open |
-| `shops` | The Smith on Reforge, the Weapon Seller on Sell and the Armor Seller on Buy, stacked, at phone width |
+| `shops` | The Smith on Craft, Reforge and Refine, the Weapon Seller on Sell and the Armor Seller on Buy, each at its real size with its pinned detail and grid, stacked, at phone and desktop width |
 
 `world`, `town` and `bosses` build a map the way the game does (`game-world.ts`: the bootstrap state,
 the map's layout, camps and boss, `createWorldRendering`) with no server; workers are off so ground

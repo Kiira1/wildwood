@@ -144,8 +144,9 @@ async function wordmark() {
 }
 
 /**
- * The Smith on Reforge (two copies of one bow and a sword) and the Weapon Seller on Sell and the Armor Seller on Buy,
- * filled by their own window code from fake rows. The windows are unpinned and stacked so one full-page capture shows all three.
+ * The Smith on each of Craft, Reforge and Refine, the Weapon Seller on Sell and the Armor Seller on Buy, filled by their
+ * own window code from fake rows. Each window keeps its real size, so its pinned detail and grid show as in the game;
+ * they are stacked so one full-page capture shows all five.
  */
 async function shops() {
   await gameMarkup();
@@ -153,28 +154,36 @@ async function shops() {
   const unpin = document.createElement("style");
   unpin.textContent = `
     html, body { position: static !important; height: auto !important; overflow: visible !important; }
-    dialog.farm-sheet[open] { position: relative !important; inset: auto !important; height: auto !important; margin: 12px auto !important; }
-    dialog.farm-sheet .quest-body { overflow: visible !important; max-height: none !important; }
+    dialog.farm-sheet[open] { position: relative !important; inset: auto !important; margin: 12px auto !important; }
   `;
   document.head.append(unpin);
   const ores = { pine_log: 900, oak_log: 40, copper_ore: 300, iron_ore: 12, starshard: 5 };
   const bow = { arrowStorm: 3.1, ricochet: 1.2, piercingShot: 0 }, sword = { whirlwind: 2, deflect: 0, shockwave: 1.5 };
   const done = async () => ({ ok: true });
-  const smith = createSmithController({
-    inTown: () => true, items: () => [], refineLevel: () => 0, slotTier: () => 0, ores: () => ores, refine: done, showMessage: () => {},
-    worn: () => ({ equippedRightHand: "rare_bow" }),
-    craft: {
-      craftSkills: () => ({ fletching: BigInt(craftExperienceForLevel(24)), smithing: BigInt(craftExperienceForLevel(6)) }),
-      ores: () => ores, masteryLevels: () => ({ archery: 20 }), bagFull: () => false, craft: done,
-      weapons: () => [
-        { itemId: "rare_bow", copyId: 0n, equipped: true, roll: bow },
-        { itemId: "rare_bow", copyId: 7n, equipped: false, roll: { arrowStorm: 0, ricochet: 2, piercingShot: 0.8 } },
-        { itemId: "fine_sword", copyId: 0n, equipped: false, roll: sword },
-      ],
-      refineLevel: (_itemId, copyId) => copyId ? 2 : 7, reforge: done, showMessage: () => {},
-    },
-  });
-  smith.open("reforge");
+  const held = [
+    { itemId: "rare_bow", copyId: 0n, equipped: true },
+    { itemId: "rare_bow", copyId: 7n, equipped: false },
+    { itemId: "fine_sword", copyId: 0n, equipped: false },
+    { itemId: "rare_light_helmet", copyId: 0n, equipped: true },
+    { itemId: "fine_light_armor", copyId: 0n, equipped: true },
+    { itemId: "common_ranger_boots", copyId: 0n, equipped: true },
+  ];
+  for (const view of ["craft", "reforge", "refine"] as const) {
+    createSmithController({
+      inTown: () => true, items: () => held, refineLevel: (_itemId, copyId) => copyId ? 2 : 7, slotTier: () => 3, ores: () => ores, refine: done,
+      showMessage: () => {},
+      craft: {
+        craftSkills: () => ({ fletching: BigInt(craftExperienceForLevel(24)), smithing: BigInt(craftExperienceForLevel(6)) }),
+        ores: () => ores, masteryLevels: () => ({ archery: 20 }), bagFull: () => false, craft: done,
+        weapons: () => [
+          { itemId: "rare_bow", copyId: 0n, equipped: true, roll: bow },
+          { itemId: "rare_bow", copyId: 7n, equipped: false, roll: { arrowStorm: 0, ricochet: 2, piercingShot: 0.8 } },
+          { itemId: "fine_sword", copyId: 0n, equipped: false, roll: sword },
+        ],
+        refineLevel: (_itemId, copyId) => copyId ? 2 : 7, reforge: done, showMessage: () => {},
+      },
+    }).open(view);
+  }
   try { localStorage.setItem("wildstat.gearSellerView.weapons", "sell"); localStorage.setItem("wildstat.gearSellerView.armor", "buy"); } catch { /* the default views */ }
   const seller: GearSellerDeps = {
     inTown: () => true, showMessage: () => {}, gold: () => 12_480n, masteryLevels: () => ({ archery: 20 }),
@@ -185,6 +194,7 @@ async function shops() {
       { itemId: "rare_bow", copyId: 0n, equipped: true, roll: bow },
       { itemId: "rare_bow", copyId: 7n, equipped: false, roll: { arrowStorm: 0, ricochet: 2, piercingShot: 0.8 } },
       { itemId: "fine_sword", copyId: 0n, equipped: false, roll: sword },
+      { itemId: "crude_staff", copyId: 0n, equipped: false, roll: null },
     ],
     locked: (_itemId, copyId) => copyId === 7n, sell: done,
   };
