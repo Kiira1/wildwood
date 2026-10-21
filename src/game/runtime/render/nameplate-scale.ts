@@ -1,5 +1,5 @@
 /** Overhead plates (name, power, health bar) over players and enemies, against their first size. */
-export const NAMEPLATE_SCALE = 0.78;
+export const NAMEPLATE_SCALE = 0.93;
 
 const PLATE_FONT_FAMILY = '"Arial Rounded MT Bold", "Arial Rounded MT", Arial, sans-serif';
 
