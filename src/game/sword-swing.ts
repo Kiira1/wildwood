@@ -6,7 +6,7 @@ const lerp = (a: number, b: number, t: number) => a + (b - a) * t;
 // The hand swings on an arm from the shoulder; offsets are from the resting grip, facing right.
 const ARM = 30, ARM_REST = 79 * Math.PI / 180;
 const SHOULDER_X = -ARM * Math.cos(ARM_REST), SHOULDER_Y = -ARM * Math.sin(ARM_REST);
-const RAISED = { arm: -110, blade: -140 }, STRIKE = { arm: 35, blade: 40 }, FOLLOW = { arm: 70, blade: 75 };
+const RAISED = { arm: -145, blade: -145 }, STRIKE = { arm: 35, blade: 40 }, FOLLOW = { arm: 70, blade: 75 };
 const REST = { arm: 79, blade: -28 };
 const BEHIND_UNTIL = .055;
 export type SwordSwingPose = { angle: number; trail: number; gripX?: number; gripY?: number; behind?: boolean };
