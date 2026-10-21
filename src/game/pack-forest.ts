@@ -8,7 +8,7 @@ import { TUTORIAL_FOREST_MAP_ID, type MapId, type WorldDecor } from "./world";
  * shadow, faded together with the ground's (forest-ground-tiles.ts), and short
  * grass lying flat while tall tufts stand and sort. The saved design keeps its
  * points; only the art changes. The Soul Dimension reuses this layout with its
- * night trees, so only the forest itself converts.
+ * night trees, so only the forest itself converts. The layout's petals (pale specks) are left out here.
  */
 const TREE_FRAMES = [...PROP_FRAMES.tree.frames, ...PROP_FRAMES.birch.frames, ...PROP_FRAMES.smallTree.frames];
 const GRASS_FRAMES = PROP_FRAMES.grass.frames;
@@ -30,7 +30,7 @@ export function withPackForest(decor: readonly WorldDecor[], mapId: MapId): Worl
     } else if (item.type === "grass") {
       const frame = GRASS_FRAMES[pick(item.x, item.y, GRASS_FRAMES.length)];
       out.push({ type: "soulProp", x: item.x, y: item.y, s: 1, frame, flip: item.variant % 2 === 1, ground: lowEnough(frame, 1) });
-    } else out.push(item);
+    } else if (item.type !== "petal") out.push(item);
   }
   return out;
 }

@@ -1,4 +1,7 @@
 export const RELEASE_NOTES: Record<string, string[]> = {
+  "0.916.23": [
+    "The white specks on Tutorial Forest's grass are gone",
+  ],
   "0.916.22": [
     "While You Were Away shows the gold you earned",
     "Guild tags are hidden by default; turn them on in Settings",
