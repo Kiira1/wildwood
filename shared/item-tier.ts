@@ -6,8 +6,8 @@ import {
 } from "./items";
 import { MAP_IDS } from "./rules";
 
-// Tier follows the map an item used to drop on, not item power or upgrade level. Gear no longer drops, so
-// this table, the first maps' gear plus each campaign item's own map, keeps old items' tiers and refine grades.
+// Tier follows each item's map (the first maps' gear plus each campaign item's own map), not item power
+// or upgrade level, so owned items keep their tiers and refine grades.
 const TIERS = new Map<string, number>([[STARTER_STONE, 1], [STARTER_BOW, 1], [WOODEN_ARMOR, 1],
   [WOOD_FULL_HELM, 2], [IRON_BOW, 2], [FROST_ARMOR, 3], [FROST_BOW, 3], [SNOW_BOW, 3], [LAVA_BOW, 4],
   [MAGMA_ARMOR, 4], [FIRE_METAL_HELMET, 4], [NIGHT_BOW, 5], [FIRE_METAL_BOW, 5], [DARK_METAL_HELMET, 5], [BLACK_BOOTS, 5],

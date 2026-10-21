@@ -115,8 +115,7 @@ export function killReportMap(mapId: string) { return combatMap(mapId) || isSoul
 export const DEFEAT_MIN_RESPAWN_SECONDS = REGULAR_ENEMY_RESPAWN_SECONDS;
 /**
  * The ceiling basis for a map whose respawn has been tuned, after research.
- * Until 0.807 the rewarded ad halved the wait and this halved it too; the ad
- * pays Gems now, so the tuned respawn is itself the fastest a camp can
+ * The rewarded ad pays Gems and does not shorten the wait, so the tuned respawn is itself the fastest a camp can
  * legitimately come back. Every player carrying a pinned balance snapshot
  * resolves through here, so it has to agree with DEFEAT_MIN_RESPAWN_SECONDS or
  * the ceiling only applies to the handful of accounts without one.
@@ -132,8 +131,8 @@ export function defeatBudget(population: number, minRespawnSeconds = DEFEAT_MIN_
      * What the first sight of a species is worth: everything standing there
      * plus one report window of respawns. The full bank has to be earned by
      * staying, because the budget is keyed per map and a full bank on arrival
-     * is farmable by hopping between maps. The boss clock has always worked
-     * this way; regular enemies now match it.
+     * is farmable by hopping between maps. The boss clock works the same
+     * way.
      */
     initial: population + perSecond * REGULAR_KILL_REPORT_SECONDS,
     perSecond,

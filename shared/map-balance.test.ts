@@ -42,7 +42,7 @@ describe('server map balance snapshots', () => {
       expect(() => validateBalanceSettings(settings)).toThrow();
     }
     expect(() => validateBalanceSettings({})).toThrow();
-    // Settings saved before the curve (0.915) carry no curveVersion.
+    // Settings saved before the balance curve carry no curveVersion.
     expect(() => validateBalanceSettings({ maps: defaultBalanceSettings().maps })).toThrow(/before the balance curve/);
   });
 });

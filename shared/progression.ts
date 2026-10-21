@@ -12,8 +12,7 @@ export const REGULAR_REWARD_CYCLE_SCALE = .6 * (52 * 60 / MAP_TARGET_SECONDS) * 
 // time with authored camp density; CAMPAIGN_REWARD_PACING below applies the current duration target.
 // Snowlands gets a modest catch-up bonus, still below Lava's per-role payouts.
 // Indexed by desert-relative tier: 0 Desert, 1 Snowlands, 2 Lava, and so on.
-// Tiers 2 to 6 carry what the live balance panel was multiplying on top of
-// them, so the panel now reads 1 everywhere and these are the only numbers.
+// These are the only reward multipliers: the live balance panel reads 1 everywhere.
 export const CAMPAIGN_ENEMY_REWARD_MULTIPLIERS: readonly number[] = [1.0, 1.25, 3.0, 1.95, 1.1985, 0.972, 0.831, 0.417, 0.362, 0.332, 0.301, 0.275, 0.253, 0.232];
 /**
  * Indexed by campaign map: 1 Desert, 2 Snowlands, ... 12 Neon Bastion. Desert's
@@ -77,8 +76,8 @@ export const ENCOUNTER_PROFILES: Record<ForestProgressionLane, { seconds: number
   Mossback: { seconds: 10, hitShare: .07, rewardShare: 2 / 165, stat: "armor" },
   Spitter: { seconds: 4, hitShare: .12, rewardShare: .025, stat: "damage" },
   Brood: { seconds: 9, hitShare: .08, rewardShare: .09, stat: "regen" },
-  // Eight seconds put regular damage sites at 2.25x worse reward per point of
-  // health than the elite beside them, so they were never worth clearing.
+  // Eight seconds would put regular damage sites at 2.25x worse reward per point
+  // of health than the elite beside them, never worth clearing.
   Cindermaw: { seconds: 5, hitShare: .08, rewardShare: .05 / 12, stat: "damage" },
   "King Slime": { seconds: 14, hitShare: .11, rewardShare: .015, stat: "health" },
   "Dread Warden": { seconds: 13, hitShare: .12, rewardShare: 11 / 720, stat: "damage" },

@@ -3,7 +3,7 @@ import { enemyDefeatDefinition } from "./enemy-defeats";
 import { ENEMY_TYPES } from "./enemy-definitions";
 
 /**
- * Weekly quests (0.853; daily from 0.847): fifteen a week, each "kill 50 to
+ * Weekly quests: fifteen a week, each "kill 50 to
  * 100 of one regular campaign enemy", three on the board at a time. Finishing
  * one brings the next, so a player can clear all fifteen in a day or spread
  * them over the week. Every completed quest is a point for the player's guild
@@ -27,7 +27,7 @@ export type WeeklyQuest = {
   mapId: string; enemy: string; target: number; progress: number;
   /** On a leader's board: the member this quest was collected from. */
   from?: string;
-  /** On a member's board: the leader who collected it. It no longer counts here. */
+  /** On a member's board: the leader who collected it. It does not count here. */
   takenBy?: string;
 };
 

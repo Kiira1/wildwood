@@ -2,7 +2,7 @@ import { generateMap, mapRandom, type ProceduralMapId } from "./procedural-map-c
 import type { EnemyKind } from "./enemy-definitions";
 import { ENDLESS_ENEMY_ART } from "./endless-enemies";
 /**
- * One art set per Endless map (0.867), never the slimes. The campaign's enemies
+ * One art set per Endless map, never the slimes. The campaign's enemies
  * share about fifteen art sets (every Lava Lake enemy is an orange slime), so
  * the pool is by set: each non-slime campaign set by its melee enemy, with its
  * shooter on a third of the maps that draw it, and each Endless-only Layer Lab

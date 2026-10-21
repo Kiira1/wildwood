@@ -6,7 +6,7 @@ export type { GuildFighter } from "./guild-combat";
 export const GUILD_EMBLEMS = ["wolf", "fox", "bear", "owl", "dragon", "lion", "raven", "stag", "swords", "fire", "serpent", "moon", "sun", "tree", "crystal", "leopard",
   "turtle", "boar", "eagle", "bat", "shark", "octopus", "unicorn", "phoenix", "badger", "ram", "spider", "tiger", "mushroom", "anchor", "hammer", "lightning"] as const;
 export const GUILD_MEMBER_LIMIT = 20;
-/** About a third of the way to Duskfall Orchard's entry power (map 12) on the balance curve, as 1 billion was before it. */
+/** About a third of the way to Duskfall Orchard's entry power (map 12) on the balance curve. */
 export const GUILD_CREATION_MIN_POWER = 2_500_000;
 export const GUILD_DAILY_ATTACKS = 3;
 export const GUILD_DAY_MICROS = 86_400_000_000n;
@@ -37,7 +37,7 @@ export type GuildSnapshot = {
       questsDone?: number; questsTotal?: number; questPoints?: number;
       /** Today's quests still unfinished and not yet collected by a leader. */
       questsOpen?: number;
-      /** Quests a guildmate took from them (before 0.858). */
+      /** Quests a guildmate took from them, on older records. */
       questsTaken?: number;
       /** Quests they collected from the guild's pool and finished. */
       questsCollected?: number;

@@ -122,7 +122,7 @@ export function duelMasteryFold(input: {
   const { mastery, damage, maxHp, opponent } = input;
   const chance = Math.max(0, Math.min(1, input.crit.chance)), extra = Math.max(0, input.crit.multiplier - 1);
   const every = masteryCritEvery(mastery);
-  // Steady Aim and Focus: one shot in six crits, the other five roll as before.
+  // Steady Aim and Focus: one shot in six crits, the other five roll as usual.
   const forcedChance = every ? 1 / every + (1 - 1 / every) * chance : chance;
   let factor = (1 + forcedChance * extra) / (1 + chance * extra);
   const attackInterval = input.attackInterval / (hasTechnique(mastery, "momentum") ? 1 + MOMENTUM_MAX : 1);

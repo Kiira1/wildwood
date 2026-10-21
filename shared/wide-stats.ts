@@ -1,5 +1,5 @@
 /**
- * Stats past f32's range (0.855). Several tables store combat stats as f32,
+ * Stats past f32's range. Several tables store combat stats as f32,
  * finite only to about 3.4e38; a value is clamped to F32_STAT_LIMIT there, and
  * player_progress's full value lives in its own wide columns (shared/progress-row.ts),
  * which the client lays back over the row the same way the server does.
@@ -16,7 +16,7 @@ export function narrowStat(value: number) {
 
 /**
  * A power for world chat's f32 column: as it is up to F32_STAT_LIMIT, past it as minus its base-10 logarithm, which
- * f32 holds to about seven digits. It was clamped there, so every power past about 300ud read the same.
+ * f32 holds to about seven digits, so powers past the limit still read apart.
  */
 export function narrowPower(power: number) {
   if (!Number.isFinite(power)) return power > 0 ? -308 : 0;
@@ -47,7 +47,7 @@ export function wideStatsApply<T extends Stats>(row: T, wide: Stats | null | und
 }
 
 /**
- * Duel and replay stats past f32 (0.856). The duel row's id is auto-assigned
+ * Duel and replay stats past f32. The duel row's id is auto-assigned
  * and keys its replay, riposte and combat snapshot, so the row stays where it
  * is and its stats past the limit ride in a companion row as JSON, the same
  * player_progress's wide columns extend it.

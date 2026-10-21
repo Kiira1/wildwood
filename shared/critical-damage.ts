@@ -7,11 +7,11 @@ import { CRIT_DAMAGE_START, critBonusLevels, critDamageForLevels, formatRateGain
  * combat, the server's kill bound, duels, the Soul Defense Force and the
  * profile. One function, so none of them can disagree about the cap.
  *
- * Since 0.901.47 critical damage is a rating on a curve (stat-rating.ts):
+ * Critical damage is a rating on a curve (stat-rating.ts):
  * crit camps on every map add to the run's rating, the soul's adds to it, and
  * the curve turns the total into a multiplier, 1.05x at nothing, 3% closer to
  * 100x a map's worth. Critical Damage research (+0.05x a rank) and Keen Edge
- * (+0.12x a rank) are levels on the same curve, worth exactly their old bonus
+ * (+0.12x a rank) are levels on the same curve, worth exactly that bonus
  * from nothing. The total stops at the cap: 5x, 1x more for each Crit Cap
  * rank, up to 10x.
  */
@@ -55,9 +55,8 @@ export function criticalDamageBonuses(parts: Pick<CriticalDamageParts, "research
 }
 
 /**
- * What the soul adds: a flat multiplier, as before 0.901.47, so each soul crit kill adds its 0.002x to the
- * total (soulCritRatingAfterKills stores it as the rating that gives that from nothing). Added to the run's
- * rating on the curve instead, a kill did nothing visible once the run's own crit was high.
+ * What the soul adds: a flat multiplier, so each soul crit kill adds its 0.002x to the total even when the
+ * run's own crit is high (soulCritRatingAfterKills stores it as the rating that gives that from nothing).
  */
 export function soulCritDamageBonus(soul: unknown) {
   const rating = amount(soul);

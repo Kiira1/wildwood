@@ -10,7 +10,7 @@ describe("whole-guild combat", () => {
     expect(result.outcome).toBe("DRAW"); expect(result.attackerSurvivors).toBe(0); expect(result.defenderSurvivors).toBe(0);
   });
   it("fights a member with every range research rank and all five Long Shot ranks", () => {
-    // 200 base + 50 research + 25 Long Shot: once over the old 250 bound, which failed the whole battle.
+    // 200 base + 50 research + 25 Long Shot: the bound must take all of it.
     expect(GUILD_MAX_RANGE).toBe(275);
     const longShot = team(1).map(member => ({ ...member, range: GUILD_MAX_RANGE }));
     expect(() => simulateGuildBattle(longShot, team(1, "b"))).not.toThrow();
@@ -84,7 +84,7 @@ it("retains the original simultaneous simulation for saved version 2 battles", (
   expect(frames[1].actors.every((actor, i) => actor.x !== frames[0].actors[i].x)).toBe(true);
 });
 
-// These values were captured before the arrival/targeting change.
+// Fights saved under replay versions 2 and 3 replay with these outcomes and timings.
 it.each([[2, 8], [3, 10.3]] as const)("retains saved v%s outcomes and timing", (version, duration) => {
   const side = (prefix: string, count: number) => Array.from({ length: count }, (_, i) => ({ identity: prefix + i, name: prefix + i,
     fighter: { maxHp: 100 + i * 19, damage: 10 + i * 3, armor: 7 * i, regen: 0, attackRate: .7 }, range: 160 }));

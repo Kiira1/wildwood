@@ -12,8 +12,8 @@ import { critPowerFactor, type PlayerPowerStats } from "./player-power";
 export const OFFLINE_WINDOW_SECONDS = 8 * 60 * 60;
 /**
  * How long a build has to hold a map for offline farming to stay on it. The
- * pressure below was tuned against an hour; the window grew to four (0.882), then eight (0.901.35),
- * without moving anyone to an easier map.
+ * pressure below is tuned against an hour, shorter than the offline window, so a
+ * longer window never moves anyone to an easier map.
  */
 export const OFFLINE_SURVIVAL_SECONDS = 60 * 60;
 /**
@@ -32,8 +32,7 @@ export const OFFLINE_APPROACH_SECONDS = 2.5;
  * It is calibrated, not guessed. The reference build for a map is what the
  * curve expects a player to be carrying when they farm it, so that build has
  * to clear the check on its own map with room to spare; at .25 it does. The
- * build one tier below it used to fail; the reference builds predate the 0.915
- * balance curve and now out-class its maps, so only the upper end is pinned.
+ * reference builds out-class the balance curve's maps, so only the upper end is pinned.
  */
 export const OFFLINE_INCOMING_PRESSURE = .25;
 /**
@@ -163,8 +162,7 @@ export function simulateOfflineFarming(
   const totalPopulation = roster.reduce((sum, entry) => sum + entry.population, 0);
   if (!roster.length || !totalPopulation || !seconds) return empty;
 
-  // Crits count, as power counts them (critPowerFactor): without them a crit build, which online one-shots
-  // what it hits, farmed one kill in two minutes away (ChunkyChunkster, 2026-10-12: 253 kills in 8 hours).
+  // Crits count, as power counts them (critPowerFactor), so a crit build farms away about as fast as online.
   const dps = stats.damage * critPowerFactor(stats) / Math.max(CHALLENGE_ABSOLUTE_MIN_INTERVAL, stats.attackRate);
   if (!(dps > 0)) return empty;
 

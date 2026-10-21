@@ -8,8 +8,7 @@ import { PRESTIGE_PERKS, PRESTIGE_PERK_MAX_RANK } from "./prestige-perks";
 
 /**
  * The farthest any member can reach: every range research rank plus every
- * Long Shot rank (275). The check below once stopped at 250, so a member with
- * both maxed made every battle they were in fail (0.852).
+ * Long Shot rank (275).
  */
 export const GUILD_MAX_RANGE = attackRangeWithResearch(Number.MAX_SAFE_INTEGER) + PRESTIGE_PERK_MAX_RANK * PRESTIGE_PERKS.longShot.perRank;
 

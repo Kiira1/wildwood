@@ -1,7 +1,7 @@
 export type AvatarFrame = "none" | "silver" | "gold" | "diamond";
 export type AvatarFrameState = { identity: string; tier: AvatarFrame; frame: AvatarFrame; validUntilMs: number };
 export type PatreonStatus = { configured: boolean; linked: boolean; tier: AvatarFrame; frame: AvatarFrame; validUntilMs: number; preview?: boolean };
-/** Each tier has its own artwork; silver is no longer gold under a filter. */
+/** Each tier has its own artwork. */
 export const AVATAR_FRAME_ASSETS = {
   silver: "assets/wildstat/avatar-frames/patreon_silver.webp",
   gold: "assets/wildstat/avatar-frames/patreon_gold.webp",

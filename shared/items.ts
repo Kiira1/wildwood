@@ -65,36 +65,28 @@ export const SAMURAI_HAT_ITEM_DROP_DENOMINATOR = 125; // 0.8% per regular Samura
 export const SNOW_BOSS_ITEM_DROP_DENOMINATOR = 25;
 export const SNOW_BOSS_ARMOR_DROP_DENOMINATOR = 5;
 export const MAX_OWNED_ITEM_COUNT = 1;
-// Kept as a compatibility export for older client/server call sites. Wildstat
-// equipment is unique now, so every durable quantity is clamped to one.
+// A compatibility export for older call sites. Equipment is unique, so every
+// durable quantity is clamped to one.
 export const MAX_FOREST_ITEM_COUNT = MAX_OWNED_ITEM_COUNT;
 /**
  * Upgrades belong to an equipment slot, not to the item in it.
  *
  * A tier earned on the Weapon slot applies to whatever weapon is held, so a
  * better drop is an upgrade rather than a reason to start again. The track is
- * long on purpose: ninety-nine tiers is an endgame goal, where ten was
- * something the next map's drop could make pointless overnight. Raised from
- * 35 to 99 (0.901.51) with the time growth kept as it was, so the tiers
- * past the old cap take far longer.
+ * long on purpose: ninety-nine tiers is an endgame goal that the next map's
+ * drop cannot make pointless overnight. Each tier takes longer than the last.
  */
 export const MAX_SLOT_UPGRADE_TIER = 99;
 /** The slots with a tier track. Both hands share the weapon's. */
 export const UPGRADE_SLOTS = ["HAND", "HEAD", "CHEST"] as const;
 export type UpgradeSlot = typeof UPGRADE_SLOTS[number];
 export const MAX_ITEM_UPGRADE_LEVEL = MAX_SLOT_UPGRADE_TIER;
-/**
- * Each tier adds this share of the item's tier-zero bonus. Less per tier than
- * the old ten-level track's .08, over three and a half times as many tiers: a
- * finished slot is +140% where a finished item was +80%.
- */
+/** Each tier adds this share of the item's tier-zero bonus. */
 export const ITEM_UPGRADE_STAT_BONUS = .04;
 export const ITEM_UPGRADE_BASE_DURATION_MS = 3 * 60 * 1_000;
 /**
- * Growth per tier, set so a finished slot is about three hundred hours: the
- * early tiers still land in minutes, tier 20 takes a couple of hours and the
- * last one takes a couple of days. The old 1.4 cannot stretch from ten tiers
- * to thirty-five — it would ask for years on the final tier alone.
+ * Growth per tier: the early tiers land in minutes, tier 20 takes a couple of
+ * hours and the first 35 tiers take about three hundred hours in all.
  */
 export const ITEM_UPGRADE_DURATION_GROWTH = 1.2294;
 
@@ -518,8 +510,8 @@ export function hasBootStat(itemId: unknown) {
 }
 
 /**
- * What an item's stat stands on: its slot's tier and, since refining (shared/refine.ts), its own refine. A bare
- * number is the slot tier alone, as every caller passed before refining, so those keep working unchanged.
+ * What an item's stat stands on: its slot's tier and its own refine (shared/refine.ts). A bare
+ * number is the slot tier alone.
  */
 export type ItemLevel = number | { tier?: number; refine?: number } | null | undefined;
 export function itemLevelParts(level: ItemLevel) {

@@ -6,8 +6,7 @@ import { mapRandom } from "./procedural-map-core";
 /**
  * Where each campaign map's portals stand and where a player arriving lands.
  * The client draws these and the server checks portal use against them, so
- * they live here once; they used to be copied by hand into both, with the
- * server's use point worked out from the client's numbers.
+ * they live here once.
  */
 export type MapGatewayPortal = { x: number; y: number; width: number; height: number; depth: number; destination: string };
 export type MapGateways = { arrival: { x: number; y: number }; portals: MapGatewayPortal[] };
@@ -27,9 +26,8 @@ export const GATEWAY_PORTAL_SPACING = 220;
 export const GATEWAY_ARRIVAL_DROP = 90;
 
 /**
- * Where a campaign map's portals stand: the middle of the map (they stood in
- * its top-left corner until 0.901.15). Where enemies reach the middle they
- * stand at the nearest spot clear of them instead. map-gateways.test.ts holds
+ * Where a campaign map's portals stand: the middle of the map. Where enemies
+ * reach the middle they stand at the nearest spot clear of them instead. map-gateways.test.ts holds
  * every map's portals and arrival clear of its enemies, boss and decor.
  */
 export const MAP_MIDDLE: Readonly<{ x: number; y: number }> = Object.freeze({ x: WORLD_WIDTH / 2, y: WORLD_HEIGHT / 2 });
@@ -97,8 +95,8 @@ export function exitPortalFor<P extends { destination: string }>(mapId: string, 
 }
 
 /**
- * The middle of where a traveller comes out of `exit`: in front of it, outside its trigger. 0.905.1 to 0.914.4
- * brought them out inside it; walking into it then did nothing until they had stepped out.
+ * The middle of where a traveller comes out of `exit`: in front of it, outside its trigger, so walking
+ * back into it works at once.
  */
 export function portalExitPoint(exit: { x: number; y: number }) {
   return { x: exit.x, y: exit.y + PORTAL_EXIT_DROP };

@@ -23,9 +23,8 @@ const SCALED_STAT = { damage: "damage", health: "maxHp", armor: "armor", regen: 
  * × Guild, as researchRewardMultiplier gives it), times the gear and research
  * factors the profile shows that stat with. Those factors come from
  * preparePlayerPowerStats, the profile's own calculation, so the popup, the
- * labels and the stat they raise cannot drift apart. (Vitality used to be
- * left out here when it was baked into saved health; since 0.883 it
- * multiplies health live, so health popups read short by every rank.)
+ * labels and the stat they raise cannot drift apart. Vitality multiplies
+ * health live, so it is one of those factors.
  */
 export function effectiveRewardAmount(
   type: RewardType, baseAmount: number, statGainMultiplier: number,

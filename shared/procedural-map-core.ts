@@ -78,14 +78,14 @@ function hslHex(hue: number, saturation: number, lightness: number) {
 }
 export function proceduralPalette(index: number) {
   // Endless starts at forest green and then walks the whole spectrum, but at a
-  // forest's muted saturation and lightness rather than the pale wash it used
-  // to have. Saturation starts well above zero; at zero the first map was white.
+  // forest's muted saturation and lightness. Saturation starts well above zero;
+  // at zero the first map would be white.
   const hue = (104 + (index - 1) * 7) % 360;
   const saturation = Math.min(38, 24 + (index - 1) * 2);
   // Hex colors work in both the canvas tile painter and the WebGL backdrop.
   // Keep path lighter than ground, and both lighter than detail and accent.
-  // Ground sits near the Tutorial Forest's lightness (about 39%) since 0.867;
-  // at 53% with a 67% path, Endless read as a bright wash.
+  // Ground sits near the Tutorial Forest's lightness (about 39%), so Endless
+  // does not read as a bright wash.
   return {
     ground: hslHex(hue, saturation, 41),
     path: hslHex(hue, saturation * 0.6, 56),
@@ -95,7 +95,7 @@ export function proceduralPalette(index: number) {
 }
 export const PROCEDURAL_CAMP_RADIUS = 520;
 export const PROCEDURAL_CAMP_JITTER = 80;
-/** Every Endless camp holds eight, as every campaign map has eight of each stat (0.901.47). */
+/** Every Endless camp holds eight, as every campaign map has eight of each stat. */
 export const ENDLESS_CAMP_COUNT = 8;
 /** The damage camp's first four are regulars, the rest Dread Wardens. */
 export const ENDLESS_DAMAGE_REGULARS = 4;
@@ -119,8 +119,8 @@ export function generateMap(id: ProceduralMapId): GeneratedMap {
   const { number, tier, arrival, boss } = proceduralMapCore(id);
   const seed = Math.imul(number, 2654435761) ^ PROCEDURAL_MAP_VERSION;
   const random = mapRandom(seed);
-  // Six camps since 0.901.47, one a reward stat, eight enemies each, so the
-  // regions shrank from 660 to 520. The slots keep a region jittered anywhere
+  // Six camps, one a reward stat, eight enemies each, in 520-wide
+  // regions. The slots keep a region jittered anywhere
   // within ±80 clear of its neighbours by 120, the arrival by 450 and the
   // boss's 900 arena (src/game/world.test.ts).
   const slots = [

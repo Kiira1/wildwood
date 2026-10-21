@@ -1,5 +1,5 @@
 /**
- * The shape the balance curve (shared/curve-steps.ts) is laid over, taken once from live revision 79 (0.915):
+ * The shape the balance curve (shared/curve-steps.ts) is laid over, taken once from the live balance:
  * - CURVE_FOREST: Tutorial Forest's damage camp (its regular damage, attack speed and crit enemies); every map's
  *   damage camp grows from it by the curve's steps.
  * - CURVE_ROLES: each role (regular or elite, by what it pays) against its map's damage camp, its average over
@@ -21,7 +21,7 @@ export const CURVE_ROLES: Readonly<Record<string, CurveStats>> = Object.freeze({
   "elite:regen": { hp: 1.70195, damage: 0.978002, reward: 4.30226 },
   "regular:regen": { hp: 2.3, damage: 1.96341, reward: 1.55556 },
 });
-/** Forest enemies' own shares of its damage camp, over their role's (0.916.23: Spitter 18 health, 12 hit, 1 damage; Bramble 42/14/11; King Slime pays 50). */
+/** Forest enemies' own shares of its damage camp, over their role's (Spitter 18 health, 12 hit, 1 damage; Bramble 42/14/11; King Slime pays 50). */
 export const CURVE_FOREST_ENEMIES: Readonly<Record<string, Partial<CurveStats>>> = Object.freeze({
   Spitter: { hp: 0.188182, damage: 0.420732, reward: 0.518519 },
   Bramble: { hp: 0.439091, damage: 0.490854, reward: 5.70371 },
@@ -29,7 +29,7 @@ export const CURVE_FOREST_ENEMIES: Readonly<Record<string, Partial<CurveStats>>>
 });
 export const CURVE_BOSS_HEALTH = 73.713;
 export const CURVE_BOSS_ATTACKS: Readonly<Record<string, Readonly<Record<string, number>>>> = Object.freeze({
-  // The Dragon hits 5x its old shares (0.916.6): Reflect Only had too little to throw back at it.
+  // The Dragon hits hard enough that Reflect Only has something to throw back at it.
   tutorial_forest: { rain: 5.0488, cone: 25.2439, contact: 10.09755 },
   beginner_desert: { web: 3.31965, venom: 4.64751, contact: 2.65572 },
   intermediate_snowlands: { roar: 2.8414, icefall: 3.97796, rift: 5.6828, contact: 2.55726 },

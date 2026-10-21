@@ -25,7 +25,7 @@ export const CAMPS: EnemyCamp[] = [
   { name: "Razor Thicket", x: 1740, y: 1640, radius: 300, count: 8, types: ["Striker"], ground: "#4a2a40", ring: "#d77ab4" },
 ];
 
-/** A camp's enemies spawn anywhere inside its circle (0.871: no formations, no inner radius). */
+/** A camp's enemies spawn anywhere inside its circle: no formations, no inner radius. */
 export type SpawnCamp = {
   name: string;
   x: number;

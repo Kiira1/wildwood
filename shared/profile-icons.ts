@@ -1,10 +1,10 @@
 export type ProfileIconCategory = "people" | "objects";
 export const PROFILE_ICON_GRID = 8;
 export const PROFILE_ICONS_PER_SHEET = PROFILE_ICON_GRID ** 2;
-// Append sheets so every previously saved icon keeps its original appearance.
+// Append sheets so every saved icon keeps its appearance.
 // The sheets are transparent (scripts/art/profile-icon-alpha.mjs) so the chosen
 // backdrop shows behind each picture. The flattened sheets they were made from
-// stay in public/ under the old names for clients that predate the backdrop.
+// stay in public/ under their own names for older clients without the backdrop.
 export const PROFILE_ICON_SHEETS = [
   { path: "assets/wildstat/profile-portraits-grid-v2-alpha.webp", category: "people" },
   { path: "assets/wildstat/profile-portraits-varied-v1-alpha.webp", category: "people" },
@@ -16,10 +16,9 @@ export const PROFILE_ICON_COUNT = PROFILE_ICON_SHEETS.length * PROFILE_ICONS_PER
 
 /**
  * A saved profile icon is one u32: the picture's index in its low 16 bits and,
- * in bit 16, the Black backdrop. Every icon saved before the choice existed
- * has the bit clear, so it stays on White, and no column or client binding
- * changed. A client from before the choice does not know the bit: it reads a
- * Black icon as invalid and draws picture 0, the default silhouette.
+ * in bit 16, the Black backdrop; with the bit clear it is White. An older
+ * client does not know the bit: it reads a Black icon as invalid and draws
+ * picture 0, the default silhouette.
  */
 export type ProfileIconBackground = "white" | "black";
 export const PROFILE_ICON_BACKGROUNDS: readonly ProfileIconBackground[] = ["white", "black"];
@@ -31,14 +30,14 @@ export const PROFILE_ICON_BACKGROUND_COLORS: Readonly<Record<ProfileIconBackgrou
 /**
  * Pictures taken off their sheet after shipping: their cell is empty now. They
  * cannot be chosen, and one already saved reads as the default silhouette.
- * 273: the eggplant (third object sheet, row 3, column 2), removed in 0.901.18.
+ * 273: the eggplant (third object sheet, row 3, column 2).
  */
 export const RETIRED_PROFILE_ICONS: ReadonlySet<number> = new Set([273]);
 /**
  * The reserved picture "my character, as I snapshotted it". The server keeps
  * the look in player_profile_snapshot, never pixels; a client draws it. It sits
  * at the top of the index range, far past any sheet, and takes a backdrop like
- * any picture. A client from before it reads the index as invalid and draws
+ * any picture. An older client reads the index as invalid and draws
  * picture 0, the default silhouette, on White.
  */
 export const PROFILE_ICON_SNAPSHOT = PROFILE_ICON_INDEX_MASK;

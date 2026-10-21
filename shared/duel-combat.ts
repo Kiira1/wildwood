@@ -17,7 +17,7 @@ export type DuelFighter = { maxHp: number; damage: number; armor: number; regen:
  * 4: bow skills (Arrow Storm, Ricochet, Piercing Shot) roll in the fight.
  * 5: Reflect draws from a marble bag instead of a coin per hit.
  * 6: Reflect throws back half the hit before the defender's armor, not after.
- * 7: a thrown-back hit is capped at the reflecting player's max health (0.867).
+ * 7: a thrown-back hit is capped at the reflecting player's max health.
  * 8: sword skills; projectile Deflect blocks and returns the ranged attack through its sender's armor.
  * 9: cards (duel-cards.ts).
  * 10: staff skills (Meteor, Chain, Frost Nova).

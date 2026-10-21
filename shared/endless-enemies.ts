@@ -1,5 +1,5 @@
 /**
- * Endless-only enemies (0.867): the Layer Lab EnemyMonster 3 captures that no
+ * Endless-only enemies: the Layer Lab EnemyMonster 3 captures that no
  * campaign map uses. No camp spawns them; an Endless map may draw one as its art.
  * Endless resolves their combat values from its own lanes, so these are only the
  * shape the enemy list needs: melee, regular size, the late maps' attack speed.

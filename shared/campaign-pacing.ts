@@ -1,5 +1,5 @@
 import { CAMPAIGN_MAPS } from "./campaign-registry";
-/** Lab duration references restored to the pre-0.740 campaign.
+/** Lab duration references for the campaign.
  * These are comparison targets, never gameplay timers or payout multipliers. */
 export const FOREST_TARGET_SECONDS = 48 * 60;
 export const CAMPAIGN_PACING_MAPS = CAMPAIGN_MAPS.length;

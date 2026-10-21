@@ -7,8 +7,7 @@ export const DAILY_LOGIN_GEM_BONUS = 7n;
 export const RESEARCH_SPEED_UP_MS_PER_GEM = 10 * 60 * 1_000;
 export const UPGRADE_BENCH_SECOND_SLOT_GEM_COST = 150n;
 export const UPGRADE_BENCH_THIRD_SLOT_GEM_COST = 200n;
-// 0.801 gave everyone ten more starting slots and raised the cap by the same
-// ten, so a player who had already bought slots still gains all ten.
+// The cap is the base plus every slot on sale, so bought slots always count on top of the base.
 export const BASE_INVENTORY_SLOT_CAPACITY = 30;
 export const MAX_INVENTORY_SLOT_CAPACITY = 74;
 

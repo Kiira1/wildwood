@@ -4,7 +4,7 @@
  * Movement packets are sparse: a player with multiplayer off sends no start
  * and no halt for up to half a minute, so the server's position for someone
  * standing at a door can still be wherever they last stopped. A door that only
- * looked there refused honest trips by the hundred (0.900.0–0.900.2). This
+ * looked there would refuse honest trips. This
  * walks the player from that last position towards each side of the door (its
  * sill outside, its room's doorway), as far as they could have walked since,
  * and asks the door's own rule there: a door they could honestly have reached

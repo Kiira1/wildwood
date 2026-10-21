@@ -1,5 +1,5 @@
-// Baked from live balance revision 73 (2026-09-25). Values already include campaign tuning
-// and reward boosts. Do not multiply them by the old progression reward scales again.
+// Values already include campaign tuning and reward boosts. Do not multiply them by the
+// progression reward scales again.
 export const BOSS_DAMAGE_PROFILES = {
   "dragon": {
     "rain": 96,
@@ -80,8 +80,8 @@ export const BOSS_DAMAGE_PROFILES = {
 } as const;
 
 /**
- * Each boss's heaviest attack. Derived, not authored: it was a second copy of
- * the largest value in each profile above (shared/boss-damage.test.ts holds
+ * Each boss's heaviest attack. Derived, not authored: the largest value in
+ * each profile above (shared/boss-damage.test.ts holds
  * them equal). Computed once at load, before a map snapshot can retune the
  * profiles, so it stays the authored reference the campaign baseline expects.
  */

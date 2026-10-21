@@ -10,10 +10,9 @@ export const WORLD_WIDTH = 4800;
 export const WORLD_HEIGHT = 4800;
 /**
  * Where a new character starts, and where the dead respawn on Tutorial Forest:
- * between Thornshot Rise's Spitters and Ember Fen's Brambles, the forest's easiest enemies. It used to be the
- * forest's portal arrival, but the portal moved to the middle (0.901.15), among
- * Needles and Mossbacks a fresh character cannot beat. Portal travellers still
- * arrive by the portal (shared/map-gateways.ts).
+ * between Thornshot Rise's Spitters and Ember Fen's Brambles, the forest's easiest enemies, away
+ * from the portal in the middle, among Needles and Mossbacks a fresh character
+ * cannot beat. Portal travellers arrive by the portal (shared/map-gateways.ts).
  */
 export const PLAYER_SPAWN: Readonly<{ x: number; y: number }> = Object.freeze({ x: 1025, y: 850 });
 export const PLAYER_RADIUS = 17;
@@ -77,11 +76,9 @@ export const KILL_REPORT_REFILL_SECONDS = 3;
 /**
  * How long a cleared camp takes to come back. Both the client's respawn clock
  * and the server's kill ceiling are derived from this, so they have to agree.
- * It was 20 seconds, or 10 for thirty minutes after a rewarded ad; since 0.807
- * 10 seconds is simply the respawn, and the ad pays Gems instead.
  */
 export const REGULAR_ENEMY_RESPAWN_SECONDS = 10;
-/** The base attack speed cap: 2.625 until 0.901.47, 3 since. Reflect Only wins and Quick Draw raise it. */
+/** The base attack speed cap. Reflect Only wins and Quick Draw raise it. */
 export const MAX_BASE_ATTACKS_PER_SECOND = 3;
 /** Quick Draw (prestige perk): the attack speed cap, 0.2 attacks a second higher a rank, five ranks. */
 export const QUICK_DRAW_CAP_PER_RANK = .2;
@@ -121,12 +118,11 @@ export const BALANCE_TARGET_POWER_ARC_BLEND = .35;
 export const BALANCE_LATE_BOSS_TARGET_DURATION_SHARE = .05;
 export const BALANCE_LATE_BOSS_TARGET_MAX_SECONDS = BOSS_TARGET_SECONDS;
 
-// The claim mask is retained as append-only save metadata. It identifies a
-// boss that has been cleared while preserving the published player_progress
-// column; it no longer changes the reward amount.
+// The claim mask is append-only save metadata in a published player_progress
+// column: it marks which bosses were cleared and does not change the reward.
 export const BOSS_REWARD_CLAIM_BITS: Record<string, number> = Object.fromEntries(CAMPAIGN_MAPS.map(map => [map.bossKind, 2 ** map.claimIndex]));
 
-// Campaign boss values baked at revision 73; reward boosts are already included.
+// Campaign boss values, reward boosts already included.
 // Keyed `${bossArt}_MAX_HP` and `${bossArt}_REWARD_<STAT>` (bossArt from the
 // campaign registry), which is how every reader looks them up.
 export const AUTHORED_BOSS_RULES: Readonly<Record<string, number>> = Object.freeze({

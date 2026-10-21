@@ -29,7 +29,7 @@ export function parseBuildGear(text: string): BuildGear {
 }
 
 /**
- * A saved build's active cards by type, real cards only. Builds saved before 0.912 listed cards by item; each
+ * A saved build's active cards by type, real cards only. Older builds list cards by item; each
  * of those cards goes to its own type, in the order saved.
  */
 export function parseBuildCards(text: string): ActiveCards {

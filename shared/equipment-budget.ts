@@ -1,11 +1,8 @@
 /**
  * How much an item's own stats grow with the map it drops from.
  *
- * The first map is unchanged and the fifteenth is worth twice what it was,
- * interpolated between, so the opening hours play exactly as they always have
- * and every rung after that is worth the climb. The old straight line from 5%
- * to 40% made the last map's gear a rounding error beside the stats a player
- * had earned by reaching it.
+ * The first map's items are worth 1x and the fifteenth's 2x, interpolated between,
+ * so every rung is worth the climb.
  *
  * This is the item's base. Slot upgrade tiers apply on top of it.
  */

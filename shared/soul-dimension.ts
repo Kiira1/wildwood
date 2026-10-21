@@ -39,13 +39,13 @@ export type SoulStatId = "damage" | "health" | "armor" | "regen" | "attackSpeed"
 export const SOUL_STAT_ORDER: readonly SoulStatId[] = ["damage", "health", "armor", "regen", "attackSpeed", "critDamage"];
 export const SOUL_STAT_DETAILS: Readonly<Record<SoulStatId, { label: string; short: string; reward: number; color: string }>> = {
   damage: { label: "Damage", short: "Dmg", reward: 1, color: "#ff8a7a" },
-  // Ten times Damage's: one point of health is worth far less than one of damage (0.916.13).
+  // Ten times Damage's: one point of health is worth far less than one of damage.
   health: { label: "Health", short: "HP", reward: 10, color: "#7ee08a" },
   armor: { label: "Armor", short: "Armor", reward: 1, color: "#9cc3ff" },
   regen: { label: "Regen", short: "Regen", reward: .1, color: "#7fe8d8" },
-  // Attacks a second a kill, flat, as before 0.901.47, turned into rating (soulAttackSpeedRatingAfterKills).
+  // Attacks a second a kill, flat, turned into rating (soulAttackSpeedRatingAfterKills).
   attackSpeed: { label: "Attack Speed", short: "Atk Spd", reward: .001, color: "#ffd36e" },
-  // Crit multiplier a kill, as before 0.901.47, turned into rating (soulCritRatingAfterKills).
+  // Crit multiplier a kill, turned into rating (soulCritRatingAfterKills).
   critDamage: { label: "Crit Damage", short: "Crit Dmg", reward: .002, color: "#e7a6ff" },
 };
 export const SOUL_TIER_COUNT = SOUL_STAT_ORDER.length;
@@ -55,8 +55,8 @@ export const SOUL_REWARD_KILL_TYPES = ["damage", "health", "armor", "regen", "sp
 export type RewardKillType = typeof SOUL_REWARD_KILL_TYPES[number];
 export type RewardKillCounts = Record<RewardKillType, number>;
 /**
- * The reward types every tier asks kills of. Not attack speed: when tiers were set few maps had attack speed
- * enemies (every map has since 0.901.47, and crit camps), and the tiers players have reached stay where they are.
+ * The reward types every tier asks kills of. Not attack speed or crit, so the tiers players have reached
+ * stay where they are.
  */
 export const SOUL_TIER_KILL_TYPES = ["damage", "health", "armor", "regen"] as const satisfies readonly RewardKillType[];
 export type SoulTierKillType = typeof SOUL_TIER_KILL_TYPES[number];
@@ -98,10 +98,9 @@ export function addSoulKills(soul: Partial<SoulStats> | null | undefined, stat: 
 }
 
 /**
- * A soul's crit damage rating after `kills` more, at the pace soul crit always had: each adds 0.002x
+ * A soul's crit damage rating after `kills` more: each adds 0.002x
  * (SOUL_STAT_DETAILS) to what the soul's own rating gives from a fresh start, up to 100x, stored as the
- * rating that gives that. On the curve alone a point of rating did nothing to a soul already near 100x;
- * farming toward 100x still pays.
+ * rating that gives that, so farming toward 100x keeps paying.
  */
 export function soulCritRatingAfterKills(rating: number, kills: number) {
   const current = cleanRating(rating), step = SOUL_STAT_DETAILS.critDamage.reward * Math.max(0, kills);
@@ -110,13 +109,11 @@ export function soulCritRatingAfterKills(rating: number, kills: number) {
   return Math.max(current, target >= CRIT_DAMAGE_TARGET ? RATING_MAX : ratingForLevels(critDamageLevelsFor(target)));
 }
 /**
- * Attacks a second the soul adds, flat, on top of the run's own. Added to the run's rating instead
- * (0.901.47), a soul kill paid 1 rating, next to nothing, so whoever had farmed it before stayed at the cap
- * and nobody after could catch up. Each kill now adds its 0.001 a second again.
+ * Attacks a second the soul adds, flat, on top of the run's own: each kill adds its 0.001 a second, so
+ * anyone below the cap can catch up.
  *
- * The stored rating is read on the base curve (to 3 a second), the one migration 54 turned the old
- * attacks-a-second values into ratings on, so every soul keeps exactly what it had. A soul at the rating's
- * top (Max: what the old values past that curve became) fills anyone to their own cap, as Max did before.
+ * The stored rating is read on the base curve (to 3 a second), the one migration 54 converted
+ * attacks-a-second values on. A soul at the rating's top (Max) fills anyone to their own cap.
  */
 export function soulAttackSpeedBonus(rating: unknown) {
   const clean = cleanRating(rating);
@@ -259,9 +256,8 @@ export const soulRewardType = (stat: SoulStatId) => `soul:${stat}`;
 export type SoulCamp = { key: string; name: string; x: number; y: number; radius: number; count: number; roll: number };
 /**
  * Tutorial Forest's camps as the Soul Dimension holds them, each with a roll fixed by its place in the list.
- * The stat each camp is depends on the player's tier, so that is left to `roll`. Held here since 0.901.47,
- * when the forest moved to eight enemies a stat: the Soul Dimension keeps the camps (and, by their names and
- * sizes, the spawn points: region-scatter.ts) it had.
+ * The stat each camp is depends on the player's tier, so that is left to `roll`. The Soul Dimension keeps
+ * its own camps (and, by their names and sizes, the spawn points: region-scatter.ts), apart from the forest's.
  */
 const SOUL_CAMP_LAYOUT: readonly { name: string; x: number; y: number; radius: number; count: number }[] = [
   { name: "Ember Fen", x: 480, y: 2020, radius: 840, count: 6 }, { name: "Thornshot Rise", x: 2150, y: 520, radius: 720, count: 5 },

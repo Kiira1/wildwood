@@ -1,15 +1,14 @@
 /**
  * The shape a boss is hit with.
  *
- * Every boss used to be a circle of `radius` centred on its position. That
- * holds for a boss drawn about as tall as it is wide, and fails for a squat
- * one: Miremaw is a toad roughly 456 across and 342 tall, so a circle wide
- * enough to cover its flanks also reaches well above its head, and an arrow
- * lands before it touches the artwork.
+ * By default a circle of `radius` centred on its position. That holds for a
+ * boss drawn about as tall as it is wide, and fails for a squat one: Miremaw
+ * is a toad roughly 456 across and 342 tall, so a circle wide enough to cover
+ * its flanks also reaches well above its head, and an arrow lands before it
+ * touches the artwork.
  *
- * A boss may now carry a vertical radius and a vertical offset. Leaving both
- * out keeps the old circle exactly — the arithmetic below reduces to the
- * original expression — so a boss that already plays correctly is untouched.
+ * So a boss may carry a vertical radius and a vertical offset. Leaving both
+ * out gives the plain circle.
  */
 export type BossHitbox = {
   /** Half the body's width. */
@@ -57,8 +56,8 @@ export function bossSurfaceDistance(
 
 /**
  * Miremaw is a toad: wide, low, and sitting below the point the server
- * measures from. Its circle reached well above the creature's head, so an
- * arrow was counted as a hit while it was still in open air.
+ * measures from. A circle would reach well above the creature's head and
+ * count an arrow as a hit while it is still in open air.
  *
  * Measured from the idle frame alone. The tongue reaches and the bog burst
  * rears the toad up out of its own body; sizing the hitbox to either hands

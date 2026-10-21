@@ -14,7 +14,7 @@ it("keeps early enemies approachable and ramps later-map speed to a fixed cap", 
 });
 
 it("tops every chase out one step above a fully researched runner", () => {
-  // Running is no longer a free escape: the fastest chasers gain on even a
+  // Running is not a free escape: the fastest chasers gain on even a
   // finished build, and speed boots are what buy the last step back.
   expect(ENEMY_TOP_CHASE_SPEED).toBe(MAX_PLAYER_MOVEMENT_SPEED + 25);
   const overtaking = (Object.keys(ENEMY_TYPES) as EnemyKind[])
@@ -37,9 +37,7 @@ describe("chase speed tracks the player in front of the enemy", () => {
   });
 
   it("gives a slow-authored enemy the same pace as a fast one", () => {
-    // The authored number used to scale the chase, so only an enemy written at
-    // the very ceiling actually kept up and everything else chased slower than
-    // the player it was chasing. A chaser is a chaser: it gains by the margin.
+    // The authored number does not scale the chase: every chaser gains by the margin.
     const player = researched(20);
     expect(enemyChaseSpeed(205, player)).toBeCloseTo(player + 25, 6);
     expect(enemyChaseSpeed(205, player)).toBeCloseTo(enemyChaseSpeed(ENEMY_TOP_CHASE_SPEED, player), 6);

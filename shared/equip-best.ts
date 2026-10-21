@@ -62,7 +62,7 @@ export function equipComparisonPower(
   return unroundedPlayerPower({ ...stats, damage: stats.damage * (1 + skills / 100) });
 }
 
-/** What occupies a slot. A weapon may still sit in the legacy left hand. */
+/** What occupies a slot. Older saves may hold a weapon in the left hand. */
 export function equippedInSlot(loadout: EquipLoadout, slot: ItemSlot) {
   if (slot === "HAND") return loadout.equippedRightHand || loadout.equippedLeftHand;
   const field = EQUIP_BEST_SLOTS.find(([candidate]) => candidate === slot)![1];

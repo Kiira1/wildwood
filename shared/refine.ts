@@ -11,7 +11,7 @@ export { REFINE_MAX, REFINE_STEP_PAST_TEN, REFINE_STEP_TO_TEN, normalizeRefineLe
  * Town anvil, one ore a try, decided on the spot. Up to its safe limit a try always works; past it the odds
  * fall, and a failed try costs only its ore: the item keeps its level. Gems never buy odds or protection.
  *
- * This is its own layer. The slot tiers (+N on the Weapon, Helmet and Armor tracks) stay as they were.
+ * This is its own layer, separate from the slot tiers (+N on the Weapon, Helmet and Armor tracks).
  */
 
 /** Ragnarok's weapon levels: an item's grade follows its Tier, four tiers to a grade (the last one three). */

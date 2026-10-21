@@ -5,9 +5,8 @@
  * full block of credit is one gem. Two players with the same kills get the
  * same gems.
  *
- * Every kill earns the same credit: one gem per 1,200 kills. Auto Farm and
- * manual kills used to pay different rates, but only the client knew which
- * was which, so a modified client could claim the higher one.
+ * Every kill earns the same credit: one gem per 1,200 kills. Only the client
+ * knows whether a kill was Auto Farm or manual, so the rate never depends on it.
  */
 export const GEM_KILL_CREDIT_PER_GEM = 6_000n;
 export const GEM_KILL_CREDIT = 5n;

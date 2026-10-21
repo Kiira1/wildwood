@@ -15,10 +15,8 @@ import { CAMPAIGN_MAPS } from "./campaign-registry";
 export const AGGRO_CHALLENGE_LIMIT = 4;
 
 /**
- * Every run's goal is a first prestige's: the campaign's last boss. It used
- * to be the player's own next prestige, which for a high prestige meant a deep
- * Endless stage (Agnero, prestige 27, 2026-10-04) and showed that stage on the
- * card before a run even started.
+ * Every run's goal is a first prestige's: the campaign's last boss, whatever
+ * the player's own prestige.
  */
 export function aggroGoal() {
   const target = prestigeCampaignTarget(1);

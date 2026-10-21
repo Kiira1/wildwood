@@ -19,15 +19,15 @@ export type PlayerPowerStats = {
   critRating?: number;
   /**
    * Crit chance (0–1) and the crit multiplier in play, where the caller knows them: power counts damage at
-   * its average hit, crits included (critPowerFactor). Without them a hit is plain damage, as before.
+   * its average hit, crits included (critPowerFactor). Without them a hit is plain damage.
    */
   critChance?: number;
   critMultiplier?: number;
 };
 
 /**
- * What crits multiply the average hit by: 1 + chance × (multiplier − 1), as duels count them. Power ignored
- * crit, so a crit build read far weaker than it was and Auto Farm held it back.
+ * What crits multiply the average hit by: 1 + chance × (multiplier − 1), as duels count them, so a crit
+ * build's power reads as strong as it fights.
  */
 export function critPowerFactor(stats: Pick<PlayerPowerStats, "critChance" | "critMultiplier">) {
   const chance = Number.isFinite(stats.critChance) ? Math.min(1, Math.max(0, Number(stats.critChance))) : 0;
@@ -102,9 +102,7 @@ export function playerStatFactors(
   const headLevel = itemUpgradeLevel(headItem);
   const chestLevel = itemUpgradeLevel(chestItem);
   const feetItem = loadout.equippedFeet || "";
-  // Vitality multiplies saved health live, like every other research (0.883).
-  // It used to be baked into the saved number by the client at each rank-up,
-  // which the server stopped accepting in 0.695, so ranks since did nothing.
+  // Vitality multiplies saved health live, like every other research.
   const gear = {
     maxHp: 1 + equipmentMaxHealthMultiplierBonus(headItem, chestItem, headLevel, chestLevel),
     damage: equipmentDamageFactor(weaponItem, headItem, chestItem, weaponLevel, headLevel, chestLevel),

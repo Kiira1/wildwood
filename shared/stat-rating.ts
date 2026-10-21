@@ -1,7 +1,7 @@
 import { DEFAULT_ATTACK_INTERVAL, MAX_BASE_ATTACKS_PER_SECOND, MIN_ATTACK_INTERVAL } from "./rules";
 
 /**
- * Attack speed and critical damage as ratings (0.901.47).
+ * Attack speed and critical damage as ratings.
  *
  * Kills add plain rating points; a formula turns the points into attacks a
  * second or a critical multiplier. The formula is a log: every doubling of
@@ -28,7 +28,7 @@ export const RATING_MAX = 1e300;
 export const ATTACK_SPEED_CLOSER = .05;
 export const CRIT_DAMAGE_CLOSER = .03;
 export const CRIT_DAMAGE_START = 1.05;
-/** Since 0.903.2 the curve closes in on 10x, the highest Crit Cap; it was 100x, which made one level about 4x. */
+/** The crit curve closes in on 10x, the highest Crit Cap. */
 export const CRIT_DAMAGE_TARGET = 10;
 export const ATTACK_SPEED_START = 1 / DEFAULT_ATTACK_INTERVAL;
 const CRIT_GAP = CRIT_DAMAGE_TARGET - CRIT_DAMAGE_START;

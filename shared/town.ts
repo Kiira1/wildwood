@@ -151,7 +151,7 @@ export const TOWN_DOORS: readonly TownDoor[] = doorData.doors.map((door, index) 
   });
 });
 /**
- * The stations Home used to hold, each inside a Town building, against its back wall where a piece of the
+ * The stations, each inside a Town building, against its back wall where a piece of the
  * room's own furniture stood (the client draws the station in its place and keeps its collider as the
  * station's): Slot Upgrades in the smithy (door 6) for its tool table, Tech Research in the windmill
  * (door 1) for its roped-off display, Weekly Quests in the Inn (door 5) for its notice board. Each is

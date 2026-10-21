@@ -39,8 +39,8 @@ describe("boss hitbox", () => {
   });
 
   it("uses the saved body shapes for Koi Shogun and Tempest Kirin", () => {
-    // Each was a circle as tall as it was wide, reaching into the banners and
-    // the mane above a body a player can actually aim at.
+    // A circle as tall as it is wide would reach into the banners and the mane
+    // above the body a player can actually aim at.
     for (const [radius, vertical, offset] of [
       [KOI_SHOGUN_RADIUS, KOI_SHOGUN_VERTICAL_RADIUS, KOI_SHOGUN_HITBOX_OFFSET_Y],
       [TEMPEST_KIRIN_RADIUS, TEMPEST_KIRIN_VERTICAL_RADIUS, TEMPEST_KIRIN_HITBOX_OFFSET_Y],

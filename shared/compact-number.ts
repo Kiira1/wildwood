@@ -29,8 +29,7 @@ export function formatScientificNumber(value: number): string {
 
 /**
  * A per-second rate with three significant digits at every size: 0.50/s,
- * 12.5/s, 841/s, then the compact form. Regen used to print every digit and
- * a decimal below a million (523401.3/s).
+ * 12.5/s, 841/s, then the compact form.
  */
 export function formatRate(value: number): string {
   if (!Number.isFinite(value)) return "0";

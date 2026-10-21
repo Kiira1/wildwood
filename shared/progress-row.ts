@@ -5,7 +5,7 @@ import { WIDE_STAT_FIELDS, narrowStat, needsWideStats, wideStatsApply } from "./
  *
  * Its maxHp, damage, armor and regen are f32. While any of them is past f32's range, all four full
  * values sit in the row's own *Wide f64 columns (0 otherwise); a value written to the f32 column since
- * wins, as before. The bag (inventoryJson, cosmeticItemsJson) lives in player_inventory: the progress
+ * wins. The bag (inventoryJson, cosmeticItemsJson) lives in player_inventory: the progress
  * row is written on nearly every kill report and sent to its owner each time, and the bag rarely
  * changes. A non-empty bag column on the row is a save not yet moved, or a direct write, and wins.
  */

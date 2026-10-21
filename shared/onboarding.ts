@@ -13,7 +13,7 @@ export const ONBOARDING_WORLD = { width: 3600, height: 2400, spawn: { x: 1800, y
 export const ONBOARDING_ART_OFFSET = { x: 1300, y: 650 } as const;
 export const ONBOARDING_ENEMY_POSITION = { x: 1800, y: 1060 } as const;
 
-// Stored step ids are saved data and never renumbered. 2 was the portrait lesson, now retired.
+// Stored step ids are saved data and never renumbered; 2 is retired.
 export const ONBOARDING_STEP = { move: 1, spitter: 3, regen: 4, death: 5, complete: 6 } as const;
 export const ONBOARDING_LESSONS = [ONBOARDING_STEP.move, ONBOARDING_STEP.spitter, ONBOARDING_STEP.regen, ONBOARDING_STEP.death] as const;
 /** The lesson after `step`, or complete after the last; a retired id moves on to the lesson after it. */

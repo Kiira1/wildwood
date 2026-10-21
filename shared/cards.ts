@@ -53,7 +53,7 @@ export type CardDefinition = {
   tree?: WoodTreeKind;
   /** Fells (or kills) per drop in play, for a card whose odds are not its rarity's. */
   outcomes?: number;
-  /** Left out of the Card Seller, so adding it never changed what an old tab and the server offer. */
+  /** Left out of the Card Seller, so adding it never changes what an older tab and the server offer. */
   shop?: false;
 };
 

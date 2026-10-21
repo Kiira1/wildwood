@@ -22,7 +22,7 @@ export const PRESTIGE_PERKS = {
   secondWind: { title: "Second Wind", perRank: .01, detail: "Heal part of your max health each time you kill a regular enemy." },
   longShot: { title: "Long Shot", perRank: 5, detail: "Longer attack range, for bows and melee weapons." },
   fleetFoot: { title: "Fleet Foot", perRank: .02, detail: "Move faster. Adds to Move Speed research." },
-  // Attacks a second the attack speed cap rises a rank (0.901.47): the attack speed rating closes in on the higher cap.
+  // Attacks a second the attack speed cap rises a rank: the attack speed rating closes in on the higher cap.
   quickDraw: { title: "Quick Draw", perRank: QUICK_DRAW_CAP_PER_RANK, detail: "Raises the attack speed cap. Your attack speed climbs toward the higher cap." },
   // One more active card of a type per rank (shared/active-cards.ts), three ranks.
   weaponCards: { title: "Weapon Card Slots", perRank: 1, detail: "One more active weapon card in the Cards tab." },
@@ -35,10 +35,9 @@ export const CARD_SLOT_PERK_MAX_RANK = 3;
 const CARD_SLOT_PERK_IDS: ReadonlySet<string> = new Set(["weaponCards", "helmetCards", "armorCards"]);
 
 /**
- * Keen Edge grants critical damage as well as chance. Chance alone was close to
+ * Keen Edge grants critical damage as well as chance. Chance alone is close to
  * worthless: a critical only lands for 1.05x until the critical damage research
- * line is deep, so the perk did nothing for anyone who had not spent days on
- * that line. With both, it stands alone and still rewards the research.
+ * line is deep. With both, it stands alone and still rewards the research.
  */
 export const KEEN_EDGE_CRITICAL_DAMAGE_PER_RANK = .12;
 
@@ -49,12 +48,11 @@ export const KEEN_EDGE_CRITICAL_DAMAGE_PER_RANK = .12;
  */
 export const DUEL_REFLECT_SHARE = .5;
 /**
- * Against enemies and bosses (0.866), Reflect throws back the whole hit before
- * armor, but never more than the player's max health. Uncapped, it grew with
- * the enemy, so deep Endless was easier with Reflect than anything else.
+ * Against enemies and bosses, Reflect throws back the whole hit before armor,
+ * capped by the player's max health: uncapped, it would grow with the enemy.
  */
 export const WORLD_REFLECT_SHARE = 1;
-/** A reflected hit outside Reflect Only deals at most this share of the player's max health (was all of it). */
+/** A reflected hit outside Reflect Only deals at most this share of the player's max health. */
 export const WORLD_REFLECT_MAX_HEALTH_SHARE = .5;
 /**
  * What one reflected hit deals: the whole hit, up to half the player's max health.

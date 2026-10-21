@@ -163,7 +163,7 @@ describe("equipment catalog", () => {
     expect(itemUpgradeDurationMs(1)).toBe(221_292);
     expect(itemUpgradeDurationMs(MAX_SLOT_UPGRADE_TIER + 99)).toBe(itemUpgradeDurationMs(MAX_SLOT_UPGRADE_TIER));
     let total = 0;
-    // The first 35 tiers (the old cap) still take about three hundred hours; the cap is 99 since 0.901.51.
+    // The first 35 tiers take about three hundred hours.
     for (let tier = 0; tier < 35; tier += 1) total += itemUpgradeDurationMs(tier);
     expect(total / 3.6e6).toBeCloseTo(300, 0);
     expect(MAX_SLOT_UPGRADE_TIER).toBe(99);

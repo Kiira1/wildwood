@@ -35,7 +35,7 @@ it("rejects pictures outside the catalogue and any other bit, flagged or not", (
     expect(isValidProfileIcon(invalid), String(invalid)).toBe(false);
     expect(normalizeProfileIcon(invalid), String(invalid)).toBe(0);
   }
-  // Fractions are never valid to save, and are read rounded down, as before.
+  // Fractions are never valid to save, and are read rounded down.
   for (const fraction of [1.5, 65536.5]) expect(isValidProfileIcon(fraction)).toBe(false);
   expect([normalizeProfileIcon(1.5), normalizeProfileIcon(65536.5)]).toEqual([1, 65536]);
   // A garbled value falls back to the default silhouette on White, never to Black.
@@ -44,7 +44,7 @@ it("rejects pictures outside the catalogue and any other bit, flagged or not", (
 });
 
 it("reads as the default silhouette, not another picture, in a client from before the choice", () => {
-  // normalizeProfileIcon as 0.901.9 shipped it: the backdrop bit makes the value invalid there.
+  // normalizeProfileIcon as older clients still run it: the backdrop bit makes the value invalid there.
   const shippedCount = 256;
   const shippedNormalize = (value: number) => Number.isFinite(value) && Number.isInteger(Math.floor(value))
     && Math.floor(value) >= 0 && Math.floor(value) < shippedCount ? Math.floor(value) : 0;

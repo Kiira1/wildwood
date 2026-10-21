@@ -17,7 +17,7 @@ function drop(mapId: string, definition: ItemDefinition, wins: number, outcomes:
 /**
  * Swords, one to a map. They strike up close, so each hits half as hard again as its map's
  * bows to make up for standing in reach of what it fights, and drops as often as that map's bow. The Wooden
- * Sword, until now a developer's practice weapon, is the forest's.
+ * Sword is the forest's.
  */
 export const SWORD_DAMAGE_FACTOR = 1.5;
 export const SWORD_REACH = 75;

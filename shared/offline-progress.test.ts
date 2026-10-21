@@ -47,8 +47,7 @@ describe("offline enemy roster", () => {
 });
 
 describe("offline survivability", () => {
-  // The reference build must hold its own map. (The build one tier short no longer fails: the reference
-  // builds predate the 0.915 balance curve and out-class its maps.)
+  // The reference build must hold its own map.
   it.each(MAP_IDS.slice(1).map((mapId, tier) => [mapId, tier] as const))(
     "lets the reference build for %s farm it for the full window",
     (mapId, tier) => {

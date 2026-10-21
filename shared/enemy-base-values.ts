@@ -98,7 +98,7 @@ export const ENEMY_BASE_VALUES = {
   "Signal Oracle": {"attackSpeed": 0.65, "speed": 305, "r": ENEMY_HIT_RADIUS, "color": "#f0c58b", "outline": "#624862", "elite": true, "aggro": 340, "reward": {"type": "regen"}},
   "Crypt Oracle": {"attackSpeed": 0.65, "speed": 305, "r": ENEMY_HIT_RADIUS, "color": "#f0c58b", "outline": "#624862", "elite": true, "aggro": 340, "reward": {"type": "regen"}},
   "Reactor Warden": {"attackSpeed": 0.65, "speed": 305, "r": ENEMY_HIT_RADIUS, "color": "#69ffb1", "outline": "#172d3a", "elite": true, "aggro": 340, "reward": {"type": "regen"}},
-  // Attack speed and crit damage camps (0.901.47): regulars with their map's damage camp's strength (map-balance.ts
+  // Attack speed and crit damage camps: regulars with their map's damage camp's strength (map-balance.ts
   // resolves them as that role), paying rating points (stat-rating.ts).
   "Striker": {"speed": 205, "attackSpeed": 1, "r": ENEMY_HIT_RADIUS, "color": "#ff8fd0", "outline": "#6a1f4d", "reward": {"type": "crit"}},
   "Dune Needle": {"speed": 205, "attackSpeed": 0.65, "r": ENEMY_HIT_RADIUS, "color": "#ffd34d", "outline": "#5f3c18", "reward": {"type": "speed"}},

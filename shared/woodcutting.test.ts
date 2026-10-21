@@ -111,7 +111,7 @@ describe("the walls round Timberwood", () => {
     expect(grove.bottom).toBeGreaterThan(TOWN_GROVE.bottom);
     expect(grove.right).toBeGreaterThan(east.left);
     for (const tree of WOOD_TREE_NODES) expect(inTownWalkArea(tree.x, tree.y + 44)).toBe(true);
-    // North of the village and of the Copper Hills stays walled, as it was before Timberwood.
+    // North of the village and of the Copper Hills stays walled.
     expect(inTownWalkArea(east.left + 100, east.top - 100)).toBe(false);
     expect(inTownWalkArea(TOWN_HILLS.left + 1_000, TOWN_HILLS.top - 600)).toBe(false);
     expect(east.top).toBe(TOWN_VILLAGE_WALK_AREA.top);

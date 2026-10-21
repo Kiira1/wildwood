@@ -23,8 +23,8 @@ export const SOCIAL_FRIEND_LIMIT = 100;
 export const SOCIAL_REQUEST_LIMIT = 50;
 export const SOCIAL_MESSAGE_LIMIT = 100;
 /**
- * Private messages were kept forever, so the per-recipient view grew with the
- * age of the account rather than with what anyone still reads. A year is long
- * enough that no conversation a player returns to is lost.
+ * Private messages expire, so the per-recipient view grows with what players
+ * still read, not with account age. A year is long enough that no conversation
+ * a player returns to is lost.
  */
 export const SOCIAL_MESSAGE_RETENTION_DAYS = 365;

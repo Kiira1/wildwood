@@ -5,9 +5,8 @@ export const REBALANCE_MAIL_TITLE = mailboxCopy.title;
 export const REBALANCE_MAIL_BODY = mailboxCopy.body;
 
 /**
- * A make-good for the slot upgrades that went missing: a prestige wiped them
- * before the fix, and a running upgrade was thrown away by the next sweep or
- * sign-in because the check still expected an item id where the slot now sits.
+ * A make-good for slot upgrades that went missing, wiped by a prestige or
+ * thrown away mid-run by a sweep or sign-in.
  */
 export const SLOT_UPGRADE_MAIL_ID = "slot-upgrades-restored-2026-09-22";
 export const SLOT_UPGRADE_MAIL_GEMS = 50n;
@@ -32,7 +31,7 @@ export type MailboxMessage = {
   claimed: boolean;
 };
 
-/** The graded-gear release (0.916): old gear melted into gold, and gems for the fresh start. */
+/** The graded-gear release: old gear melted into gold, and gems for the fresh start. */
 export const GEAR_OVERHAUL_MAIL_ID = "gear-overhaul-2026-10-19";
 export const GEAR_OVERHAUL_MAIL_GEMS = 150n;
 export const GEAR_OVERHAUL_MAIL_TITLE = "New Gear, Fresh Start";

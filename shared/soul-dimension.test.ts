@@ -151,7 +151,7 @@ describe("soul attack speed at the old pace (0.901.55)", () => {
     const at2 = soulAttackSpeedRatingAfterKills(0, 2_000);
     expect(soulAttackSpeedBonus(at2)).toBeCloseTo(2, 6);
     expect(soulAttackSpeedBonus(soulAttackSpeedRatingAfterKills(at2, 1)) - soulAttackSpeedBonus(at2)).toBeCloseTo(.001, 6);
-    // A fresh character's whole gap to the base cap of 3 a second is 2,360 kills, as before 0.901.47.
+    // A fresh character's whole gap to the base cap of 3 a second is 2,360 kills.
     const fresh = { damage: 1, maxHp: 1, armor: 0, regen: 0, attackRate: 1 / .641 };
     expect(1 / withSoulStats(fresh, { attackSpeed: soulAttackSpeedRatingAfterKills(0, 2_360) }).attackRate).toBeCloseTo(3, 2);
   });

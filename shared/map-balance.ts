@@ -16,7 +16,7 @@ import { DEFAULT_BALANCE_FACTORS, type BalanceFactors, type BalanceSettings, typ
 import BALANCE_TWEAKS from './balance-tweaks.json';
 import { ratingRewardPerKill } from './stat-rating';
 /**
- * Attack speed and crit camps (0.901.47) fight like their map's damage camp of the same rarity, and pay rating
+ * Attack speed and crit camps fight like their map's damage camp of the same rarity, and pay rating
  * points on their own curve (stat-rating.ts): the map's per-kill rating, whatever its reward factors say.
  */
 const paysRating = (type: string) => type === 'speed' || type === 'crit';
@@ -37,7 +37,7 @@ export function defaultBalanceSettings(): BalanceSettings {
   const tweaks = BALANCE_TWEAKS as Readonly<Record<string, Partial<BalanceFactors>>>;
   return { curveVersion: 2, maps: Object.fromEntries(BALANCE_MAPS.map(([id]) => [id, { ...DEFAULT_BALANCE_FACTORS, ...tweaks[id] }])) };
 }
-/** Saved settings as the curve reads them: every factor checked. Settings made before the curve (0.915) are refused. */
+/** Saved settings as the curve reads them: every factor checked. Settings older than the curve are refused. */
 export function validateBalanceSettings(value: unknown): BalanceSettings {
   const input = value as BalanceSettings;
   if (input?.curveVersion !== 2) throw new Error('This balance was made before the balance curve (0.915) and cannot be used.');
@@ -130,7 +130,7 @@ export function resolveMapBalance(mapId: string, settings: BalanceSettings, revi
     }
     const prefix = BALANCE_MAPS.find(([id]) => id === mapId)![2];
     const rewardValues: Record<string, number> = {};
-    // Sorted, as the module namespace this once read was, so a snapshot's keys keep their order.
+    // Sorted, so a snapshot's keys keep their order.
     for (const key of Object.keys(AUTHORED_BOSS_RULES).sort()) {
       if (key === `${prefix}_MAX_HP`) result.rules[key] = curveValue(camp.hp * CURVE_BOSS_HEALTH * factors.bossHealth);
       // Bosses pay nothing: beating one opens the next map.
