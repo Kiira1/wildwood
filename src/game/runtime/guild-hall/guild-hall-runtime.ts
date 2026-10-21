@@ -16,7 +16,7 @@ export type GuildHallSource = {
 const FEET_OFFSET = GUILD_HALL_FEET_OFFSET;
 const FEET_RADIUS = 12;
 /** The door swings open while feet are this near its sill. */
-const DOOR_OPEN_RANGE = 120;
+const DOOR_PUSH_REACH = 20;
 /** Going through: a few steps into the doorway while the screen goes dark. */
 const DOORWAY_STEP = 22, DOORWAY_MS = 240;
 /** Feet this near the upgrade board open it. */
@@ -119,11 +119,12 @@ export function createGuildHallRuntime(deps: {
     // A fade that never came (one was already running) must not leave the player stuck in a doorway.
     if (doorway.elapsed > 1.5) finishDoorway();
   }
-  /** The door stands open while someone is near it; walking on into it, or out of the room's doorway, goes through. */
+  /** The door opens when the player pushes into it; walking on into it, or out of the room's doorway, goes through. */
   function checkDoor() {
     const { player } = deps;
     const feetX = player.x, feetY = player.y + FEET_OFFSET;
-    guildHallDoorState.open = player.hp > 0 && Math.hypot(feetX - GUILD_HALL_DOOR.x, feetY - GUILD_HALL_DOOR.enter) < DOOR_OPEN_RANGE;
+    guildHallDoorState.open = player.hp > 0 && Math.abs(feetX - GUILD_HALL_DOOR.x) < GUILD_HALL_DOOR.half
+      && feetY < GUILD_HALL_DOOR.enter + FEET_RADIUS + DOOR_PUSH_REACH;
     if (player.hp <= 0) return;
     const heading = Number.isFinite(lastY) ? player.y - lastY : 0;
     if (guildHallDoorState.open && heading < 0 && Math.abs(feetX - GUILD_HALL_DOOR.x) < GUILD_HALL_DOOR.half && feetY < GUILD_HALL_DOOR.enter + FEET_RADIUS + 8) {
