@@ -564,7 +564,7 @@ function renderHeadroom(next: BalanceSimulationResult) {
 }
 
 function deathsMarkup(map: BalanceSimulationResult["maps"][number]) {
-  // A result saved before deaths were counted has none of these.
+  // An older saved result may have none of these.
   if (map.reachedPercent === 0 || map.deathsMedian === null || map.deathsMedian === undefined) return "—";
   const count = (value: number | null) => value === null ? "—" : Math.round(value).toLocaleString();
   const perHour = map.deathsPerHourMedian ?? 0;

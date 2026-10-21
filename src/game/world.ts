@@ -118,9 +118,8 @@ import { DESERT_CAMPS, SNOW_CAMPS, LAVA_CAMPS, INFERNAL_CAMPS, WATER_CAMPS, SAMU
 export type { SpawnCamp } from "../../shared/enemy-camps";
 
 /**
- * Regions may not touch. They used to keep 160 apart, but at twice their old
- * size (0.871) the forest's nine fit only closer; every map was laid out by
- * pushing its centres apart until this and the arrival and boss clearances held.
+ * Regions may not touch, and keep at least this far apart. Every map is laid out by
+ * pushing its centres apart until this and the arrival and boss clearances hold.
  */
 const CAMP_CLEARANCE = 20;
 
@@ -149,7 +148,7 @@ function isNearSpawnCamp(camps: readonly SpawnCamp[], x: number, y: number, padd
   return isNearRegionSpawns(camps, x, y, padding);
 }
 
-/** Near the portals or the arrival in the middle of a campaign map (0.901.15); layouts keep that clear as they keep the old corner. */
+/** Near the portals or the arrival in the middle of a campaign map; layouts keep that clear, and the corner too. */
 function nearGateways(mapId: MapId, x: number, y: number, radius: number) {
   return gatewayClearings(mapId).some(spot => Math.hypot(x - spot.x, y - spot.y) < radius);
 }
@@ -750,7 +749,7 @@ function authoredWorldLayout(playerSpawn: Point, mapId: MapId) {
 /**
  * Where no enemy of a campaign map may spawn: its arrival, its portals, in the forest where new
  * characters start, and the edge of every other region (so two camps' enemies stand apart). Regions
- * overlap some of these; since every map holds eight enemies a stat (0.901.47) their points are drawn
+ * overlap some of these; since every map holds eight enemies a stat, their points are drawn
  * around them rather than hoping the draw misses (tests/scenarios/maps.test.ts holds the rules).
  */
 const NEIGHBOUR_REGION_GAP = 80;
@@ -791,7 +790,7 @@ function authoredSpawnCamps(mapId: MapId): readonly SpawnCamp[] {
   return AUTHORED_MAPS[mapId as AuthoredMapId]?.camps ?? CAMPS;
 }
 
-/** `_boss` is kept for callers: regions are laid out clear of the boss, so nothing is pushed from it any more. */
+/** `_boss` is unused: regions are laid out clear of the boss, so nothing is pushed from it. */
 export function createSpawnSites(_boss: Point, mapId: MapId = TUTORIAL_FOREST_MAP_ID): SpawnSite[] {
   if (isProceduralMap(mapId)) return generatedMapContent(mapId).sites;
   if (mapId === HOME_EXTERIOR_MAP_ID || mapId === ONBOARDING_MAP_ID || isSoulMap(mapId) || isGuildHallMap(mapId) || isTownMap(mapId)) return [];

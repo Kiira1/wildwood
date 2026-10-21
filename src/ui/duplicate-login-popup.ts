@@ -115,7 +115,7 @@ export function createDuplicateLoginPopup(dependencies: DuplicateLoginPopupDepen
       asked.add(identity);
       void dependencies.lookup().then(name => {
         if (name && !dismissed(identity, name)) due = { identity, name };
-      }).catch(() => { /* No warning is the old behaviour; never block play on it. */ });
+      }).catch(() => { /* No warning then; never block play on it. */ });
       return;
     }
     if (!due || due.identity !== identity || busy(root, overlay)) return;

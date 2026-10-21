@@ -43,10 +43,9 @@ export function idlePresentationThrottleActive(
 }
 
 /**
- * Whether the frame is worth drawing at 60 fps. Autofarm was always "in
- * combat", so the main idle loop never dropped to 30: its fighting counts as
- * idle once the player stops touching the game. The 60 Hz simulation
- * underneath is unchanged.
+ * Whether the frame is worth drawing at 60 fps. Autofarm's fighting counts as
+ * idle once the player stops touching the game, so the loop can drop to 30.
+ * The 60 Hz simulation underneath is unchanged.
  */
 export function presentationActivity(replay: boolean, ui: boolean, input: boolean, combat: boolean, autoFarm: boolean) {
   return replay || ui || input || (combat && !autoFarm);
@@ -348,8 +347,8 @@ export function createGameSessionController(dependencies: SessionDependencies) {
     // The game can start before the server's row for this player has arrived,
     // most often when everyone reloads at once after a publish. The player then
     // stands at the map's spawn while the server has them where they really
-    // were; reporting that spawn as their position made every later packet look
-    // like a teleport, and the server refused them for as long as they moved.
+    // were; reporting that spawn as their position would make every later packet
+    // look like a teleport, and the server would refuse them.
     // Say nothing until the row arrives, then start from where the server says.
     awaitingServerPosition = restoreServerPosition && !serverState;
     // Settle restored/spawned positions before input can move through a portal
@@ -375,9 +374,8 @@ export function createGameSessionController(dependencies: SessionDependencies) {
   }
 
   function fadeToWorld(onBlack: () => void | Promise<void>, durationMs = 180) {
-    // A fade asked for while another runs waits its turn. Dropping it dropped
-    // its action too, and a portal's action is what ends its travel: the
-    // player was left standing at the portal, unable to move or teleport.
+    // A fade asked for while another runs waits its turn: its action must run,
+    // and a portal's action is what ends its travel.
     if (fading) { queuedFades.push({ onBlack, durationMs }); return; }
     fading = true;
     const fade = dependencies.fadeElement;

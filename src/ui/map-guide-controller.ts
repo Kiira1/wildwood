@@ -193,7 +193,7 @@ export function mapGuideDrops(mapId: MapId): readonly MapGuideDrop[] {
 /**
  * Groups the live spawn layout into readable reward zones for the enlarged map.
  * With the camps' regions given, a zone is its region; enemies fill whole
- * regions now, and a circle fitted round them overlapped its neighbours.
+ * regions, and a circle fitted round them would overlap its neighbours.
  */
 export function mapGuideZones(spawnSites: readonly SpawnSite[], regions: readonly { name: string; x: number; y: number; radius: number }[] = []): MapGuideZone[] {
   const groups = new Map<string, SpawnSite[]>();
@@ -417,7 +417,7 @@ export function createMapGuideController(elements: MapGuideElements, dependencie
       return card;
     });
     if (!cards.length) {
-      // Regular enemies no longer drop gear; say where it comes from instead of an empty list.
+      // Regular enemies drop no gear; say where it comes from instead of an empty list.
       const note = document.createElement("p");
       note.className = "enemy-index-note";
       note.style.gridColumn = "1 / -1";

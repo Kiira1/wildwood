@@ -241,7 +241,7 @@ export function createPlayerProfileService(dependencies: PlayerProfileServiceDep
     };
     const update: Parameters<typeof connection.db.player.onUpdate>[0] = (ctx, _old, row) => observe(ctx, row);
     /**
-     * An eye-off player's row is withheld from other clients (0.877), and is shown while they idle or autofarm,
+     * An eye-off player's row is withheld from other clients, and is shown while they idle or autofarm,
      * so it comes and goes as they play: asked the server instead, which knows whether they are on. Until it
      * answers the profile keeps what it showed, rather than flashing "Last seen" at every switch.
      */
@@ -317,7 +317,7 @@ export function createPlayerProfileService(dependencies: PlayerProfileServiceDep
             rowVisible = true;
             profilePlayerMaps.set(identity, isDeveloperIdentity(identity) && !row.isVisible ? "" : row.mapId);
           }
-          // An eye-off player's row is withheld from other clients (0.877), so
+          // An eye-off player's row is withheld from other clients, so
           // ask the server whether they are on; an older server without it leaves them offline.
           if (!rowVisible) askPresence();
           finish(cachedPlayerProfile(identity));

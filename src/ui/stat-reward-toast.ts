@@ -28,13 +28,13 @@ const STAT_REWARD_PRESENTATION: Readonly<Record<string, StatRewardPresentation>>
   "SOUL ATTACK SPEED": { label: "Soul Attack Speed" },
   "SOUL CRIT DAMAGE": { label: "Soul Crit Damage" },
 };
-/** Stats whose gains read as a percentage (+0.2%): none since crit damage became a rating (0.901.47). */
+/** Stats whose gains read as a percentage (+0.2%): none, crit damage is a rating. */
 const PERCENT_STATS = new Set<string>();
 /** Stats whose gains read as a multiplier (+0.002×): a soul crit damage kill (soulRewardText). */
 const MULTIPLIER_STATS = new Set<string>(["SOUL CRIT DAMAGE"]);
-/** Stats whose gains read as attacks a second (+0.001/s): a soul attack speed kill (soulRewardText, 0.901.55). */
+/** Stats whose gains read as attacks a second (+0.001/s): a soul attack speed kill (soulRewardText). */
 const RATE_STATS = new Set<string>(["SOUL ATTACK SPEED"]);
-/** Every name an attack speed gain goes by: each shows Capped at the cap. "Attack Speed" since 0.901.47. */
+/** Every name an attack speed gain goes by: each shows Capped at the cap. */
 const ATTACK_SPEED_STATS = new Set<string>(["ATK/SEC", "ATTACK SPEED", "SOUL ATTACK SPEED"]);
 
 /**

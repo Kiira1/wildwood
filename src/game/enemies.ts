@@ -50,10 +50,8 @@ export const REWARD_DATA: Record<RewardType, { color: string }> = {
 
 
 /**
- * Retry delays for an enemy sprite that fails to load. Two quick retries and
- * then giving up for good left a monster, and the stats drawn with it, missing
- * until the browser was closed; the later, slower retries keep asking while
- * the player is still on the map.
+ * Retry delays for an enemy sprite that fails to load: quick at first, then
+ * slower, so a missing monster keeps asking while the player is still on the map.
  */
 export const ENEMY_SPRITE_RETRY_DELAYS_MS = [500, 1_000, 2_000, 4_000, 8_000, 16_000] as const;
 
@@ -119,7 +117,7 @@ function createLazyEnemyImage(source: string, onSettled: () => void): LazyEnemyI
     retry += 1;
     retryEnemyImage(image, source, retry);
   });
-  // Ready once decoded off the main thread (decoded-image.ts): drawn straight from the <img>, a sheet was decoded on
+  // Ready once decoded off the main thread (decoded-image.ts): drawn straight from the <img>, a sheet would decode on
   // the main thread when its enemies first came into view, most of a second on a phone for Verdant Catacombs' six.
   const onLoad = () => { if (typeof createImageBitmap === "function") void decodeOffThread(image).then(settle); else settle(); };
   return {

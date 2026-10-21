@@ -15,9 +15,8 @@ export const STEER_MOVEMENT_MIN_INTERVAL_MS = 250;
 export const STEER_MOVEMENT_HEARTBEAT_MS = 5_000;
 /**
  * Walking by keyboard or touch: direction changes are sent at once, so a
- * straight walk is as predictable as a steered one. It used to send a
- * heartbeat every half second regardless; now it sends when the prediction
- * goes wrong (a wall or collider stopped the player) and every two seconds.
+ * straight walk is as predictable as a steered one. It also sends when the
+ * prediction goes wrong (a wall or collider stopped the player) and every two seconds.
  */
 export const WALK_MOVEMENT_HEARTBEAT_MS = 2_000;
 export const TOUCH_MOVEMENT_VECTOR_THRESHOLD = .12;

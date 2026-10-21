@@ -251,7 +251,7 @@ import { MAX_PLAYER_STAT, PLAYER_SPAWN } from "../shared/rules";
     if (!shouldPause) session.refreshFrameClock();
   }
 
-  // Only states the game can't be played through pause it; menus and windows never do (0.873).
+  // Only states the game can't be played through pause it; menus and windows never do.
   function setGameplayPause(reason: string, active: boolean) {
     if (active) gameplayPauseReasons.add(reason);
     else gameplayPauseReasons.delete(reason);

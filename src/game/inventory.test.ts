@@ -28,15 +28,14 @@ describe("inventory rules", () => {
   });
 
   it("rejects malformed inventory and starts a new player with only the stone", () => {
-    // Nobody is given boots or a paper hat now: the boots are gone and the hat
-    // is a one-in-a-hundred forest drop.
+    // Nobody is given a paper hat: it is a one-in-a-hundred forest drop.
     expect(inventoryFromSave("not json", "", undefined, undefined, false)).toEqual({ itemIds: [STARTER_STONE], equippedHead: "", equippedChest: "", equippedFeet: "", equippedRightHand: STARTER_STONE, equippedLeftHand: "", ...emptyCosmetics });
     expect(normaliseInventory([], "", "", undefined, false)).toEqual({ itemIds: [STARTER_STONE], equippedHead: "", equippedChest: "", equippedFeet: "", equippedRightHand: STARTER_STONE, equippedLeftHand: "", ...emptyCosmetics });
   });
 
   it("keeps a paper hat that was actually found, and refuses one that was not", () => {
     // It carries no stats, so it lives in the cosmetic slot rather than the
-    // equipment one, exactly as it did when everyone was given it.
+    // equipment one.
     const found = inventoryFromSave(JSON.stringify([BASIC_PAPER_HAT]), "", BASIC_PAPER_HAT, "", false);
     expect(found.itemIds).toContain(BASIC_PAPER_HAT);
     expect(found.cosmeticHead).toBe(BASIC_PAPER_HAT);

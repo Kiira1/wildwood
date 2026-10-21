@@ -101,7 +101,7 @@ export function paintStaticTile(
       continue;
     }
     // Tall crystal tips can overlap the neighboring tile even when their base
-    // is outside the old 50px margin. Keep those fragments in both tile paints.
+    // is outside the base 50px margin. Keep those fragments in both tile paints.
     const decorMargin = (decor.type === "skyShard" || decor.type === "gear" || decor.type === "pumpkin") ? Math.max(50, Math.ceil(34 * Math.max(.6, decor.s)) + 4) : 50;
     if (x < -decorMargin || y < -decorMargin || x > scene.tileSize + decorMargin || y > scene.tileSize + decorMargin) continue;
     if (decor.type === "grass") {
@@ -253,9 +253,8 @@ export function paintStaticTile(
     const y = Math.round(decor.y - originY);
     if (decor.type === "tree" && scene.treeShadowsVisible) {
       // Wrap on however many variants this map's sheet actually has, the way
-      // the tree itself is drawn. Sixteen was the forest sheet's count; the
-      // cherry sheet holds four, so twelve of every sixteen samurai trees
-      // looked up nothing here and stood without a shadow.
+      // the tree itself is drawn: the forest sheet holds sixteen, the cherry
+      // sheet four.
       if (scene.treeBounds.length === 0) continue;
       const source = scene.treeBounds[Math.abs(Math.trunc(decor.variant)) % scene.treeBounds.length];
       if (!source || source.h <= 0) continue;

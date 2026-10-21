@@ -22,7 +22,7 @@ it("keeps a zoom saved before the wider range, and remembers the new one as a pe
   globalThis.localStorage = { getItem: (k: string) => store.get(k) ?? null, setItem: (k: string, v: string) => { store.set(k, v); } } as Storage;
   try {
     const { vi } = await import("vitest");
-    // Step 12 of the old 70%-130% range was 130%.
+    // A stored step 12 on the 70%-130% range means 130%.
     store.set("wildstat.cameraZoomStep", "12");
     vi.resetModules();
     const old = await import("./camera-zoom-preference");

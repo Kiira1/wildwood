@@ -6,7 +6,7 @@ type LegalGateElements = {
   ageOutput: HTMLOutputElement;
   continueButton: HTMLButtonElement;
   status: HTMLElement;
-  /** Hidden or reworded on the start screen, which no longer asks the age. */
+  /** Hidden or reworded on the start screen, which does not ask the age. */
   intro?: HTMLElement | null; ageControl?: HTMLElement | null; notice?: HTMLElement | null;
 };
 const WELCOME = "Welcome to WildStat";

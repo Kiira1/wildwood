@@ -374,7 +374,7 @@ describe("player attack timing", () => {
     expect(state.player.combatFacing).toBeCloseTo(Math.PI / 2);
     state.controller.clearPendingThrow();
     state.enemies[1].dead = true;
-    // Other enemies stay ignored, but a boss in range is shot: autofarm used to stand beside it doing nothing.
+    // Other enemies stay ignored, but a boss in range is shot.
     state.controller.attackNearest("Bramble");
     expect(state.player.combatFacing).toBeCloseTo(Math.atan2(state.bosses.dragon.y + (state.bosses.dragon.hitboxOffsetY ?? 0) - state.player.y, state.bosses.dragon.x - state.player.x));
   });
@@ -821,7 +821,6 @@ describe("autofarm target priority", () => {
     expect(aim("lowest")).toBe("wounded");
   });
 
-  // Strongest never targeted the boss while anything of the farmed group was in range.
   it("weighs the map boss while farming a group too, so Strongest takes it; Closest keeps to the group", () => {
     const aim = (priority: "closest" | "strongest") => {
       const h = harness();

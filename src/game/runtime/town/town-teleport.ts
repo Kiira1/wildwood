@@ -28,7 +28,7 @@ function bakedSpark() {
   return spark = canvas;
 }
 
-/** A soft cyan disc drawn behind the player, where the shadow used to outline them. */
+/** A soft cyan disc drawn behind the player in place of an outlining shadow. */
 function bakedHalo() {
   if (halo || typeof document === "undefined") return halo;
   const canvas = document.createElement("canvas");

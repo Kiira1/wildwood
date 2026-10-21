@@ -29,8 +29,8 @@ export function createGuildBattlefieldRenderer(canvas: HTMLCanvasElement, ctx: C
   const groundContext = ground.getContext("2d");
   const labels = createGuildReplayLabels(doc);
   const decor: WorldDecor[] = [];
-  // Keep historical presentation, but new fights render actual combat positions:
-  // cosmetic offsets used to make attacks appear outside their weapon's reach.
+  // Old replays (no moveSpeed) keep cosmetic offsets; new fights render actual
+  // combat positions, so attacks land within their weapon's reach.
   const offsets = timeline.fighters.map((fighter, i) => {
     const index = i < split ? i : i - split;
     const count = i < split ? split : timeline.fighters.length - split;

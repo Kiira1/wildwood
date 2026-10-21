@@ -174,7 +174,7 @@ export function createInventoryController(dependencies: InventoryDependencies) {
   let unlockingSlot = false;
   // A prompt is awaited, so the pending flags below are not yet set while it is
   // open. Without this a second click opens a second prompt over the first and
-  // both answers act. window.confirm used to block the page and hide the gap.
+  // both answers act.
   let confirming = false;
   async function ask(prompt: ConfirmPrompt, request: ConfirmRequest) {
     if (confirming) return false;

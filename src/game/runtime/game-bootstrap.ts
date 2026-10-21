@@ -221,9 +221,9 @@ export function createGameBootstrapAssets(options: {
       return preprocessedAssets.worldArtReady() && actorShadowReady && (!mapId || mapAssetsReady(mapId));
     },
   };
-  // The game hears the art is ready first, always: in 0.901.19 the snapshot
-  // portraits went first, and a part that failed to load made Firefox throw
-  // there, so players were never drawn. Snapshot pictures follow, and can fail alone.
+  // The game hears the art is ready first, always, so a snapshot portrait that
+  // fails to load (Firefox throws there) cannot stop players being drawn.
+  // Snapshot pictures follow, and can fail alone.
   // Only the bare body and the local outfit hold the loading screen; every
   // other piece of gear loads after entry, and snapshots wait until it has.
   let snapshotsReady = false;

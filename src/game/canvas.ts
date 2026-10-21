@@ -170,7 +170,7 @@ export function createCanvasPrimitives(ctx: CanvasRenderingContext2D) {
 
   /**
    * Draws the sprite under `m`, the target's device transform. At the sprite's own scale it is copied one
-   * to one onto whole device pixels; otherwise it is scaled as before. Leaves `target` untransformed.
+   * to one onto whole device pixels; otherwise it is scaled. Leaves `target` untransformed.
    */
   function blit(target: CanvasRenderingContext2D, m: Matrix, sprite: TextSprite, left: number, top: number) {
     if (m.b === 0 && m.c === 0 && Math.abs(m.a - sprite.scale) < SCALE_MATCH && Math.abs(m.d - sprite.scale) < SCALE_MATCH) {

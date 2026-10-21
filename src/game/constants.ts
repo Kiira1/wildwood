@@ -79,7 +79,7 @@ export const ATTACK_RANGE_ZOOM_REFERENCE = 155;
 export const MIN_CAMERA_ZOOM = 0.5;
 export const REGULAR_ENEMY_AGGRO_PADDING = 15;
 export const ENEMY_HIT_MIN_MOVE_SPEED = 1;
-/** Enemies climb back to full chase speed in half the time they used to. */
+/** Seconds a hit enemy takes to climb back to full chase speed. */
 export const ENEMY_HIT_SPEED_RECOVERY_SECONDS = 1.5;
 export const RANGED_PROJECTILE_SPEED = 165 * 3;
 
@@ -105,18 +105,13 @@ export const TEMPEST_KIRIN_ART_TOP = -73;
 
 /**
  * Where a boss sorts against the player, measured from its anchor.
- *
- * This used to be the shadow's offset, so nudging a shadow silently changed
- * whether the boss drew in front of or behind someone standing beside it.
- * They are separate numbers now; these are the values the shadows held when
- * the two were the same, so the order is unchanged.
+ * Separate from the shadow's offset, so nudging a shadow never changes the draw order.
  */
 export const DRAGON_DEPTH_OFFSET = 93;
 export const SPIDER_DEPTH_OFFSET = -3;
 /**
  * Where the scorpion's feet stand. Its artwork is placed from its feet rather
- * than from a centre, so this is its sprite position; it was the same number
- * as its shadow's until the two were separated.
+ * than from a centre, so this is its sprite position.
  */
 export const SPIDER_STAND_OFFSET = 55;
 export const FROSTCLAW_DEPTH_OFFSET = 178;

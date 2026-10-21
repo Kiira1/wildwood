@@ -379,9 +379,8 @@ export function createPlayerCombatController(options: {
   const attackRange = () => weaponAttackRange(options.equippedWeapon(), player.attackRange);
   const targetDistance = (target: EnemyState | BossTarget) => {
     const dx = player.x - target.x, dy = player.y - target.y;
-    // A boss is an ellipse when it carries one; everything else is the circle
-    // this always was. Prediction has to agree with the server or a shot the
-    // client counts is rejected.
+    // A boss is an ellipse when it carries one; everything else is a circle.
+    // Prediction has to agree with the server or a shot the client counts is rejected.
     if (target.isBoss) {
       const boss = target as BossTarget & { ry?: number; hitboxOffsetY?: number };
       return Math.max(0, bossSurfaceDistance(dx, dy, boss.r, boss.ry, boss.hitboxOffsetY));
@@ -444,7 +443,7 @@ export function createPlayerCombatController(options: {
     const fire = (angle: number, splitShot = false) => {
       const projectileLifeBonus = 1.25;
       // Personal bosses use the same crit roll as ordinary enemies. Only the
-      // legacy shared-boss path waits for server-confirmed critical damage.
+      // shared-boss path waits for server-confirmed critical damage.
       // Steady Aim and Focus make every sixth arrow or bolt a critical.
       const forced = techniques.shotCrits();
       const critical = (!target.isBoss || Boolean(options.hitPersonalBoss)) && (forced || Math.random() < researchCriticalChance());
@@ -547,13 +546,9 @@ export function createPlayerCombatController(options: {
       }
     }
     // While farming, a boss in range is fair game once nothing of the farmed
-    // group (or attacking) is: it used to be skipped, so autofarm stood beside
-    // the boss and shot only while the player steered by hand. A ranked Target
-    // weighs it among the farmed group too: Strongest never reached the boss
-    // while anything else was in range.
+    // group (or attacking) is. A ranked Target weighs it among the farmed group too.
     if ((!enemyType || !target || ranked) && mapBoss && !mapBoss.dead) {
-      // Its real hitbox, as every other range check uses: a circle at its feet
-      // left autofarm parked in range on one side and never firing (Koi Shogun).
+      // Its real hitbox, as every other range check uses.
       const edgeDistance = targetDistance(mapBoss);
       if (mapBoss === retainedTarget && edgeDistance < attackRange()) retainedDistance = edgeDistance * edgeDistance;
       const edge = edgeDistance * edgeDistance;
@@ -653,9 +648,8 @@ export function createPlayerCombatController(options: {
       case "health": addPlayerBaseMaxHealth(player, amount, options.healthMultiplierBonus()); break;
       case "armor": player.armor += amount; break;
       case "regen": player.regen += amount; break;
-      // The soul's attack speed is attacks a second added flat (withSoulStats), so a kill adds its 0.001 a second
-      // now, to the cap. It used to add 0.001 of rating, which is nothing: the speed then only moved in jumps when
-      // the server's row came back. Its crit damage is the Soul Dimension runtime's to count.
+      // The soul's attack speed is attacks a second added flat (withSoulStats): a kill adds its 0.001 a second, to the cap.
+      // Its crit damage is the Soul Dimension runtime's to count.
       case "attackSpeed": player.attackRate = Math.min(player.attackRate, Math.max(attackCapInterval(attackCap()), 1 / (1 / player.attackRate + amount))); break;
       case "critDamage": break;
     }
@@ -843,9 +837,7 @@ export function createPlayerCombatController(options: {
       // The generated-boss controller owns its health and defeat handling.
     } else {
       engageEnemy(target);
-      // Only this hit's health lights up. Hits in quick succession used to grow one chunk from the
-      // health before the first, and at a fast attack speed the chunk never ended: the whole empty
-      // bar flashed white.
+      // Only this hit's health lights up, so fast hits never flash the whole empty bar.
       target.hpLossFlashFrom = target.hp;
       target.hpLossFlashTimer = ENEMY_HP_LOSS_FLASH_SECONDS;
       target.hp -= damage;
@@ -970,8 +962,7 @@ export function createPlayerCombatController(options: {
       shot.y += shot.vy * dt;
       if (!circlesOverlap(shot, player)) continue;
       // A shot that lands inside the hurt window waits on the player for it to
-      // pass, as a melee swing does. It used to vanish there, so a ranged pack's
-      // volley landed one hit and threw away the rest unrolled for Reflect.
+      // pass, as a melee swing does, so each shot of a volley is rolled for Reflect.
       if (swordSkills.deflect(shot) || damagePlayer(shot.damage, shot.source) || isDueling() || player.hp <= 0) shot.life = 0;
       else { shot.x = player.x; shot.y = player.y; shot.vx = 0; shot.vy = 0; }
     }

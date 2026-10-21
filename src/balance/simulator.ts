@@ -1722,7 +1722,7 @@ function bossFightOutcome(state: EffectiveStatsState, map: BalanceMapDefinition,
 /**
  * Seconds to kill the boss. `smooth` counts the hits as a fraction, for comparing two builds: rounded up,
  * a small damage gain rarely saves a whole hit while any attack speed gain shortens every one, so readiness
- * farming chased attack speed for ever once ratings stopped it reaching a cap (0.901.47).
+ * farming would chase attack speed for ever, as ratings never reach a cap.
  */
 function bossFightSeconds(state: EffectiveStatsState, map: BalanceMapDefinition, adjustment: MapAdjustment, smooth = false) {
   if (!map.boss) return null;
@@ -2025,7 +2025,7 @@ function simulateTrial(
       state.lastCombatAt = state.time;
       applyBossReward(record, map, config.mapAdjustments[map.id], false);
       // What the kill paid, read before the loot pause: research finishing in
-      // that pause (Vitality is live since 0.883) is not the boss's doing.
+      // that pause is not the boss's doing.
       const repeatGain = Math.max(0, powerForState(state) - powerBeforeRepeat);
       if (!spendTime(record, "lootRetargetSeconds", LOOT_AND_RETARGET_SECONDS, record.repeatTimeBudget)) break;
       repeats += 1;
@@ -2743,7 +2743,7 @@ function buildDiagnostics(
       metric.stat === "health" ||
       metric.stat === "armor" ||
       metric.stat === "regeneration");
-    // Every map has attack speed and crit camps (0.901.47): the four tracks are weighed among themselves.
+    // Every map has attack speed and crit camps: the four tracks are weighed among themselves.
     const trackSeconds = timeTracks.reduce((sum, metric) => sum + metric.investmentSecondsMedian, 0);
     const trackShare = (metric: StatProgressionMetric | undefined) => metric ? metric.investmentSecondsMedian / Math.max(1e-9, trackSeconds) * 100 : 0;
     if (timeTracks.length === 4 && timeTracks.every((metric) => metric.investmentSecondsMedian >= 1)) {

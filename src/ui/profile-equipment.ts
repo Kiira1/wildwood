@@ -62,7 +62,7 @@ export function profileEquipmentPresentation(
     };
   }
   // Match the preview's one held weapon, right hand first, without changing
-  // either legacy hand field in the player's saved loadout.
+  // either hand field in the player's saved loadout.
   const equippedItemId = slot === "WEAPON"
     ? knownItemId(progress.equippedRightHand) || knownItemId(progress.equippedLeftHand)
     : knownItemId(progress[details.equipped]);

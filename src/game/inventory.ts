@@ -256,8 +256,8 @@ export function equipmentAppearance(inventory: Pick<InventoryState,
 
 export function normaliseInventory(itemIds: unknown, equippedFeet: unknown, equippedHead: unknown, equippedChest: unknown, ownsBoots: boolean, ownsDeveloperCosmetics = false, equippedRightHand: unknown = "", equippedLeftHand: unknown = "", cosmeticHead: unknown = "", cosmeticChest: unknown = "", cosmeticFeet: unknown = "", cosmeticRightHand: unknown = "", cosmeticLeftHand: unknown = "", cosmeticItemsJson: unknown = "[]", lentLooks: readonly string[] | null = []): InventoryState {
   const requested = Array.isArray(itemIds) ? itemIds : [];
-  // Trailblazer Boots are gone. `ownsBoots` is kept in the signature because
-  // saved rows still carry the flag; it no longer grants anything.
+  // `ownsBoots` stays in the signature because saved rows still carry the
+  // flag; it grants nothing.
   void ownsBoots;
   const handStateWasSaved = requested.some((itemId) => itemDefinition(itemId)?.slot === "HAND");
   const developerItems = ownsDeveloperCosmetics
@@ -273,9 +273,8 @@ export function normaliseInventory(itemIds: unknown, equippedFeet: unknown, equi
   const savedRightItem = canonicalItemId(equippedRightHand);
   const savedLeftHand = savedLeftItem && handItems.includes(savedLeftItem) ? savedLeftItem : "";
   const savedRightHand = savedRightItem && handItems.includes(savedRightItem) ? savedRightItem : "";
-  // Bare-headed when the saved hat is not owned. It used to fall back to the
-  // paper hat, which everyone was given; it is a rare forest drop now, so that
-  // fallback would put one on a player who has never found it.
+  // Bare-headed when the saved hat is not owned, so nobody wears a paper hat
+  // (a rare forest drop) they have never found.
   const savedHead = typeof equippedHead === "string" && headItems.includes(equippedHead) ? equippedHead : "";
   const savedChest = typeof equippedChest === "string" && chestItems.includes(equippedChest) ? equippedChest : "";
   const savedFeet = typeof equippedFeet === "string" && items.includes(equippedFeet) && itemDefinition(equippedFeet)?.slot === "FEET" ? equippedFeet : "";
@@ -284,8 +283,8 @@ export function normaliseInventory(itemIds: unknown, equippedFeet: unknown, equi
   // Account looks: bought or converted ones, and any a membership lends right now (patreon-cosmetics.ts).
   const cosmeticItemIds = [...new Set([...cosmeticUnlocks(cosmeticItemsJson), ...(lentLooks ?? [])])];
   // Worn looks are kept as saved. The server checks each one against what the account owns on
-  // every save and takes off what it does not; the client used to judge first, from what it had
-  // loaded so far (a membership still on its way, a new device, an update), and saved the guess.
+  // every save and takes off what it does not; the client never judges from what it has loaded
+  // so far (a membership still on its way, a new device, an update).
   const cosmeticItem = (requestedItem: unknown, slot: EquipmentSlot) => {
     if (isHiddenCosmeticItem(requestedItem)) return HIDDEN_COSMETIC_ITEM_ID;
     const itemId = canonicalItemId(requestedItem);

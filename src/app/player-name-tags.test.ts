@@ -61,7 +61,7 @@ it("puts the prestige shield after the name, carrying the level inside it", asyn
   let level = 0;
   tags.bindPlayerNameTags({ prefix: () => "[GUILD]", revision: () => 0, prestigeLevel: () => level });
 
-  // The tag slot no longer carries it: the shield is its own call, made after
+  // The tag slot does not carry it: the shield is its own call, made after
   // the name so it can never land past the "(guest)" suffix.
   const tagsOnly = document.createElement("span");
   tags.appendPlayerNameTags(tagsOnly, DEVELOPER_IDENTITY);

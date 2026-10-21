@@ -58,7 +58,7 @@ it("reserves the top index for the snapshot, with either backdrop, and nothing e
 });
 
 it("an older client's check turns the snapshot into the default silhouette on White", () => {
-  // The validation every client before this one shipped (0.901.17's shared/profile-icons.ts).
+  // The validation older clients still run (their shared/profile-icons.ts).
   const oldValid = (value: number) => Number.isInteger(value) && value >= 0 && value <= (0x10000 | 0xffff) && (value & 0xffff) < PROFILE_ICON_COUNT;
   const oldNormalize = (value: number) => Number.isFinite(value) && oldValid(Math.floor(value)) ? Math.floor(value) : 0;
   expect(oldNormalize(PROFILE_ICON_SNAPSHOT)).toBe(0);

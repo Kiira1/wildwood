@@ -42,7 +42,7 @@ export function createCutsceneHistory(options: {
       for (const scene of PORTAL_CUTSCENES) {
         const bit = portalCutsceneBit(scene.id);
         if (!(pendingMask & bit)) continue;
-        // Retain early/legacy completions locally until the server unlock arrives.
+        // Keep local completions until the server unlock arrives.
         // These cosmetic receipts must not block travel or equipment saves.
         if (options.canSave && !options.canSave(scene.id)) continue;
         let saved = false;

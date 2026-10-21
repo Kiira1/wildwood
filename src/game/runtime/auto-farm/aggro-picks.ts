@@ -6,8 +6,7 @@ export { aggroPullCamps } from "../../../../shared/aggro-challenge";
 
 /**
  * Which stat groups chase the player during an Aggro run: the player's own
- * picks, one more each run, saved per account on this device. They used to be
- * a random pick on every arrival; now they are chosen and kept. A picked
+ * picks, one more each run, saved per account on this device. A picked
  * group a map does not have simply has no one there to chase.
  */
 export const AGGRO_GROUPS: readonly RewardType[] = ["damage", "health", "speed", "armor", "regen", "crit"];
@@ -38,9 +37,7 @@ export function aggroPicksNeeded(challenge: AggroChallenge | null | undefined) {
 /**
  * A tap on a group: a picked one leaves, an unpicked one joins while there is
  * room. With the count full a new group waits for the player to unpick one;
- * with a count of one it simply switches. It used to replace the oldest pick,
- * and since saved picks come back in AGGRO_GROUPS order, the "oldest" was
- * always the same slot: players found the rest stuck (0.901.49 chat).
+ * with a count of one it simply switches.
  * Whether a run may hold fewer than its count is the caller's to decide.
  */
 export function togglePick(picks: readonly RewardType[], group: RewardType, needed: number): RewardType[] {

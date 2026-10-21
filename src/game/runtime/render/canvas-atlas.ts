@@ -3,11 +3,11 @@ import { freezeCopy, frozenCopyOf, thawCopy } from "./frozen-canvas";
 /**
  * A few large shared canvases ("pages") that many small pre-drawn images are packed onto, in place of
  * one canvas each. Hundreds of tiny canvases (every enemy's name label and name plate) can run past a
- * browser's limits on GPU canvases: in Firefox some came out blank (Hallowed, 0.901.52), and a GPU
+ * browser's limits on GPU canvases: in Firefox some come out blank, and a GPU
  * handles a few big images better than hundreds of small ones anyway.
  *
  * Images are packed in rows ("shelves"). Pages are made only when needed, up to a cap. When every page
- * is full, the next allocation fails (the caller then makes its own canvas, as before) and the atlas
+ * is full, the next allocation fails (the caller then makes its own canvas) and the atlas
  * starts over at the next resetIfFull(): every page is cleared and every onReset listener drops what
  * it cached, so call resetIfFull() only where nothing from the atlas is held across the call. release()
  * does the same and also lets the pages go, so pages filled on earlier maps are not kept all session.

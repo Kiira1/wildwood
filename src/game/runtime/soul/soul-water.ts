@@ -181,7 +181,7 @@ export function createSoulWater(options: {
     context.clearRect(0, 0, into.width, into.height);
     context.imageSmoothingEnabled = true;
     context.drawImage(decodedImage(sheet), (left - area.x) * scaleX, (top - area.y) * scaleY, width * scaleX, height * scaleY, 0, 0, width, height);
-    // The east bridge's deck was laid after the masks were baked: neither light nor foam shows on it.
+    // The baked masks do not know the east bridge's deck: clear it so neither light nor foam shows on it.
     const deck = EAST_BRIDGE_DECK;
     context.clearRect(deck.left - left, deck.top - top, deck.right - deck.left, deck.bottom - deck.top);
     return true;
@@ -240,7 +240,7 @@ export function createSoulWater(options: {
         foam = newCanvas(fitWidth, fitHeight);
         target = null; patterns = null; maskKey = foamKey = "";
       }
-      // Cut again only when the stretch moves: a scaled copy of a big sheet each relight was most of the cost.
+      // Cut again only when the stretch moves: a scaled copy of a big sheet is costly.
       if (maskKey !== key) maskKey = cut(mask!, water, left, top, width, height) ? key : "";
       if (foamKey !== key && shore?.complete && shore.naturalWidth > 0) foamKey = cut(foam!, shore, left, top, width, height) ? key : "";
       target ??= layer.getContext("2d");
@@ -282,7 +282,7 @@ export function createSoulWater(options: {
     ctx.save();
     clipTo(ctx, camera.x, camera.y);
     ctx.globalAlpha = 1;
-    // Smoothly scaled up to the screen, as the glints and the masks always were.
+    // Smoothly scaled up to the screen, as the glints and the masks are.
     const smoothing = ctx.imageSmoothingEnabled;
     ctx.imageSmoothingEnabled = true;
     ctx.drawImage(layer, showLeft - left, showTop - top, showWidth, showHeight, showLeft - camera.x, showTop - camera.y, showWidth, showHeight);

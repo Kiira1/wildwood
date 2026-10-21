@@ -12,7 +12,7 @@ import {
 /**
  * The Terms, and the age band once asked. The start screen agrees to the Terms with the age unverified; the
  * first open of chat asks the age. Under 13 is kept on this device only, never sent, and
- * blocks the game as the start screen used to.
+ * blocks the game.
  */
 type StoredLegalConsent = {
   termsVersion: string;

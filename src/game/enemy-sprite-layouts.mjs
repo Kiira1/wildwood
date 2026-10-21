@@ -7,7 +7,7 @@ import tulipAtlas from "./enemy-atlases/flower-tulip.mjs";
 import beeAtlas from "./enemy-atlases/wingdemon-bee.mjs";
 import fungusAtlas from "./enemy-atlases/fungus-rock.mjs";
 import crystalAtlas from "./enemy-atlases/hornrabbit-crystal.mjs";
-// Endless-only Layer Lab captures (0.867); names in shared/endless-enemies.ts.
+// Endless-only Layer Lab captures; names in shared/endless-enemies.ts.
 import carapaceCastleAtlas from "./enemy-atlases/carapace-castle.mjs";
 import carapaceGreenAtlas from "./enemy-atlases/carapace-green.mjs";
 import carapaceIronAtlas from "./enemy-atlases/carapace-iron.mjs";
@@ -271,7 +271,7 @@ export const ENEMY_SPRITE_LAYOUTS = {
 
   Bramble: forest(),
   Needle: forest(),
-  // Attack speed and crit camps (0.901.47) wear their map's regular melee look.
+  // Attack speed and crit camps wear their map's regular melee look.
   Striker: forest(),
   "Dune Needle": desert(), "Dune Striker": desert(),
   "Frost Needle": snow(), "Frost Striker": snow(),

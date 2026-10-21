@@ -264,8 +264,8 @@ export function createMapController(options: {
   }
   /**
    * A guarded portal lets the player through once they step out of it. One they were loaded in (a reload, an update)
-   * or sent back to (a refused trip) also lets them through when they walk deeper into it: walking into the arch
-   * they stood in after an update did nothing until they had walked off and come back.
+   * or sent back to (a refused trip) also lets them through when they walk deeper into it, without walking off
+   * and coming back first.
    */
   function guardHolds(guard: MapPortal) {
     if (!playerIsInsidePortal(guard)) return false;
@@ -397,8 +397,8 @@ export function createMapController(options: {
   }
 
   /**
-   * A refusal means the server sees the player somewhere else. Auto Farm stops walking straight back in (a client
-   * retried one every six seconds for ten minutes), and a map the server already has them on is followed now.
+   * A refusal means the server sees the player somewhere else. Auto Farm stops walking straight back in rather than
+   * retrying every few seconds, and a map the server already has them on is followed now.
    */
   function crossingRefused(destination: MapId) {
     options.onTravelRefused?.(destination);

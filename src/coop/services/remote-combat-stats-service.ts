@@ -21,10 +21,10 @@ const LOAD_TIMEOUT_MS = 5_000;
 const CACHE_TTL_MS = 5 * 60_000;
 const FAILED_CACHE_TTL_MS = 30_000;
 /**
- * Room for everyone on a map. Everyone on it is drawn (0.899.1), and the
- * enemy simulation asks for each of them every frame: a cache smaller than
- * the crowd evicted one player to load the next, frame after frame, and
- * every load was a subscription (1,700 a second across Maincloud).
+ * Room for everyone on a map. Everyone on it is drawn, and the enemy
+ * simulation asks for each of them every frame: a cache smaller than the
+ * crowd would evict one player to load the next, frame after frame, and
+ * every load is a subscription.
  */
 const MAX_CACHE_ENTRIES = 256;
 /** Arriving on a busy map loads its players a few at a time, not all at once. */

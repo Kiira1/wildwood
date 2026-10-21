@@ -21,7 +21,7 @@ export type SoulWindowState = {
   soulLevel: SoulLevelProgress;
 };
 
-// Attack speed is a rating since 0.901.47, shown as the profile shows it; crit damage is the multiplier it adds.
+// Attack speed is a rating, shown as the profile shows it; crit damage is the multiplier it adds.
 export function soulValue(soul: SoulStats, stat: (typeof SOUL_STAT_ORDER)[number]) {
   const value = soulStatValue(soul, stat);
   // Max once it reaches the curve's top (10x, less the 1.05x everyone starts with), as attack speed says.

@@ -36,7 +36,7 @@ it('takes a reply that lands after the timeout while the player is still on that
   const loader = createMapBalanceLoader({ identity: () => 'alice', mapId: () => 'home_exterior', fetch, changed });
   const first = loader.ensure('home_exterior'); const timedOut = expect(first).rejects.toThrow('timed out');
   await vi.advanceTimersByTimeAsync(12000); await timedOut;
-  // The first reply arrives at 13 s: the world no longer waits for a second try.
+  // The first reply arrives at 13 s: the world does not wait for a second try.
   answer(snapshot); await vi.advanceTimersByTimeAsync(1000);
   expect(loader.ready('home_exterior')).toBe(true);
   expect(changed).toHaveBeenCalledOnce();

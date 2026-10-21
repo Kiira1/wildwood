@@ -14,7 +14,7 @@ import { STAFF_DPS_FACTOR, isStaff, staffSkillBossDamageMultiplier, type StaffSk
 
 /**
  * A staff's damage a second on a camp against a bow of the same tier: its slower casts on one target, with the
- * bursts that catch a second enemy now and then (autofarm sim, camp fights, 0.911.1).
+ * bursts that catch a second enemy now and then (autofarm sim, camp fights).
  */
 export const STAFF_CAMP_DPS_SHARE = .83;
 

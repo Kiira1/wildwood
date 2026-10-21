@@ -95,7 +95,7 @@ export function createGameActionsController(dependencies: GameActionsDependencie
     if (resetPending) return;
     // Claim the guard before the prompt, not after. The prompt is awaited, so
     // leaving it until the answer arrives lets a second click through the gap
-    // and resets twice; window.confirm used to close that gap by blocking.
+    // and resets twice.
     resetPending = true;
     const erase = await confirmReset({
       message: "Erase your whole WildStat save and start over?",

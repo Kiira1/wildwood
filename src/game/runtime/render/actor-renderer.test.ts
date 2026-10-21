@@ -219,7 +219,7 @@ describe("layered enemy rendering", () => {
     expect(ctx.drawImage).toHaveBeenCalledTimes(1);
     expect(ctx.scale).toHaveBeenCalledWith(-1, 1);
     expect(ctx.rotate).toHaveBeenCalledWith(.25 * .42 * -1);
-    // A hit no longer fades the enemy; only its death fades it.
+    // A hit does not fade the enemy; only its death fades it.
     expect(ctx.globalAlpha).toBeCloseTo(.75);
   });
 

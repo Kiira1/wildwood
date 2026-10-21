@@ -40,7 +40,7 @@ describe("Slot Upgrades touch latch", () => {
   });
 
   it("previews the tier a slot is about to gain, measured on the gear in it", () => {
-    // Upgrades belong to the slot now, so the preview names the slot and its
+    // Upgrades belong to the slot, so the preview names the slot and its
     // next tier, and reads the numbers off whatever is equipped there.
     expect(upgradePickerPreview("HAND", 0, FROST_BOW)).toEqual({
       name: "Weapon \u00b7 +0 \u2192 +1",

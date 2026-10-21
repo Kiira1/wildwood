@@ -9,7 +9,7 @@ export type AutoFarmPriority = 'closest' | 'lowest' | 'strongest';
  * What autofarm farms: every enemy that pays one stat ("stat:health"), so a
  * camp's regulars and elites, and every camp paying that stat, are one choice.
  * In the Soul Dimension, every enemy paying one soul stat ("soul:armor"): soul
- * enemies pay no run stat, so grouped by reward they were all one "Damage +0".
+ * enemies pay no run stat, so grouped by reward they would all be one "Damage +0".
  * A bare enemy kind still names that kind alone.
  */
 export type AutoFarmGroup = `stat:${RewardType}` | `soul:${SoulStatId}` | EnemyKind;

@@ -115,7 +115,7 @@ export function createRenderController(options: {
     target.stroke();
     target.restore();
   }
-  // A dashed stroke a frame was slow in Firefox's software canvas: the ring is drawn once and copied,
+  // A dashed stroke each frame is slow in Firefox's software canvas: the ring is drawn once and copied,
   // and drawn again only when the range, zoom or pixel ratio changes.
   // A new canvas for each new ring, never a resized one (see world-renderer.ts's minimap).
   let rangeCanvas = typeof document === "undefined" ? null : document.createElement("canvas");
@@ -155,7 +155,7 @@ export function createRenderController(options: {
   }
 
   // The vignette is a CSS gradient on an element over the canvas, moved with a transform: no canvas work at all.
-  // In the canvas it was a full-screen copy every frame, and a full-screen canvas reallocated and repainted
+  // In the canvas it would be a full-screen copy every frame, and a full-screen canvas reallocated and repainted
   // whenever the player moved on screen (camera held at a map edge), over half a millisecond in Firefox's software canvas.
   let vignetteFrame: HTMLDivElement | null = null, vignetteSky: HTMLDivElement | null = null;
   let vignetteLook = "", vignetteAt = "", vignetteWanted = false, vignetteShown = false;
@@ -270,7 +270,7 @@ export function createRenderController(options: {
       ctx.restore();
     }
     // Arena lighting is uniform. The world vignette follows the exploration
-    // player, whose off-arena position used to darken replays.
+    // player, so its off-arena position does not darken replays.
   }
 
   function renderFrame() {

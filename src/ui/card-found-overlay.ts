@@ -12,7 +12,7 @@ export const CARD_FOUND_SHOW_MS = 3_500;
 /**
  * A card found is shown in the middle of the screen for a few seconds: light rays, a burst and sparks in its
  * rarity's colour, the card popping in with a shine, then its name and effects. It never takes input: taps and
- * keys go to the game behind it (it used to wait for a tap, and a player held still by it died). Cards found
+ * keys go to the game behind it, so it never holds a player still. Cards found
  * together take turns. Escape moves it on sooner.
  */
 export function createCardFoundOverlay(options: { root?: Document; wait?: (ms: number, done: () => void) => () => void } = {}) {

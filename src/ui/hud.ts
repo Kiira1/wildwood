@@ -58,8 +58,7 @@ export function renderPlayerHud(
 ) {
   const hpRatio = Math.max(0, Math.min(1, player.hp / player.maxHp));
   // Slid rather than resized: a transform is moved by the compositor, where a
-  // changing width re-laid out and repainted the HUD on every frame of its
-  // transition, which in combat was every frame.
+  // changing width would re-lay out and repaint the HUD on every frame.
   const hpShift = `translateX(${((hpRatio - 1) * 100).toFixed(1)}%)`;
   if (elements.hpFill.style.transform !== hpShift) elements.hpFill.style.transform = hpShift;
   const hpText = `${formatCompactNumber(Math.max(0, Math.ceil(player.hp)))} / ${formatCompactNumber(Math.ceil(player.maxHp))}`;

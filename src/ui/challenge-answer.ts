@@ -4,7 +4,7 @@ export const CHALLENGE_NO_ANSWER = "No answer from the server. Try again.";
 
 /**
  * A challenge start or drop out, or a "no answer" after a while: a call lost to a dropped connection
- * never settles, and the button stayed greyed until a reload (Lucky Deer, 0.901.43). An answer that
+ * never settles, and the button would stay greyed until a reload. An answer that
  * comes later still lands through the run's own row.
  */
 export function challengeAnswer<T>(action: Promise<T>, ms = CHALLENGE_ANSWER_MS): Promise<T | { ok: false; error: string }> {

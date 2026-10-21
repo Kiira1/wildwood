@@ -59,9 +59,8 @@ describe("prestige panel", () => {
   });
 
   it("opens while locked and says what is missing inside", () => {
-    // Refusing to open put the window's own explanation behind the very gate
-    // it was explaining, and a client view behind the server's locked out a
-    // player who had actually earned the prestige.
+    // The window explains its own gate, and the server has the last word on
+    // whether the prestige is earned.
     const s = setup({ unlocked: false });
     click(s.pick("open"));
     expect(s.pick("overlay").hidden).toBe(false);
@@ -83,7 +82,7 @@ describe("prestige panel", () => {
   });
 
   it("can't be pressed through to a prestige whose Endless stage isn't cleared (Hallowed)", () => {
-    // The Endless count is subscribed everywhere now, so a zero is a real zero.
+    // The Endless count is subscribed everywhere, so a zero is a real zero.
     const run = vi.fn(async () => ({ ok: true }));
     const s = setup({ unlocked: true, completed: 0, run, row: { level: 1, perkPoints: 0, peakPower: 5 } });
     s.controller.refresh(true);
@@ -241,10 +240,8 @@ describe("each prestige asks for one Endless stage more", () => {
     expect(ready.pick("cost").textContent).toContain("You would earn");
   });
   it("prestiges as soon as the cleared stage this client reads meets the requirement", () => {
-    // Teus's window read zero stages because the row saying otherwise was not
-    // subscribed, and the press was swallowed with no error. The subscription
-    // is what fixed that; the gate below is safe only because of it, so this
-    // covers the case that used to be wrong.
+    // The cleared-stage row is subscribed, so the gate reads the real count
+    // and a ready player's press goes through.
     const run = vi.fn(async () => ({ ok: true }));
     const s = setup({ unlocked: true, completed: 1, run, row: { level: 1, perkPoints: 0, peakPower: 5 } });
     s.controller.refresh(true);

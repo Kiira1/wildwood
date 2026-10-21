@@ -34,7 +34,7 @@ export function soulDefenseForceKills(criticalMultiplier: number) {
 export const SOUL_DEFENSE_FORCE_NAME = "Soul Defense Force";
 
 const KEY = "wildstat:soul-defense-force:v1";
-/** Its own site id: -1 is the generated bosses', and a respawn timer kept for that id refused the spawn. */
+/** Its own site id, apart from the generated bosses' -1, so their respawn timers never refuse its spawn. */
 const SITE_ID = -7_000;
 /** Seconds of the player's own damage it takes to bring down; a soul enemy takes SOUL_SECONDS_TO_KILL. */
 const SECONDS_TO_KILL = 45;

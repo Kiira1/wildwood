@@ -612,7 +612,7 @@ describe("the server's loadout is the one shown", () => {
     h.service.api.saveProgress(saveFrom(ranger(""), { damage: 9 }));
     h.service.tables.upsertProgress(row(ranger("ancient_ranger_boots")));
     expect(h.service.api.savedProgress()?.equippedFeet).toBe("ancient_ranger_boots");
-    // The reconnect restores the stored save; it used to be the one from before the boots went on.
+    // The reconnect restores the stored save, not the one from before the boots went on.
     h.service.beginSession(false);
     h.service.tables.upsertProgress(row(ranger("ancient_ranger_boots")));
     expect(h.service.api.savedProgress()?.equippedFeet).toBe("ancient_ranger_boots");

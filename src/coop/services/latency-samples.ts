@@ -8,24 +8,19 @@ export const LATENCY_WINDOW = 7;
  */
 export const LATENCY_PERCENTILE = .25;
 
-/** A reading covers only the last few seconds (0.873); at idle the 7 samples could span 15 s or more. Three, now samples come four a second. */
+/** A reading covers only the last three seconds; at idle the 7 samples could otherwise span 15 s or more. */
 export const LATENCY_MAX_AGE_MS = 3_000;
 
 /**
  * The connection's latency, as the median of its recent reducer round trips.
  *
- * It used to be an exponential average of every sampled round trip, which made
- * it a reading of the slowest thing the client had recently asked for rather
- * than of the network. A kill report behind a queue, a save, a portal — any of
- * them takes hundreds of milliseconds on the server, and one such sample at
- * .25 smoothing showed as an 800ms ping that then decayed over several
- * seconds. Travelling appeared to cure it only because arriving somewhere new
- * produces a burst of fast reducers that drag the average back down.
+ * A kill report behind a queue, a save, a portal: any of them takes hundreds
+ * of milliseconds on the server, and must not read as the network's ping.
  *
  * A median ignores a single slow sample outright, and still follows a real
  * change once most of the window agrees with it. Samples come only with the
  * player's own reducers, at most four a second, so a quiet player's window
- * could reach back 15 seconds or more: now only the last three seconds count,
+ * could reach back 15 seconds or more, so only the last three seconds count,
  * and with nothing that recent, the newest sample stands.
  */
 export function createLatencySamples(window = LATENCY_WINDOW, maxAgeMs = LATENCY_MAX_AGE_MS, now = () => performance.now()) {

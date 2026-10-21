@@ -12,7 +12,7 @@ const groundRing = (ctx: CanvasRenderingContext2D, x: number, y: number, radius:
 
 /**
  * Staff effects, from the same bounded pool as the bow and sword ones: a few arcs, ellipses and lines each,
- * never particles, in plain blending (additive blending was slow to draw in Firefox). `width` carries the radius; a meteor's `warning` is the time before its fireball lands.
+ * never particles, in plain blending (additive blending is slow to draw in Firefox). `width` carries the radius; a meteor's `warning` is the time before its fireball lands.
  */
 export function drawStaffSkillEffect(ctx: CanvasRenderingContext2D, effect: SkillEffect, camera: { x: number; y: number }) {
   const x = effect.x - camera.x, y = effect.y - camera.y, radius = effect.width;

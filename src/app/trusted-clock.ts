@@ -174,7 +174,7 @@ export type ClockSource = () => number | null;
  * whole life, not per frame or per reanchor, so nothing can harvest it twice.
  */
 export const GAME_CLOCK_TOLERANCE_MS = 25;
-/** The most any one reading may add, as the background loop's old per-wake cap did. */
+/** The most any one reading may add, matching the background loop's per-wake cap. */
 export const GAME_CLOCK_MAX_SAMPLE_MS = 1_000;
 /**
  * How long a clock may stand still while every other one runs before it is

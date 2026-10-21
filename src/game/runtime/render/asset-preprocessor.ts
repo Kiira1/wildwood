@@ -315,10 +315,9 @@ export function createAssetPreprocessor(onWorldAssetReady: () => void) {
   }
 
   /**
-   * Maps load their art on the way in and used to keep it for the session, so
-   * a long run held every boss sheet it had passed (hundreds of MB decoded),
-   * and iOS began purging and re-decoding images mid-frame. Anything no map
-   * in `keep` uses is let go; it loads again if the player walks back.
+   * Maps load their art on the way in. Anything no map in `keep` uses is let
+   * go, so a long run does not hold every boss sheet it passed (iOS purges and
+   * re-decodes images mid-frame); it loads again if the player walks back.
    */
   function releaseMapAssetsExcept(keep: readonly MapId[]) {
     const needed = new Set(keep.flatMap(assetsOf));

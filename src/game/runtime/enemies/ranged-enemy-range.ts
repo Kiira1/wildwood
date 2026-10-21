@@ -24,8 +24,7 @@ export const RANGED_ENEMY_APPROACH_DEAD_BAND = 5;
 /**
  * How far an engaged ranged enemy lets its target get before walking in.
  * Inside it the enemy holds still and fires: it walks closer to get in range,
- * and never backs away from a player who closes in (it used to retreat inside
- * its preferred distance, which made melee and short-range builds chase it).
+ * and never backs away from a player who closes in, so melee builds need not chase it.
  */
 export function rangedEnemyHoldBand(playerAttackRange: number, minimumDistance = 0) {
   return { approachAbove: rangedEnemyPreferredDistance(playerAttackRange, minimumDistance) + RANGED_ENEMY_APPROACH_DEAD_BAND };

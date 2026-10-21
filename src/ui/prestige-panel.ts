@@ -165,7 +165,7 @@ export function createPrestigeController(options: {
       row.className = 'prestige-perk';
       row.dataset.perk = id;
       // Closed, a row is its name, rank and what it gives now; a tap opens
-      // what it does and what the next rank buys. All eight open at once was
+      // what it does and what the next rank buys. All eight open at once is
       // a wall of small text on a phone.
       const head = create('button') as HTMLButtonElement;
       head.type = 'button';
@@ -270,10 +270,7 @@ export function createPrestigeController(options: {
     if (challengeGoal) options.cost.textContent = `${challengeGoal.name ?? 'Reflect Only'} goal: ${challengeGoal.label}. Then press Prestige to win ${challengeGoal.reward ?? '+0.5 attacks/sec'} and restore your saved run.`;
     renderPerks(row?.perkPoints ?? 0);
     // Enabled only once this prestige's whole requirement is met: the campaign and
-    // the Endless stage. It used to ignore the Endless stage, because a missing
-    // procedural_progress row read as zero and blocked Teus and Toephu
-    // (2026-09-22); that row is subscribed everywhere now (base-subscription.ts),
-    // and players could press through to a prestige that did nothing (Hallowed).
+    // the Endless stage (procedural_progress is subscribed everywhere, base-subscription.ts).
     confirmButton.disabled = pending || (challengeGoal ? !challengeGoal.met : !unlocked());
     confirmButton.hidden = false;
     if (challengeGoal) { if (!challengeGoal.met && !status.textContent) status.textContent = `${challengeGoal.name ?? 'Reflect Only'}: ${challengeGoal.label} to win.`; }

@@ -29,7 +29,7 @@ it("puts Research Ready and Gear Upgrades in the timer column, above the ad butt
   const column = h.document.querySelector(".hud-timer-column")!;
   expect([...column.children].map(child => child.id)).toEqual(["researchReadyHint", "smithBuyNotice", "enemyRespawnAdBtn"]);
   expect(h.chip("researchReadyHint").hidden).toBe(true);
-  // Nothing on the Town button any more.
+  // Nothing on the Town button.
   expect(h.document.getElementById("townBtn")!.children).toHaveLength(0);
 });
 

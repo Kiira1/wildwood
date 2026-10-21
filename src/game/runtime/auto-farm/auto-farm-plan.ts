@@ -88,7 +88,7 @@ const finiteRecord = (value: unknown): Record<string, number> | null => value &&
 /** The sliders, one record for every campaign map (groups are stats, named the same everywhere), and the Soul Dimension's own. */
 export const AUTO_FARM_SHARES_KEY = 'wildstat:autofarm-shares:v2';
 export const AUTO_FARM_SOUL_SHARES_KEY = 'wildstat:autofarm-soul-shares:v2';
-/** Before the shares: 0-200% sliders with an Auto mode, and before those a route of picked stats (an empty one was Auto). */
+/** Older saved settings, still read: 0-200% sliders with an Auto mode, or a route of picked stats (an empty one means Auto). */
 export const AUTO_FARM_WEIGHTS_KEY = 'wildstat:autofarm-weights:v1';
 export const AUTO_FARM_SOUL_WEIGHTS_KEY = 'wildstat:autofarm-soul-weights:v1';
 export const AUTO_FARM_CHOICE_KEY = 'wildstat:autofarm-choice:v1';
@@ -101,8 +101,8 @@ const FARM_GROUPS = [...(Object.keys(REWARD_DATA) as RewardType[]).map(stat => `
 const OLD_WEIGHT_DEFAULT = 100;
 
 /**
- * The shares saved before 0.901.11, as a record of weights (any scale): the
- * 0-200% sliders as they were (a group never set at 100%), an old route (a
+ * Shares from the older saved settings, as a record of weights (any scale): the
+ * 0-200% sliders (a group never set at 100%), an old route (a
  * picked stat 100%, a pip more 100% more, the rest 0%); null for Auto or
  * nothing saved, an even split.
  */
@@ -191,9 +191,8 @@ function readStep(key: string, storage: () => Storage | undefined, fallback: num
   try { const saved = storage()?.getItem(key); return saved == null ? fallback : powerStep(Number(saved)); } catch { return fallback; }
 }
 /**
- * Move At for a player who never set it: 2x, ready for the next map's enemies twice as strong. Chosen in the
- * autofarm sim over six hours from a fresh character (0.901.66): 1x 330k power and 207 deaths, 1.5x 375k and
- * 158, 2x 436k and 107, 3x 414k and 63. Waiting for the margin made the next map safe enough to farm faster.
+ * Move At for a player who never set it: 2x, ready for the next map's enemies twice as strong. In the autofarm
+ * sim it gains the most power, and the margin makes the next map safe enough to farm faster.
  */
 export const DEFAULT_MOVE_STEP = 2;
 function writeStep(key: string, value: number, storage: () => Storage | undefined) {

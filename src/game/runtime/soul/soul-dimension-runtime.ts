@@ -182,7 +182,7 @@ export function createSoulDimensionRuntime(deps: {
     filledTier = currentTier;
     deps.enemies.length = 0;
     deps.spawnSites.length = 0;
-    // The camps the forest had before 0.901.47: the Soul Dimension keeps them as they were.
+    // The Soul Dimension's own camp layout, separate from the forest's.
     for (const soulCamp of SOUL_CAMPS) {
       const camp = soulCamp;
       const stat = soulCampStat(soulCamp, currentTier);

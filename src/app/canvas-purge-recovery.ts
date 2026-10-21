@@ -3,24 +3,22 @@
  * in the background (Chrome loses their 2D contexts with the GPU; the canvas
  * comes back blank). The game keeps nearly all its art in such canvases (the
  * sprite sheets after their green is keyed out, every player's body, enemy
- * tints, text labels), built once and never checked, so players came back to
- * an invisible character and missing sprites. Rebuilding each cache is a
+ * tints, text labels), built once and never checked, so a purge leaves an
+ * invisible character and missing sprites. Rebuilding each cache is a
  * dozen separate paths; instead a sentinel canvas, made the way they are, is
  * checked on every return, and a wiped one saves and reloads the game, which
- * builds everything again. Many caches now draw a bitmap frozen from their
+ * builds everything again. Many caches draw a bitmap frozen from their
  * canvas (frozen-canvas.ts); the sentinel stays a canvas, since a purge that
  * wipes canvases is what it watches for, and the reload rebuilds the bitmaps
  * as well. The on-page game canvas is watched too: after a GPU crash Chrome
- * can leave its context lost for good, and the game drew
- * every frame into nothing, so most of the screen stayed black.
+ * can leave its context lost for good, and the game would draw every frame
+ * into nothing.
  *
- * 0.899.0 reloaded far too readily: a desktop player was reloaded on every
- * tab switch. Browsers that guard against fingerprinting add noise to every
- * canvas read, so "the sentinel's pixel is not exactly what was drawn" was
- * true each time; and a context Chrome loses and restores by itself counted
- * as lost for good. Now only a sentinel read back as fully blank (all four
- * channels zero, at several points), or a game canvas still lost after
- * LOST_GRACE_MS, counts; and it never reloads twice inside RELOAD_COOLDOWN_MS.
+ * Only a sentinel read back as fully blank (all four channels zero, at several
+ * points), or a game canvas still lost after LOST_GRACE_MS, counts: browsers
+ * that guard against fingerprinting add noise to every canvas read, and Chrome
+ * restores a passing context loss by itself. It never reloads twice inside
+ * RELOAD_COOLDOWN_MS.
  */
 export const SENTINEL_SIZE = 512;
 const RETRY_MS = 5_000;

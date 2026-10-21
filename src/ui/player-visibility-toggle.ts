@@ -6,12 +6,7 @@ const STORAGE_KEY = "wildstat-show-other-players";
 /**
  * The eye remembers its setting on this device, through reloads and updates.
  *
- * It used to start every session off and write "off" at every start and
- * before every update, to spare the server a crowd arriving visible at once.
- * In practice every update, reload and reconnect put the whole map back in
- * the dark until each person found the eye again, so players who all had it
- * on still met nobody. Now a player who turned it on comes back seen, and one
- * who turned it off stays hidden.
+ * A player who turned it on comes back seen, and one who turned it off stays hidden.
  *
  * A brand new player starts with it off, and finishing the tutorial turns it
  * on once, so they walk out of it and see the others around them.

@@ -14,9 +14,7 @@ export type RegularEnemyRespawn = {
  * Owns regular-enemy respawn timing. Boss respawns remain server-owned and
  * never pass through this service.
  *
- * The clock is the map's tuned respawn after research, and nothing else. Until
- * 0.807 a rewarded ad could halve it for thirty minutes; the ad pays Gems now
- * and the plain respawn is what the halved one used to be.
+ * The clock is the map's tuned respawn after research, and nothing else.
  */
 export function createRegularEnemyRespawn(
   getGameTime: () => number,

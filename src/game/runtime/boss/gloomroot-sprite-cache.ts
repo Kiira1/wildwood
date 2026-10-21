@@ -48,8 +48,8 @@ function deviceScale(ctx: CanvasRenderingContext2D) {
 
 /**
  * Gloomroot is a large sprite drawn through a brightness, contrast and
- * drop-shadow filter, over a radial-gradient aura. Both were rebuilt every
- * frame. This draws each once into an offscreen canvas at the device scale,
+ * drop-shadow filter, over a radial-gradient aura. Rather than rebuild both
+ * every frame, this draws each once into an offscreen canvas at the device scale,
  * with the same filter string and gradient, and then only copies it.
  */
 export function createGloomrootSpriteCache(dependencies: CacheDependencies = {

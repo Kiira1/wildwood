@@ -61,9 +61,7 @@ export function createResearchController(options: ResearchControllerOptions) {
     setAppliedVitalityRank: (rank: number) => { appliedVitalityRank = rank; },
     /**
      * Vitality is part of the health bonus (main.ts healthMultiplierBonus), so a
-     * new rank only re-applies it. It used to rewrite saved health, which the
-     * server ignores: the boost vanished on the next sync, and a login where
-     * research arrived after stats applied every rank a second time.
+     * new rank only re-applies it.
      */
     applyVitality() {
       if (options.isDueling()) return;

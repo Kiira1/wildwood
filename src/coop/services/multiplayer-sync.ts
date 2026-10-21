@@ -32,7 +32,7 @@ export function createMultiplayerSync(options: {
     void (options.sendPresence ? options.sendPresence(enabled, seen) : options.send(enabled)).then(() => {
       if (pending !== ticket) return;
       // Release the send even when the session blipped while its answer was on
-      // the way (a world re-entry briefly clears it): keeping it pending left
+      // the way (a world re-entry briefly clears it): keeping it pending would leave
       // every later sync waiting on it, and the eye dead until a reload. The
       // next sync sends the state again rather than trusting this answer.
       pending = null;

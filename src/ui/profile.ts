@@ -155,8 +155,8 @@ export function profileStatDisplayRows(
     const sources: ProfileStatDisplaySource[] = [];
     if (researchPercent) sources.push({ label: "Tech", value: `+${researchPercent}%` });
     if (gear && gear.equipment > 0) sources.push({ label: "Equipment", value: equipmentBonusValue(gear.equipment) });
-    // What the bench has paid for, listed on its own. Folded into Equipment it
-    // was impossible to tell a slot upgrade had done anything at all.
+    // What the bench has paid for, listed on its own so a slot upgrade's
+    // effect shows apart from Equipment.
     if (gear && gear.slotUpgrade > 0) sources.push({ label: "Slot Upgrade", value: equipmentBonusValue(gear.slotUpgrade) });
     // What the Smith's refines added on top, the same way.
     if (gear && gear.refine > 0) sources.push({ label: "Refine", value: equipmentBonusValue(gear.refine) });
@@ -176,7 +176,7 @@ export function profileStatDisplayRows(
   const rows: ProfileStatDisplayRow[] = [
     {
       kind: "health", label: "Max Hp:",
-      // Saved health is the base: Vitality multiplies it live (0.883), it is not baked in.
+      // Saved health is the base: Vitality multiplies it live, it is not baked in.
       base: statValue(progress.maxHp),
       equationOperator: "×",
       multiplier: multiplierValue(stats.multipliers.maxHp),

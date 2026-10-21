@@ -9,7 +9,7 @@ export const CAMERA_ZOOM_LEVELS: readonly number[] = Object.freeze(
   Array.from({ length: 21 }, (_, index) => Math.round((.5 + index * CAMERA_ZOOM_STEP) * 100) / 100),
 );
 const DEFAULT_INDEX = CAMERA_ZOOM_LEVELS.indexOf(1);
-/** The level as a percentage. Before 0.915 the step number was kept (OLD_STORAGE_KEY), from 70%. */
+/** The level as a percentage. Older saves hold the step number (OLD_STORAGE_KEY), from 70%. */
 const STORAGE_KEY = "wildstat.cameraZoomPercent";
 const OLD_STORAGE_KEY = "wildstat.cameraZoomStep";
 

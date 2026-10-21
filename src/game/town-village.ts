@@ -8,8 +8,8 @@ import type { WorldDecor } from "./world";
  * The Town's village: ForestVillage's own demo village, baked from the pack's
  * scene by scripts/art/bake-forest-village-scene.mjs (its ground, every house,
  * tree, fence and prop where the pack put them), centred on its fountain. The
- * countryside around it uses soul-atlas.json. The art kept its first home's
- * names (soul-dimension/village-*.webp): it was the Soul Dimension's village.
+ * countryside around it uses soul-atlas.json. The art files carry Soul Dimension
+ * names (soul-dimension/village-*.webp).
  */
 export type SoulFrame = keyof typeof atlas.frames;
 export const SOUL_ATLAS = atlas;

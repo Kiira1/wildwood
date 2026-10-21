@@ -59,8 +59,8 @@ const enemyTintedLayerCache = new WeakMap<LoadedSpriteLayer, FrozenImage>();
 const scaledEnemySpriteCache = new WeakMap<LoadedEnemySprite, Map<number, LoadedEnemySprite>>();
 
 /**
- * A sprite drawn at another size, kept per source and scale. A fresh copy each frame missed every cache keyed by
- * the sprite, so an Endless boss rebuilt its layer canvas and bitmap on every frame it was on screen.
+ * A sprite drawn at another size, kept per source and scale, so caches keyed by the sprite
+ * (its layer canvas and bitmap) are reused across frames.
  */
 export function scaledEnemySprite(sprite: LoadedEnemySprite, scale: number): LoadedEnemySprite {
   if (scale === 1) return sprite;
@@ -295,7 +295,7 @@ export function createActorRenderer(options: {
   const rewardLabelFont = '900 11px "Arial Rounded MT Bold", "Arial Rounded MT", Arial, sans-serif';
   const nameLabelFont = plateFont(11);
   const nameStroke = plateStroke(4);
-  /** How far the names' alphabetic baseline sits above the bottom of their em box, where they used to stand. */
+  /** How far the names' alphabetic baseline sits above the bottom of their em box. */
   let nameBaselineLift: number | undefined;
   function nameLift() {
     if (nameBaselineLift !== undefined) return nameBaselineLift;
@@ -309,7 +309,7 @@ export function createActorRenderer(options: {
     const lift = fromBaseline - fromBottom;
     return nameBaselineLift = Number.isFinite(lift) && lift >= 0 ? lift : 0;
   }
-  /** How far the rewards' alphabetic baseline sits below the top of their em box, where they used to hang. */
+  /** How far the rewards' alphabetic baseline sits below the top of their em box. */
   let rewardBaselineDrop: number | undefined;
   function rewardDrop() {
     if (rewardBaselineDrop !== undefined) return rewardBaselineDrop;
@@ -426,8 +426,8 @@ export function createActorRenderer(options: {
    */
 
 
-  // A name is cached apart from the reward under it. The reward text moves with the player's attack speed
-  // and crit; tied to it, the name and its plate were drawn again (and kept) at every step.
+  // A name is cached apart from the reward under it, which moves with the player's attack speed
+  // and crit, so the name and its plate are not redrawn at every step.
   function cachedLabel(key: string, create: () => readonly TextSegment[]) {
     let label = enemyLabelCache.get(key);
     if (!label) {
@@ -896,7 +896,7 @@ export function createActorRenderer(options: {
     // Slowed (Frost Nova, or a chill card): a pale blue glaze over the body and a frost ring at its feet.
     if (enemy.cardStatus?.slow && deathProgress <= 0) {
       const glaze = (sprite?.size ?? enemy.r * 2) * .42;
-      // Plain blending: an additive glaze per slowed enemy, every frame, was slow to draw in Firefox.
+      // Plain blending: an additive glaze per slowed enemy, every frame, is slow to draw in Firefox.
       ctx.globalAlpha = .22 * visibility;
       ctx.fillStyle = "#bfeaff";
       ctx.beginPath(); ctx.ellipse(0, (spriteBounds.top + spriteBounds.bottom) / 2, glaze, (spriteBounds.bottom - spriteBounds.top) * .5, 0, 0, Math.PI * 2); ctx.fill();
@@ -914,7 +914,7 @@ export function createActorRenderer(options: {
     const rewardY = spriteBottom * camera.zoom + 13;
     // A long, thin pill with no numbers: one plate image at full health, one fill when wounded.
     const barW = platePixels(Math.max(60, Math.min(100, (sprite?.size ?? enemy.r * 2) * 1.35)));
-    // Taller with the numbers on it (Settings > Enemy HP Numbers), keeping its bottom edge where it was.
+    // Taller with the numbers on it (Settings > Enemy HP Numbers), with the same bottom edge.
     const showNumbers = enemyHpNumbersEnabled();
     const barH = showNumbers ? ENEMY_HP_BAR_HEIGHT : ENEMY_HEALTH_BAR_HEIGHT;
     const barX = -barW / 2;

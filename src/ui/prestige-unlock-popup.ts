@@ -23,8 +23,8 @@ const INPUT_GRACE_MS = 700;
 const CONFIRM_GAP_MS = 400;
 /**
  * It closes itself this long after opening, unless a prestige is under way.
- * It used to pause the game until answered, so a player who was idle or
- * autofarming when the unlock arrived sat frozen until they came back.
+ * It does not pause the game, so a player idle or autofarming when the
+ * unlock arrives plays on.
  */
 export const AUTO_CLOSE_MS = 60_000;
 

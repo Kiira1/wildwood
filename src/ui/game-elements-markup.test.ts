@@ -4,7 +4,7 @@ import { createGameDocument } from "../../tests/helpers/game-document";
 import { createGameElements } from "./game-elements";
 
 // The game throws on startup when a required element is missing, and no other
-// test boots the game. 0.916.7 shipped lookups of popups whose markup was removed.
+// test boots the game.
 
 const srcRoot = new URL("../", import.meta.url);
 // The Balance Lab has its own page, and dom.ts only defines the helpers.

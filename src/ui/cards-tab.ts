@@ -129,7 +129,7 @@ export function cardDetailRequest(port: CardsPort, cardId: string, after: (resul
   };
 }
 
-// v2: zones start open now; the first key kept every zone but the map then played closed once one was tapped.
+// v2: zones start open; what the v1 key saved is not read.
 const ZONE_STORE = "wildstat.cardZonesOpen.v2";
 const VIEW_STORE = "wildstat.cardsView";
 function storedZones(): Record<string, boolean> {
@@ -186,7 +186,7 @@ function sectionHead(title: string, meta: string) {
 }
 
 /**
- * The Cards tab, in two views. Equip (first, and where it opens): as the Smith's card slots were, pick Weapon, Helmet
+ * The Cards tab, in two views. Equip (first, and where it opens): pick Weapon, Helmet
  * or Armor to see its slots and the cards of that type owned; pick one to see what it does and Equip or Remove it.
  * Cards: every card as a tile, by zone in sections that start open and can be closed; a tile opens the card's window.
  */

@@ -180,7 +180,7 @@ export function createAccountTokenRenewal(storage: Storage, key: string, tabStor
    * Renews the stored token once most of its life has passed, and otherwise
    * does nothing (null). Shares the one request and lock with connection
    * renewals. A sign-in with no refresh grant (a forced login returns none)
-   * has nothing to renew with and is left to the next connection, as before.
+   * has nothing to renew with and is left to the next connection.
    */
   async function renewAhead(nowMs = Date.now()): Promise<string | null> {
     const latest = stored();

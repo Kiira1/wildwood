@@ -2,7 +2,7 @@ import type { wildstatCoop } from "../wildstat-coop";
 import { recentReleaseNotes } from "../app/changelog";
 import { createMailboxController, type MailboxCard } from "./mailbox-controller";
 
-/** Bridges legacy already-credited gifts and daily claims into the same inbox. */
+/** Bridges already-credited gifts and daily claims into the same inbox. */
 export function createGameMailbox(button: HTMLButtonElement, versionButton: HTMLElement,
   coop: typeof wildstatCoop | null | undefined, canOpen: () => boolean) {
   return createMailboxController(button, versionButton, {

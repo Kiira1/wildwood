@@ -141,7 +141,7 @@ export function createProfileEditor(elements: ProfileEditorElements, api: {
     const choice = (event.target as Element).closest<HTMLButtonElement>(".profile-gender-choice");
     const selected = Number(choice?.dataset.gender);
     if (!choice || !isSelectedPlayerGender(selected)) return;
-    // Tapping the chosen one again clears it, as before.
+    // Tapping the chosen one again clears it.
     const gender = api.playerGender() === selected ? PLAYER_GENDER_UNSET : selected;
     void save(() => api.setGender(gender), "GENDER UPDATE FAILED", "GENDER UPDATED", { gender });
   });

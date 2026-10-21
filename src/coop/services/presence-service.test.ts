@@ -4,7 +4,7 @@ import { createPresenceService } from "./presence-service";
 import { SPEED_SYNC_HOLD_MS } from "./speed-sync";
 
 // The service reads the trusted clock, which keeps its own handle on the real timer, so patching
-// performance.now only sometimes reached it. Tests set `clockNow` to own the time; null is the real clock.
+// performance.now does not reliably reach it. Tests set `clockNow` to own the time; null is the real clock.
 let clockNow: number | null = null;
 vi.mock("../../app/trusted-clock", async (original) => {
   const real = await original<typeof import("../../app/trusted-clock")>();
@@ -86,7 +86,7 @@ it("sends queued regular-enemy loot ahead of a portal's move, without waiting on
   const changeMap = vi.fn(async () => { order.push("move"); });
   const connection = { reducers: { changeMap } };
   const presence = createPresenceService({
-    // A reply that never comes no longer holds the trip.
+    // A reply that never comes does not hold the trip.
     drainEnemyLoot: () => { order.push("loot"); return new Promise<boolean>(() => {}); },
     reducers: { connection: () => connection, protocolBlocked: () => false, worldEntryBlocked: () => false,
       runWorldReducer: (action: () => unknown) => action(), handleFailure: vi.fn() },

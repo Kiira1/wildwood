@@ -26,8 +26,8 @@ export function musicGainForSource(source: string) {
 export const SIGN_IN_MUSIC_SOURCE = "assets/wildstat/audio/signin.mp3";
 
 /**
- * Each track also ships as 128 kbps AAC beside its MP3 (most were 320 kbps
- * MP3, 35 MB in all; the AAC set is 16 MB). Tracks keep their .mp3 path as
+ * Each track also ships as 128 kbps AAC beside its MP3, about half the
+ * download. Tracks keep their .mp3 path as
  * their identity, for gain and caching; only the download is the .m4a, where
  * the browser plays AAC, falling back to the MP3 if that fetch fails.
  */
@@ -39,13 +39,11 @@ export function compactMusicSource(source: string, probe: Pick<HTMLMediaElement,
 }
 export const DEATH_SOUND_SOURCE = "assets/wildstat/audio/death.mp3";
 export const BOW_ATTACK_SOUND_SOURCE = "assets/wildstat/audio/bow-release.mp3";
-// Clip levels, measured 2026-09-25. The release clip peaks at -3.6 dBFS but
-// lasts a tenth of a second, and at .28 it sat well under the -20 LUFS music;
-// the death sting was mastered quiet (-17 dBFS peak). Both now land at or above
-// the music at the same slider position, still clear of clipping at full volume.
+// The release clip is short and the death sting mastered quiet, so both are
+// boosted to land at or above the music without clipping at full volume.
 export const BOW_ATTACK_SOUND_GAIN = .8;
 export const DEATH_SOUND_GAIN = 2.8;
-/** Sound effects no longer copy the music slider: muting music used to silence them too. */
+/** Sound effects have their own volume: muting music leaves them playing. */
 export const DEFAULT_SFX_VOLUME = .7;
 export const BOW_ATTACK_SOUND_CLIP_SECONDS = .46;
 export const BOW_ATTACK_SOUND_RATE_MIN = .93;
@@ -250,9 +248,8 @@ export function createMapMusicController(
   let deathBufferPromise: Promise<AudioBuffer | null> | null = null;
   let bowAttackRequestedAt = Number.NEGATIVE_INFINITY;
   let lastBowAttackAt = Number.NEGATIVE_INFINITY;
-  // The encoded clips need no AudioContext to download, and the first shot or
-  // death used to be silent because their download only began at the first
-  // pointer press. Fetch now; decode once a context exists.
+  // The encoded clips need no AudioContext to download, so fetch them at once
+  // and the first shot or death has its sound; decode once a context exists.
   const fetchEncoded = (source: string) => fetch(source)
     .then((response) => {
       if (!response.ok) throw new Error(`Audio request failed: ${response.status}`);

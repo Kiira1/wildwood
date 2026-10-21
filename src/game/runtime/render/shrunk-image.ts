@@ -5,7 +5,7 @@ type Rect = { x: number; y: number; w: number; h: number };
 
 /**
  * An image, or a frame of a sheet, cut and sized once to what it lands at on screen: Firefox's software canvas
- * re-samples the source on every draw, and a large sheet scaled down was most of a frame there.
+ * re-samples the source on every draw, and a large sheet scaled down is most of a frame there.
  * Kept per image up to a pixel budget (frames at a few zoom levels); the oldest go first. Each is frozen once made.
  */
 export function createShrunkImages(pixelsPerImage = 6_000_000) {

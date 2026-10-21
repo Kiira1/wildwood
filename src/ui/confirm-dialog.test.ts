@@ -92,8 +92,8 @@ describe("confirmation stacking", () => {
   };
 
   it("sits above every window a prompt can be raised from", () => {
-    // It was behind the item inspector and the gift window at first, because
-    // it inherited the ordinary window layer.
+    // On the ordinary window layer it would sit behind the item inspector and
+    // the gift window.
     const confirm = layer("#gameConfirm")!;
     for (const selector of [".item-inspection-panel", "#prestigeOverlay", ".claim-overlay", ".onboarding-tutorial", "#techTreeOverlay", "#profileNameEditor"]) {
       expect(layer(selector), selector).toBeLessThan(confirm);

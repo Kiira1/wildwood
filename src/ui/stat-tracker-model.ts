@@ -81,7 +81,7 @@ export function createStatTrackerModel(storage: Store, now = Date.now) {
       changedRunSince = null;
       try {
         const saved = JSON.parse(storage.getItem(key()) || 'null');
-        // Sessions saved before a stat was tracked start that stat from now, rather than starting over.
+        // A saved session missing a stat starts that stat from now, rather than starting over.
         if (saved && saved.baseline && typeof saved.baseline === 'object') saved.baseline = { ...values, ...saved.baseline };
         if (saved && Number.isFinite(saved.startedAt) && saved.startedAt >= 0 && saved.startedAt <= now()
           && validValues(saved.baseline) && Number.isFinite(saved.lastKills) && saved.lastKills >= 0) {
@@ -107,7 +107,7 @@ export function createStatTrackerModel(storage: Store, now = Date.now) {
       if (now() - changedRunSince >= RUN_SETTLE_MS) { if (fellBack && !resetOnPrestige) carryOver(); else reset(); }
     } else {
       changedRunSince = null;
-      // Sessions saved before runs were told apart take the run they are read in.
+      // A saved session with no run takes the run it is read in.
       if (build) {
         session!.run ??= build.run;
         session!.peakBasePower = Math.max(session!.peakBasePower ?? 0, build.basePower);

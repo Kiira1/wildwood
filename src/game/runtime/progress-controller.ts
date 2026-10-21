@@ -113,13 +113,13 @@ export function createProgressController(dependencies: ProgressDependencies) {
     // Keep local loadout choices. Server ownership still determines what can
     // be equipped; upgrading/destroying an item must not leave ghost equipment.
     // Worn looks are left to the server, which takes off any the account does not own on every
-    // save: judged here, a look still loading (a Patreon tier, a new device) came off and was saved off.
+    // save: judged here, a look still loading (a Patreon tier, a new device) would come off and be saved off.
     for (const field of ["equippedHead", "equippedChest", "equippedFeet", "equippedRightHand", "equippedLeftHand"] as const) {
       if (itemDefinition(inventory[field]) && !ownedItems.includes(inventory[field])) inventory[field] = "";
     }
     // Gear taken away must not leave the player unable to attack.
-    // Hands the player emptied stay empty (unarmed Reflect runs): new loot
-    // changing the bag used to put the best weapon, usually a bow, into them.
+    // Hands the player emptied stay empty (unarmed Reflect runs), even when new
+    // loot changes the bag.
     // The weapon put in goes to the server, or it would fight with one the server does not have.
     if (heldWeapon && fillEmptyHand(inventory, inventory.itemIds, weaponKind(heldWeapon))) save(true);
     applyPlayerMaxHealthMultiplierBonus(dependencies.player, dependencies.healthMultiplierBonus());
@@ -274,9 +274,7 @@ export function createProgressController(dependencies: ProgressDependencies) {
     inventory.cosmeticRightHand = savedInventory.cosmeticRightHand;
     inventory.cosmeticLeftHand = savedInventory.cosmeticLeftHand;
     // A saved weapon no longer owned falls back to the best owned one. A hand
-    // saved empty is the player's choice and stays empty, as the server has
-    // kept it since 0.832; filling it on load equipped the best weapon, usually
-    // a bow, on every login.
+    // saved empty is the player's choice and stays empty, as the server keeps it.
     // The weapon put in is saved, so the server's hand matches the one shown.
     const filled = savedWeapon ? fillEmptyHand(inventory, inventory.itemIds, weaponKind(savedWeapon)) : "";
     setPlayerBaseMaxHealth(player, player.baseMaxHp, dependencies.healthMultiplierBonus(), true);

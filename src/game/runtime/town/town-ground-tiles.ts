@@ -23,8 +23,8 @@ let fixedGroundProps: readonly SoulPropDecor[] | null = null;
 let countrysideReach = 0;
 
 /**
- * Everything the Town draws flat on its ground in a rectangle: its flat props (in depth order, as they were
- * drawn every frame) and its shadows. The village, its rooms and the countryside are fixed, so this is the same
+ * Everything the Town draws flat on its ground in a rectangle: its flat props (in depth order) and its
+ * shadows. The village, its rooms and the countryside are fixed, so this is the same
  * whenever it is asked: it does not depend on where the player is or which chunks are loaded.
  */
 export function townGroundPropsIn(rect: Rect) {

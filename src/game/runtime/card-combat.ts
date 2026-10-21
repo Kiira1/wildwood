@@ -124,8 +124,7 @@ export function createCardCombat(deps: {
 
   /**
    * Reap finishes a regular enemy, not an elite, left under its threshold: after any hit, whatever dealt it (weapon,
-   * skill, splash, chain, damage over time, Reflect). It was checked after weapon hits only, so an enemy brought under
-   * it by anything else lived on until the next one.
+   * skill, splash, chain, damage over time, Reflect).
    */
   function reap(target: Target) {
     const worn = cards();

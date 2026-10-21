@@ -517,7 +517,7 @@ function formatNumber(value: number | null) { return value === null ? "—" : va
 function formatRate(count: number | null, percentage: number | null) { return count === null ? "—" : `${count} · ${percentage}%`; }
 function sumCounts(values: Record<string, number>) { return Object.values(values).reduce((sum, count) => sum + count, 0); }
 
-/** The balance editor's stylesheet loads with the panel: every player's sign-in used to block on it. */
+/** The balance editor's stylesheet loads with the panel, so no player's sign-in waits on it. */
 function loadDeveloperStyles(doc: Document = document) {
   if (doc.querySelector("link[data-developer-styles]")) return;
   const link = doc.createElement("link");

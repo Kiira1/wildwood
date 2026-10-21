@@ -74,7 +74,7 @@ export function startStartupBootstrap(dependencies: StartupBootstrapDependencies
       if (loadingDetail) loadingDetail.textContent = "Account Startup Failed · Refresh to Try Again";
     })
     .finally(() => {
-      // Safe to call again after restore; artwork now starts during verification.
+      // Safe to call again after restore; artwork starts during verification.
       if (!gameBundleRequested) artworkReveal.start();
     });
 }

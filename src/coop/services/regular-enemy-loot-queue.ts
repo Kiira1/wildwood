@@ -69,7 +69,7 @@ export function createRegularEnemyLootQueue(options: {
   // IDLE_SIMULATION_ALLOWANCE_SECONDS before it. The game runs in menus, at
   // Home and while another device holds the session's reports, and that time
   // says nothing about how fast kills came; but a long fight is play the
-  // kills at its end were paid for with, and the server now pays kills out of
+  // kills at its end were paid for with, and the server pays kills out of
   // the game time reports claim.
   let engagedAtSimulatedSeconds: number | null = null;
   const begunOwners = new Set<string>();

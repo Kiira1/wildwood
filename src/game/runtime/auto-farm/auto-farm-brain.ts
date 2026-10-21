@@ -3,12 +3,9 @@ import { armorDamageReduction } from '../../combat';
 import type { PlayerPowerStats } from '../../../../shared/player-power';
 
 /**
- * Autofarm v2: measure, don't predict. Moving on used to need three models to
- * agree (DPS against the balance curve, a 30-minute offline simulation and a
- * group-fight danger estimate), and players saw "Next map too hard" on maps
- * they farmed fine. Now it tries, watches what actually happens (power gained
- * per minute, deaths, how a boss fight is going) and backs off by a margin
- * that grows every time, so it cannot bounce between two maps all night.
+ * Autofarm measures rather than predicts: it tries a map, watches what actually
+ * happens (power gained per minute, deaths, how a boss fight is going) and backs
+ * off by a margin that grows every time, so it cannot bounce between two maps all night.
  */
 
 /**

@@ -500,9 +500,8 @@ export function createWorldRenderer(options: WorldRendererOptions) {
       }
       // Also resumes a queue that paused while the page was hidden.
       dispatchStaticTileRequests();
-      // A single ground-color pixel is enough while the worker paints. The old
-      // per-tile 640×640 placeholders duplicated the complete visible working
-      // set in graphics memory before any finished tiles arrived.
+      // A single ground-color pixel is enough while the worker paints; a
+      // full-size placeholder per tile would double the visible set in graphics memory.
       return sharedStaticTilePlaceholder(scene);
     }
     const tile = createTileCanvas();
@@ -895,7 +894,7 @@ export function createWorldRenderer(options: WorldRendererOptions) {
     const portalSwirl = tintedPortalSwirl(portal.destination);
     if (portalIntensity > 0 && portalSwirl) {
       // Ease through the sprite sequence instead of abruptly reversing at
-      // either end. The swirl now settles into and out of each turn.
+      // either end, so the swirl settles into and out of each turn.
       const cycle = options.getGameTime() / 3;
       const sweep = .5 - Math.cos(cycle * TAU) * .5;
       const frame = Math.round(sweep * 15);

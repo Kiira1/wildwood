@@ -1191,10 +1191,8 @@ export function createBossController(options: {
     aegisPrime: {
       aggroRange: AEGIS_PRIME_AGGRO_RANGE,
       // The sweep is drawn as a wave travelling out from the shield
-      // (ion-attack-art.ts), but it used to hit the whole arc on its first
-      // active frame: a player near the far edge took the damage while the
-      // wave was still at the boss's feet. Only the wave's front hits now,
-      // as it does for every other boss that draws one.
+      // (ion-attack-art.ts); only the wave's front hits, as for every other
+      // boss that draws one.
       laser: { ability: "shieldSweep", start: startAegisPrimeShatter, hits: ionSweepHits, front: ION_SWEEP },
       pulses: {
         ability: "ionVolley",

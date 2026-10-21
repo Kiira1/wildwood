@@ -67,8 +67,8 @@ export function drawPlayerEyes(
 ) {
   const eye = eyeGeometry(width, height, adjustment?.spacing);
   const sx = width / PLAYER_HEAD_SIZE.width, sy = height / PLAYER_HEAD_SIZE.height;
-  // The solid dark almond the vendor artwork shipped with. A white eye with a
-  // pupil was tried and read worse at the size the character is actually seen.
+  // The solid dark almond from the vendor artwork: it reads better than a white
+  // eye with a pupil at the size the character is actually seen.
   const draw = () => {
     ctx.fillStyle = EYE_INK;
     traceFacePath(ctx, VENDOR_LEFT_EYE_PATH, sx, sy, eye.left - 26.05594 * sx, eye.y - 35.05619 * sy); ctx.fill();

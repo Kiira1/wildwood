@@ -13,7 +13,7 @@ import type { AggroChallenge } from '../../shared/aggro-challenge';
 import type { RewardType } from '../game/enemies';
 import { AUTO_CHOP_HELP_LINES, AUTO_MINE_HELP_LINES, createAutoChopView, createAutoMineView } from './auto-gather-view';
 
-/** v2: positions saved before 0.901.22 (often under the joystick or skills) are dropped; the card starts centred. */
+/** Where the card was dragged to; positions saved under older keys are ignored, so the card starts centred. */
 export const AUTO_FARM_POSITION_KEY = 'wildstat:autofarm-position:v2';
 type PanelStorage = Pick<Storage, 'getItem' | 'setItem'>;
 const defaultStorage = (): PanelStorage | undefined => { try { return window.localStorage; } catch { return undefined; } };
@@ -30,7 +30,7 @@ const HELP_LINES: readonly [term: string, line: string][] = [
 const powerSlider = (className: string, label: string, sub: string, aria: string) =>
   `<label class="farm-weight farm-power ${className}"><span class="farm-weight-name"><span class="farm-weight-label">${label}</span><span class="farm-weight-sub">${sub}</span></span>`
   + `<input type="range" min="0" max="${POWER_STEPS.length - 1}" step="1" aria-label="${aria}"><output aria-hidden="true"></output></label>`;
-/** What each stat is set to (0.901.64, replacing its slider): left alone, farmed at its camps, or pulled to the player. */
+/** What each stat is set to: left alone, farmed at its camps, or pulled to the player. */
 type FarmMode = 'off' | 'farm' | 'aggro';
 type FarmModes = Record<string, FarmMode>;
 const FARM_MODES: readonly [FarmMode, string][] = [['off', 'Off'], ['farm', 'Farm'], ['aggro', 'Aggro']];

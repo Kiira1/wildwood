@@ -69,11 +69,9 @@ const STALE_SESSION_RELOAD_KEY = "wildstat-stale-session-reload-at";
 
 /**
  * The server refuses a session that began before its last publish and tells the
- * client to refresh. The client used to refresh only for a build newer than its
- * own, which is right when the build is old and wrong when the build is already
- * current: a tab that loaded the new client shortly before the server publish
- * was refused like any other, then waited for a newer version that did not
- * exist, for ever. Once the refusal has outlasted the grace a newer deploy would
+ * client to refresh. A tab that loaded the current client shortly before the
+ * server publish is refused too, and no newer build will come for it. Once the
+ * refusal has outlasted the grace a newer deploy would
  * need, the build is current and only the session is stale, so reload it once.
  */
 export function shouldReloadStaleSession(blockedForMs: number, lastReloadAtMs: number, nowMs: number) {

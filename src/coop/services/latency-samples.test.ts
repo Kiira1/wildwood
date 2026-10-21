@@ -10,8 +10,8 @@ describe("connection latency", () => {
   });
 
   it("ignores a single slow reducer instead of reporting it as the ping", () => {
-    // This is the bug: a kill report behind a queue took 800ms and the reading
-    // followed it, then decayed over seconds while the network was fine.
+    // A kill report behind a queue takes 800ms while the network is fine; the
+    // reading must not follow it.
     const latency = createLatencySamples();
     for (const sample of [38, 41, 44, 39, 42]) latency.record(sample);
     const before = latency.value()!;

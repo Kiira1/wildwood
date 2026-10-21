@@ -2,10 +2,9 @@
  * How far this device's clock is from SpacetimeAuth's.
  *
  * A login is checked against the clock before it is used: not issued in the
- * future, not about to expire. With a PC clock a few minutes behind, every
- * fresh login read as issued in the future and was refused before the game
- * connected, on every attempt and in every window, while guest play (which
- * never goes through these checks) worked. That was Pearl.
+ * future, not about to expire. With a device clock a few minutes behind, a
+ * fresh login would read as issued in the future and be refused before the
+ * game connects, while guest play (which skips these checks) works.
  *
  * A login SpacetimeAuth has just issued carries its own "now" (iat), so the
  * difference from the device clock at arrival is the device's error. Later

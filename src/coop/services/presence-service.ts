@@ -105,7 +105,7 @@ export type AutoFarmMovementContext = { group: string | null; camp: string | nul
 /**
  * A farmer holding ground sends this as their camp (autofarm never names one).
  * Viewers stand the puppet at its anchor, which the farmer renews every 30 seconds;
- * older clients find no such camp and walk it through the group as before.
+ * older clients find no such camp and walk it through the group.
  */
 const PUPPET_HOLD_CAMP = "@hold";
 /** Holding or walking must last this long to re-plan the puppet, so a moment's step does not. */
@@ -799,8 +799,8 @@ export function createPresenceService(dependencies: PresenceServiceDependencies)
     // Realistic over accurate: a puppet keeps its own route through the
     // farmer's 30-second re-anchors, and only a new group or camp re-plans it.
     // Any plan starts where their figure already stands (from a puppet, the
-    // stream or the map frame), at the speed it already walks: snapping onto
-    // each anchor made autofarmers teleport.
+    // stream or the map frame), at the speed it already walks, so it never
+    // snaps onto an anchor.
     // A held puppet's new anchor is where it stands now: its figure walks there.
     if (existing && existing.row.group === row.group && existing.row.camp === row.camp) { existing.row = row; if (row.camp === PUPPET_HOLD_CAMP) existing.legs = null; return; }
     const startedAtMs = shown ? estimatedServerNowMs() : Number(row.startedAt.microsSinceUnixEpoch) / 1_000;
@@ -861,7 +861,7 @@ export function createPresenceService(dependencies: PresenceServiceDependencies)
   /** Where a puppet is now on its route, and a moment ago for the shared enemy simulation. */
   function puppetTarget(identity: string, puppet: AutoFarmPuppet, presentation: PlayerPresentationRow, serverNow: number): FigureTarget {
     // A puppet walks at the speed it was first seen at, for good: re-timing
-    // its route when their speed changed (gear, leaving combat) jumped it along.
+    // its route when their speed changes (gear, leaving combat) would jump it along.
     if (puppet.row.camp === PUPPET_HOLD_CAMP) return holdTarget(puppet);
     if (!puppet.legs || puppet.sites !== puppetSiteList) {
       puppet.sites = puppetSiteList;
@@ -1177,7 +1177,7 @@ export function createPresenceService(dependencies: PresenceServiceDependencies)
       if (farm.group) {
         const camp = farm.hold ? PUPPET_HOLD_CAMP : farm.camp ?? "", at = monotonicNowMs();
         // The first plan is sent at once; a change, of group or camp, only once it has held. Autofarm in an
-        // Aggro run could swap groups every frame, and each swap was a write to everyone on the map.
+        // Aggro run can swap groups every frame, and each swap is a write to everyone on the map.
         if (!farmIntent) { farmIntent = { group: farm.group, camp }; planChange = null; }
         else if (farmIntent.group === farm.group && farmIntent.camp === camp) planChange = null;
         else {
@@ -1193,7 +1193,7 @@ export function createPresenceService(dependencies: PresenceServiceDependencies)
     }
     localSimulationTick = (localSimulationTick + 1) >>> 0;
     // Kept in the public signature for the renderer boundary; presentation is
-    // stable for the whole map and no longer churns subscriptions with camera motion.
+    // stable for the whole map and does not follow camera motion.
     void interestArea;
     // The tracker makes a speed settle before sending, so a held one is offered
     // each frame until it lands rather than dropped on the first refusal.

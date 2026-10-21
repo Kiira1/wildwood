@@ -197,7 +197,7 @@ export function createSlotUpgradesController(elements: SlotUpgradesElements, dep
   }
   // A prompt is awaited, so the busy flags below are not yet set while it is
   // open. Without this a second click opens a second prompt over the first and
-  // both answers act. window.confirm used to block the page and hide the gap.
+  // both answers act.
   let confirming = false;
   async function ask(prompt: ConfirmPrompt, request: ConfirmRequest) {
     if (confirming) return false;

@@ -624,7 +624,7 @@ export function createAccountService(dependencies: AccountServiceDependencies) {
       outboundAuthNavigationPending = false;
       notice = "SIGNED IN";
       outcome = "success";
-      // A device clock this far off used to refuse every sign-in (token-clock.ts).
+      // Record a device clock off by enough to correct for (token-clock.ts).
       const clockOffset = tokenClockOffsetMs();
       if (clockOffset) recordCarriedConnectionDiagnostic("session-blocked", { detail: `device-clock-off:${Math.round(clockOffset / 1_000)}s${accountTag()}` });
     } catch (error) {
@@ -903,10 +903,9 @@ export function createAccountService(dependencies: AccountServiceDependencies) {
 
   /**
    * While the game is open, renew the sign-in quietly before it expires, so
-   * the stored token is still good whenever this tab reloads or reconnects.
-   * Those were the only moments it renewed, and an update reloads every tab
-   * at once. A refusal here changes nothing for the session already playing;
-   * it is written down, and the next connection asks for a sign-in as before.
+   * the stored token is still good whenever this tab reloads or reconnects
+   * (an update reloads every tab at once). A refusal here changes nothing for the
+   * session already playing; it is written down, and the next connection asks for a sign-in.
    */
   // Only from a visible, connected tab on the minute: never on a wake or a
   // network change, which reach every tab at once on a still-shaky network.

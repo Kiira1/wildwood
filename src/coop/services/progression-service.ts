@@ -385,8 +385,8 @@ export function createProgressionService(dependencies: ProgressionServiceDepende
    * update drain, immediate save) goes at once. Anything else waits until the
    * last report is sixty seconds old. Every acknowledgement updates the
    * progress row, and the row's handler flushes again; nextPeriodicSaveAt only
-   * moves when progress itself is saved, so after the first sixty seconds that
-   * chain used to send a fresh report on every acknowledgement.
+   * moves when progress itself is saved, so this gate keeps that chain from
+   * sending a fresh report on every acknowledgement.
    */
   function flushEnemyLoot(force: boolean) {
     if (!force && monotonicNowMs() - lastKillReportAt < REGULAR_ENEMY_LOOT_DELAY_MS - KILL_REPORT_CADENCE_SLACK_MS) {
@@ -408,8 +408,8 @@ export function createProgressionService(dependencies: ProgressionServiceDepende
         streamId: request.streamId, sequence: request.sequence, mapId: request.mapId,
         simulatedMillis: request.simulatedMillis, enemies: request.enemies }), ENEMY_DEFEAT_ACK_TIMEOUT_MS))();
     if (!result.ok && /Enemy defeats belong to another map|Invalid enemy for this map/.test(result.error ?? "")) {
-      // These kills are gone. Write down how many and where, so a loss that
-      // used to be invisible can be counted and its cause found.
+      // These kills are gone. Write down how many and where, so each loss
+      // can be counted and its cause found.
       recordConnectionDiagnostic("rewards-discarded", { detail: `${request.mapId}: ${request.count} kills: ${result.error}` });
       return /another map/.test(result.error ?? "") ? "wrong-map" : "discard";
     }
@@ -497,7 +497,7 @@ export function createProgressionService(dependencies: ProgressionServiceDepende
     localProgress = progress;
     if (pendingProgress && serverEquips.length) {
       pendingProgress = withServerLoadout(pendingProgress, serverEquips);
-      // Stored as well: a reconnect restores the stored save, which put the old gear back on.
+      // Stored as well: a reconnect restores the stored save, which would put the old gear back on.
       deferStoreWrite(identity, pendingProgress);
     }
     if (serverEquips.length) serverEquipListener?.({ changes: serverEquips, progress, live: dependencies.hydrationReady() });
@@ -781,9 +781,8 @@ export function createProgressionService(dependencies: ProgressionServiceDepende
   }
 
   /**
-   * Rows are keyed by upgrade slot now, not by item: `itemId` carries "HAND",
-   * "HEAD" or "CHEST" and `level` is that slot's tier. The cache shape is
-   * unchanged; only what the key means moved.
+   * Rows are keyed by upgrade slot, not by item: `itemId` carries "HAND",
+   * "HEAD" or "CHEST" and `level` is that slot's tier.
    */
   function upsertItemUpgrade(row: { identity: Identity; itemId: string; level: number }) {
     const identity = row.identity.toHexString();

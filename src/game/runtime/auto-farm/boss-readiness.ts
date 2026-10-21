@@ -10,8 +10,7 @@ import { PROCEDURAL_BOSS_ATTACKS } from '../boss/procedural-boss-controller';
 /**
  * A boss fight takes this many times as long as damage over its health says: the player walks to it and
  * dodges. The survival check plays it out over that long. Chosen in the autofarm sim over three hours from a
- * fresh character (0.901.65): 1x, 2x and 3x all reached map 4; 2x with the most power and fewest deaths
- * (93k, 171 deaths, against the old power table's 75k and 239).
+ * fresh character: 1x, 2x and 3x all reached map 4; 2x with the most power and fewest deaths.
  */
 export const BOSS_FIGHT_STRETCH = { factor: 2 };
 
@@ -19,7 +18,7 @@ export const BOSS_FIGHT_STRETCH = { factor: 2 };
  * Whether the build beats this map's boss made `margin` times as strong (Fight At), as the Balance Lab plays a
  * boss fight (death-model.ts): its ability turns at its own rhythm against the build's health and regeneration,
  * nobody dodging, for as long as the build takes to kill it net of its own healing. A single heaviest hit
- * against the health bar was tried first and sent a build with a little armor into fights it died in on repeat.
+ * against the health bar would send a build with a little armor into fights it dies in on repeat.
  * Not ready, it says whether double the damage or double the health would win it. Null with no boss.
  */
 export function bossReadiness(mapId: string, boss: MapBalanceSnapshot['boss'] | undefined, stats: PlayerPowerStats, margin = 1): Readiness | null {

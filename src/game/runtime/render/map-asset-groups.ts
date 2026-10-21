@@ -52,7 +52,7 @@ export type MapAssetGroup = {
 const AUTHORED_MAP_ASSET_GROUPS = {
   [ONBOARDING_MAP_ID]: { art: ["forestDecor"], enemies: ["Spitter", "Brood"] },
   home_exterior: { art: ["forestDecor", "snowDecor"], enemies: [] },
-  // The Town's Slot Upgrades station is the snow set's workbench sprite, as Home's was.
+  // The Town's Slot Upgrades station is the snow set's workbench sprite.
   town: { art: ["townVillage", "snowDecor"], enemies: [] },
   // The soul camps, and the Soul Defense Force that comes every thousand of them.
   soul_dimension: { art: ["nightDecor"], enemies: [...SOUL_ENEMY_KINDS, SOUL_DEFENSE_FORCE_KIND] },

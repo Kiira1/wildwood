@@ -543,9 +543,7 @@ export function startBaseSubscription(dependencies: BaseSubscriptionDependencies
       tables.playerBonusToggle.where(row => row.identity.eq(dependencies.identity)),
       tables.playerPrestigePerk.where((prestigePerk) => prestigePerk.identity.eq(dependencies.identity)),
       // Prestige asks for a number of cleared Endless stages, and the window
-      // that says so opens anywhere. Subscribing this only while standing on
-      // an Endless map left the panel reading zero from everywhere else, so a
-      // player who had cleared the stage was told to go and clear it.
+      // that says so opens anywhere, so this is subscribed on every map.
       tables.proceduralProgress.where((row) => row.identity.eq(dependencies.identity)),
       tables.playerItemUpgrade.where((upgrade) => upgrade.identity.eq(dependencies.identity)),
       tables.activeItemUpgrade.where((upgrade) => upgrade.identity.eq(dependencies.identity)),

@@ -330,9 +330,8 @@ async function recoverMissingWorldPresence() {
 /**
  * Every reducer the client sends during play goes through here, and one that
  * resolves is proof the server answered. That is what the wake logic means by
- * activity, so this is where it is recorded: it used to be stamped only while
- * connecting, which left activityAge growing without bound and the grace check
- * that reads it dead after the first half minute of a session.
+ * activity, so this is where it is recorded, keeping activityAge current for
+ * the grace check that reads it.
  */
 function runWorldReducer<T>(reducer: () => T | PromiseLike<T>) {
   return retryAfterMissingWorldPresence(reducer, recoverMissingWorldPresence)

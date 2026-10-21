@@ -110,7 +110,7 @@ export function createPlayerSearch(options: PlayerSearchOptions) {
     } else name.textContent = player.name;
     item.append(name);
     // Pressing keeps focus in the field, so the list does not close before the pick lands.
-    // A phone moves focus on the tap anyway and the list was gone before the click:
+    // A phone moves focus on the tap anyway and the list is gone before the click:
     // a touch picks on release instead, unless the finger moved to scroll the list.
     let touchStart: { x: number; y: number } | null = null, pickedByTouch = false;
     item.addEventListener("pointerdown", event => {

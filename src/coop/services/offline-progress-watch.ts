@@ -46,7 +46,7 @@ export function watchOfflineProgress(
 
 /**
  * The account's opt-out. A missing row means on, which is the default and what
- * almost every account will have, so nothing was migrated to add it.
+ * almost every account has, so no row needs adding.
  */
 export function watchOfflineProgressPreference(connection: DbConnection, present: (enabled: boolean) => void) {
   const read = () => present([...connection.db.myOfflinePreference.iter()][0]?.enabled ?? true);
@@ -61,8 +61,7 @@ export function watchOfflineProgressPreference(connection: DbConnection, present
  * before a row arrives, and shown immediately when changed. A change the
  * server refuses (another tab holds the session, a reconnect) puts the switch
  * back to what the server has: the subscription never corrects it, since the
- * row did not change, and the switch used to keep showing a choice that was
- * never saved until the next session quietly paid for time away again.
+ * row did not change.
  */
 export function createOfflineProgressPreference(connection: () => DbConnection | null, notify: () => void) {
   let enabled = true;
