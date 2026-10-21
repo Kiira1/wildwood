@@ -1,4 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
+
+// Recovering from a draw error is covered by tests/scenarios/rendering.test.ts.
 import { createRenderController, snapToDevicePixel } from "./render-controller";
 
 function arena(ready: boolean, replay: boolean) {
@@ -20,18 +22,6 @@ it("holds live arena rendering until its art has settled", () => {
   expect(f.ctx.fillText).toHaveBeenCalledWith("LOADING ARENA…", 450, 350);
   expect(f.options.setRenderedDuelScene).toHaveBeenCalledWith(null);
 });
-it("resets the canvas state after a drawing error and renders the next frame", () => {
-  const f = arena(true, true), reset = vi.fn();
-  f.ctx.canvas = { get width() { return 1800; }, set width(_value) { reset(); } };
-  f.options.viewport = () => ({ width: 900, height: 700, dpr: 2 });
-  f.render = createRenderController(f.options).render;
-  f.options.drawDuelScene.mockImplementationOnce(() => { throw new Error("draw failed"); });
-  expect(() => f.render()).toThrow("draw failed");
-  expect(reset).toHaveBeenCalledOnce();
-  expect(f.ctx.setTransform).toHaveBeenCalledWith(2, 0, 0, 2, 0, 0);
-  expect(() => f.render()).not.toThrow();
-  expect(f.options.drawDuelScene).toHaveBeenCalledTimes(2);
-});
 it.each([true, false])("keeps arena lighting independent of exploration coordinates (replay=%s)", replay => {
   const f = arena(true, replay); f.render();
   expect(f.options.drawDuelScene).toHaveBeenCalledWith(f.scene);
@@ -47,28 +37,6 @@ it("does not redraw a covered world while keeping menu previews alive", () => {
   expect(f.options.drawStaticWorld).not.toHaveBeenCalled();
   f.options.worldOccluded = () => false;
   f.render();
-  expect(f.options.drawDuelScene).toHaveBeenCalledOnce();
-});
-
-it("restores full-size drawing after the canvas loses its scale behind chat", () => {
-  const f = arena(true, true);
-  let scale = 2;
-  const clears: number[][] = [];
-  f.ctx.setTransform.mockImplementation((a: number) => { scale = a; });
-  f.ctx.clearRect.mockImplementation((_x: number, _y: number, w: number, h: number) => {
-    clears.push([w * scale, h * scale]);
-  });
-  f.options.viewport = () => ({ width: 390, height: 780, dpr: 2 });
-  f.options.worldOccluded = () => true;
-  f.render = createRenderController(f.options).render;
-  f.render();
-  // Browser restores a default context without resizing or throwing an error.
-  scale = 1;
-  f.ctx.imageSmoothingEnabled = true;
-  f.options.worldOccluded = () => false;
-  f.render();
-  expect(clears).toEqual([[780, 1560], [780, 1560]]);
-  expect(f.ctx.imageSmoothingEnabled).toBe(false);
   expect(f.options.drawDuelScene).toHaveBeenCalledOnce();
 });
 

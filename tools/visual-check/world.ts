@@ -16,6 +16,7 @@ import { ENEMY_SPRITE_LAYOUTS } from "../../src/game/enemy-sprite-layouts.mjs";
 import { PLAYER_GENDER_FEMALE, PLAYER_GENDER_MALE, PLAYER_GENDER_UNSET, type PlayerGender } from "../../shared/player-gender";
 import type { Camera } from "../../src/game/runtime/render/camera";
 import type { EnemyState, PlayerState } from "../../src/game/runtime/types";
+import type { PlayerDeathAnimationState } from "../../src/game/runtime/player-death-animation";
 import type { ChatMessage, RemotePlayer } from "../../src/coop/contracts";
 
 /** Ground the actors stand on: flat, so plates and outlines read against one known colour. */
@@ -45,6 +46,21 @@ export function resetCanvas(scene: SceneCanvas, color = GROUND) {
   ctx.fillRect(0, 0, scene.canvas.width, scene.canvas.height);
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
   ctx.imageSmoothingEnabled = false;
+}
+
+const LABEL_FONT = "bold 11px Arial, sans-serif";
+
+/** A caption on a scene's canvas, light on a dark shadow so it reads on any ground. */
+export function label(ctx: CanvasRenderingContext2D, text: string, x: number, y: number, align: CanvasTextAlign = "center") {
+  ctx.save();
+  ctx.font = LABEL_FONT;
+  ctx.textAlign = align;
+  ctx.textBaseline = "top";
+  ctx.fillStyle = "#101410";
+  ctx.fillText(text, x + 1, y + 1);
+  ctx.fillStyle = "#f2f2e8";
+  ctx.fillText(text, x, y);
+  ctx.restore();
 }
 
 export function section(title: string) {
@@ -112,52 +128,28 @@ export function fakeEnemy(type: string, x: number, y: number, extra: Partial<Ene
   };
 }
 
-/**
- * The world renderers as the game builds them (world-render-runtime.ts, player-identity-wiring.ts), with fake
- * players behind the identity lookups. Draws in world space: callers scale the context by `camera.zoom`.
- */
-export async function createWorld(ctx: CanvasRenderingContext2D, options: {
-  zoom: number;
-  /** The canvas in CSS pixels, for the renderers' off-screen culling. */
-  viewport: { width: number; height: number };
-  players?: readonly FakePlayer[];
-  enemySprites?: Record<string, LoadedEnemySprite>;
-}) {
-  const players = new Map((options.players ?? []).map(player => [player.id, player]));
-  bindPlayerNameTags({
-    prefix: id => {
-      const player = id ? players.get(id) : undefined;
-      return `${player?.developer ? "[dev]" : ""}${player?.guildTag ? `[${player.guildTag}]` : ""}`;
-    },
-    revision: () => 0,
-    prestigeLevel: id => (id ? players.get(id)?.prestige : 0) ?? 0,
-  });
-  const assets = await playerAppearance();
-  const primitives = createCanvasPrimitives(ctx);
-  const camera: Camera = { x: 0, y: 0, zoom: options.zoom };
-  let gameTime = 0;
-  const shadowSprite = loadActorShadowSprite();
-  const image = (src: string) => { const element = new Image(); element.src = src; return element; };
-  const duelPlatformArt = new Image();
-  // As canvas-runtime.ts drawActorShadow.
-  const drawShadow = (x: number, y: number, shadowWidth: number, alpha = .38) => {
-    const shadowHeight = actorShadowDimensions(shadowWidth).height;
-    ctx.save();
-    ctx.globalAlpha = alpha;
-    if (shadowSprite.complete && shadowSprite.naturalWidth > 0) {
-      ctx.drawImage(residentDrawable(shadowSprite), x - shadowWidth / 2, y - shadowHeight / 2, Math.round(shadowWidth), shadowHeight);
-    }
-    ctx.restore();
-  };
-  const chat: ChatMessage[] = [...players.values()].filter(player => player.chat).map((player, index) => ({
-    id: BigInt(index + 1), sender: player.id, senderName: player.name, message: player.chat!, replayId: 0n, powerLevel: player.power,
+const taggedPlayers = new Map<string, FakePlayer>();
+const image = (src: string) => { const element = new Image(); element.src = src; return element; };
+
+/** A chat line from a fake player, sent `agoMs` before now. */
+export function chatLine(player: FakePlayer, message: string, agoMs = 1_000, id = 1): ChatMessage {
+  return {
+    id: BigInt(id), sender: player.id, senderName: player.name, message, replayId: 0n, powerLevel: player.power,
     senderGender: player.gender ?? PLAYER_GENDER_UNSET, moderated: false, replyToMessageId: 0n, replyToSenderName: "", replyToMessage: "",
-    sentAtMs: Date.now() - 1_000,
-  }));
-  const identity = createPlayerIdentityRenderer({
+    sentAtMs: Date.now() - agoMs,
+  };
+}
+
+/** The overhead plates and chat bubbles (player-identity-renderer.ts) over fake players. */
+export function createIdentity(ctx: CanvasRenderingContext2D, camera: Camera, viewport: { width: number; height: number }, people: readonly FakePlayer[],
+  options: { chat?: ChatMessage[]; invisible?: (identity: string | undefined) => boolean } = {}) {
+  const players = new Map(people.map(player => [player.id, player]));
+  const primitives = createCanvasPrimitives(ctx);
+  const chat = options.chat ?? people.filter(player => player.chat).map((player, index) => chatLine(player, player.chat!, 1_000, index + 1));
+  return createPlayerIdentityRenderer({
     ctx,
     camera,
-    viewport: () => options.viewport,
+    viewport: () => viewport,
     onProfileIconsLoaded: () => {},
     powerIcon: image("assets/wildstat/icons/Icon_Battle_Candy_v2.webp"),
     genderIcons: {
@@ -165,7 +157,7 @@ export async function createWorld(ctx: CanvasRenderingContext2D, options: {
       [PLAYER_GENDER_FEMALE]: image(playerGenderIconPath(PLAYER_GENDER_FEMALE)),
     },
     isDeveloper: id => Boolean(id && players.get(id)?.developer),
-    isLocallyInvisible: () => false,
+    isLocallyInvisible: id => options.invisible?.(id) ?? false,
     isGuest: id => Boolean(id && players.get(id)?.guest),
     profileIcon: () => 0,
     playerGender: id => (id ? players.get(id)?.gender : undefined) ?? PLAYER_GENDER_UNSET,
@@ -177,6 +169,54 @@ export async function createWorld(ctx: CanvasRenderingContext2D, options: {
     healthBarHeight: platePixels(WORLD_HEALTH_BAR_HEIGHT),
     healthBarRadius: plateSize(WORLD_HEALTH_BAR_RADIUS),
   });
+}
+
+/**
+ * The world renderers as the game builds them (world-render-runtime.ts, player-identity-wiring.ts), with fake
+ * players behind the identity lookups. Draws in world space: callers scale the context by `camera.zoom`.
+ */
+export async function createWorld(ctx: CanvasRenderingContext2D, options: {
+  zoom: number;
+  /** The canvas in CSS pixels, for the renderers' off-screen culling. */
+  viewport: { width: number; height: number };
+  players?: readonly FakePlayer[];
+  enemySprites?: Record<string, LoadedEnemySprite>;
+  /** A fallen local or remote player, and the clock their fall is timed against. */
+  localDeath?: () => PlayerDeathAnimationState | null;
+  remoteDeath?: (identity: string) => PlayerDeathAnimationState | null;
+  nowMs?: () => number;
+  /** Chat to show over players instead of each player's `chat` line. */
+  chat?: ChatMessage[];
+  invisible?: (identity: string | undefined) => boolean;
+}) {
+  const players = new Map((options.players ?? []).map(player => [player.id, player]));
+  // Name tags are looked up globally: every world on the page answers for its own players.
+  for (const player of players.values()) taggedPlayers.set(player.id, player);
+  bindPlayerNameTags({
+    prefix: id => {
+      const player = id ? taggedPlayers.get(id) : undefined;
+      return `${player?.developer ? "[dev]" : ""}${player?.guildTag ? `[${player.guildTag}]` : ""}`;
+    },
+    revision: () => 0,
+    prestigeLevel: id => (id ? taggedPlayers.get(id)?.prestige : 0) ?? 0,
+  });
+  const assets = await playerAppearance();
+  const primitives = createCanvasPrimitives(ctx);
+  const camera: Camera = { x: 0, y: 0, zoom: options.zoom };
+  let gameTime = 0;
+  const shadowSprite = loadActorShadowSprite();
+  const duelPlatformArt = new Image();
+  // As canvas-runtime.ts drawActorShadow.
+  const drawShadow = (x: number, y: number, shadowWidth: number, alpha = .38) => {
+    const shadowHeight = actorShadowDimensions(shadowWidth).height;
+    ctx.save();
+    ctx.globalAlpha = alpha;
+    if (shadowSprite.complete && shadowSprite.naturalWidth > 0) {
+      ctx.drawImage(residentDrawable(shadowSprite), x - shadowWidth / 2, y - shadowHeight / 2, Math.round(shadowWidth), shadowHeight);
+    }
+    ctx.restore();
+  };
+  const identity = createIdentity(ctx, camera, options.viewport, [...players.values()], { chat: options.chat, invisible: options.invisible });
   const enemies: EnemyState[] = [];
   const local: PlayerState = {
     x: 0, y: 0, r: 16, speed: 0, hp: 1, baseMaxHp: 1, maxHp: 1, damage: 1, attackRate: 1, projectileSpeed: 1, projectileCount: 1,
@@ -189,9 +229,9 @@ export async function createWorld(ctx: CanvasRenderingContext2D, options: {
     viewport: () => options.viewport,
     devicePixelRatio: () => canvasRenderPixelRatio(window.devicePixelRatio || 1),
     gameTime: () => gameTime,
-    nowMs: () => performance.now(),
-    localDeath: () => null,
-    remoteDeath: () => null,
+    nowMs: options.nowMs ?? (() => performance.now()),
+    localDeath: options.localDeath ?? (() => null),
+    remoteDeath: options.remoteDeath ?? (() => null),
     drawPlayerAppearance: (rendered, alpha) => drawStartingPlayer(ctx, assets, {
       ...rendered,
       gameTime: rendered.gameTime ?? gameTime,

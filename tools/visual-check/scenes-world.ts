@@ -4,29 +4,14 @@ import { targetCameraZoom } from "../../src/game/runtime/render/camera";
 import { enemySpriteVerticalBounds } from "../../src/game/runtime/render/actor-renderer";
 import { MAP_ENEMY_SPRITE_GROUPS } from "../../src/game/runtime/render/map-asset-groups";
 import { setEnemyHpNumbersEnabled } from "../../src/ui/enemy-hp-setting";
-import { drawStartingPlayer } from "../../src/game/player-appearance";
-import { ITEM_PRESENTATIONS } from "../../src/game/item-presentation";
+import { setOwnNamePlateEnabled } from "../../src/ui/name-plate-setting";
 import { ENEMY_SPRITE_LAYOUTS } from "../../src/game/enemy-sprite-layouts.mjs";
 import { ENEMY_TYPES, type EnemyKind } from "../../src/game/enemies";
-import { ARMOR_CLASSES, BOOT_STYLES, GEAR_GRADES } from "../../shared/gear-grades";
-import { gradeItemId, isGradeItemId } from "../../shared/grade-equipment";
+import type { EnemyState } from "../../src/game/runtime/types";
 import { PLAYER_GENDER_FEMALE, PLAYER_GENDER_MALE } from "../../shared/player-gender";
 import { drawUntilStable } from "./determinism";
-import { createWorld, enemySprites, fakeEnemy, resetCanvas, sceneCanvas, section, type FakePlayer } from "./world";
-
-const LABEL_FONT = "bold 11px Arial, sans-serif";
-
-function label(ctx: CanvasRenderingContext2D, text: string, x: number, y: number, align: CanvasTextAlign = "center") {
-  ctx.save();
-  ctx.font = LABEL_FONT;
-  ctx.textAlign = align;
-  ctx.textBaseline = "top";
-  ctx.fillStyle = "#101410";
-  ctx.fillText(text, x + 1, y + 1);
-  ctx.fillStyle = "#f2f2e8";
-  ctx.fillText(text, x, y);
-  ctx.restore();
-}
+import { chatLine, createWorld, enemySprites, fakeEnemy, label, resetCanvas, sceneCanvas, section, type FakePlayer } from "./world";
+import { gear } from "./scenes-gear";
 
 /** The phone framing: a 390 × 780 canvas at the base attack range (camera.ts). */
 const PHONE_ZOOM = targetCameraZoom(BASE_ATTACK_RANGE, { width: 390, height: 780 });
@@ -78,75 +63,103 @@ async function plates() {
     setEnemyHpNumbersEnabled(true);
     ctx.restore();
   };
-  await drawUntilStable(draw);
+  const panels = [await ownPlateOff(), await chatBubbles(), await helmetHeights(), await webkitMetrics()];
+  await drawUntilStable(() => { draw(); panels.forEach(panel => panel()); });
 }
 
-const GEAR_REFINES = [0, 10, 20] as const;
-const WEAPON_CYCLE = ["bow", "sword", "staff", "bow"] as const;
+type PlatePlayer = FakePlayer & { local?: boolean };
 
-/** One character per grade × refine × armour class: helmet, armour, boots and a weapon. */
-async function gear() {
-  const cell = 74, rowHeight = 96, labelWidth = 74;
-  const columns = GEAR_REFINES.length * ARMOR_CLASSES.length;
-  const width = labelWidth + columns * cell, height = 40 + GEAR_GRADES.length * rowHeight;
-  const host = section("Gear · grade × refine (★0 ★10 ★20) × class (light medium heavy magic) · zoom 1");
-  const scene = sceneCanvas(host, width, height);
-  const world = await createWorld(scene.ctx, { zoom: 1, viewport: { width, height } });
-  const others = Object.entries(ITEM_PRESENTATIONS).filter(([id, presentation]) => presentation?.world && !isGradeItemId(id)).map(([id]) => id);
-  const perRow = 10;
-  const otherHost = section(`Other gear · each piece with world art that is not graded (${others.length})`);
-  const otherWidth = perRow * 96, otherHeight = Math.ceil(others.length / perRow) * 110 + 10;
-  const otherScene = sceneCanvas(otherHost, otherWidth, otherHeight);
-  const draw = () => {
+/** A row of players at the phone framing, each at its own spot; returns the drawer. */
+async function plateRow(title: string, players: PlatePlayer[], options: Parameters<typeof createWorld>[1] extends infer O ? Partial<O> : never = {}, height = 260) {
+  const width = 390;
+  const scene = sceneCanvas(section(title), width, height);
+  const world = await createWorld(scene.ctx, { zoom: PHONE_ZOOM, viewport: { width, height }, players, ...options });
+  const z = PHONE_ZOOM;
+  return (before?: () => void, after?: () => void) => {
+    before?.();
     resetCanvas(scene);
-    const { ctx } = scene;
-    GEAR_REFINES.forEach((refine, refineIndex) => ARMOR_CLASSES.forEach((armorClass, classIndex) => {
-      label(ctx, `★${refine} ${armorClass}`, labelWidth + (refineIndex * ARMOR_CLASSES.length + classIndex + .5) * cell, 6);
-    }));
-    GEAR_GRADES.forEach((grade, gradeIndex) => {
-      const rowTop = 30 + gradeIndex * rowHeight;
-      label(ctx, grade, 6, rowTop + 40, "left");
-      GEAR_REFINES.forEach((refine, refineIndex) => ARMOR_CLASSES.forEach((armorClass, classIndex) => {
-        const column = refineIndex * ARMOR_CLASSES.length + classIndex;
-        const x = labelWidth + (column + .5) * cell;
-        const y = rowTop + 52;
-        drawStartingPlayer(ctx, world.assets, {
-          x, y, facing: 0, moving: false, gameTime: 0, skinTone: classIndex,
-          headItem: gradeItemId("helmet", grade, armorClass),
-          chestItem: gradeItemId("armor", grade, armorClass),
-          feetItem: gradeItemId("boots", grade, BOOT_STYLES[classIndex % BOOT_STYLES.length]),
-          rightHandItem: gradeItemId(WEAPON_CYCLE[classIndex], grade),
-          leftHandItem: "",
-          itemRefine: () => refine,
-        });
-      }));
+    world.updateSpeechBubbles();
+    scene.ctx.save();
+    scene.ctx.scale(z, z);
+    players.forEach((player, index) => {
+      const x = (width / players.length) * (index + .5) / z, y = (height - 50) / z;
+      if (player.local) world.drawLocalPlayer(player, x, y);
+      else world.drawRemotePlayer(player, x, y);
     });
-    resetCanvas(otherScene);
-    others.forEach((itemId, index) => {
-      const x = (index % perRow + .5) * 96;
-      const top = Math.floor(index / perRow) * 110;
-      const slot = ITEM_PRESENTATIONS[itemId as keyof typeof ITEM_PRESENTATIONS]!.world!;
-      const worn = slot.kind === "LEGS" ? { feetItem: itemId } : slot.layer === "HEAD" ? { headItem: itemId }
-        : slot.layer === "CHEST" ? { chestItem: itemId } : { rightHandItem: itemId };
-      drawStartingPlayer(otherScene.ctx, world.assets, { x, y: top + 62, facing: 0, moving: false, gameTime: 0, rightHandItem: "", leftHandItem: "", ...worn });
-      label(otherScene.ctx, itemId.length > 15 ? `${itemId.slice(0, 14)}…` : itemId, x, top + 94);
-    });
+    scene.ctx.restore();
+    after?.();
   };
-  await drawUntilStable(draw);
+}
+
+/** Settings > Show My Name Plate off: only the player's own plate goes; its chat bubble and other plates stay. */
+async function ownPlateOff() {
+  const me: PlatePlayer = { id: "own-off", local: true, name: "Hidden Me", power: 2_222, hp: 50, maxHp: 100, chat: "my plate is off", headItem: "rare_light_helmet" };
+  const other: PlatePlayer = { id: "own-other", name: "Still Shown", power: 3_333, hp: 70, maxHp: 100, fighting: true };
+  const draw = await plateRow("Plates · Show My Name Plate off: no plate over me, my bubble stays, others keep theirs", [me, other]);
+  return () => draw(() => setOwnNamePlateEnabled(false), () => setOwnNamePlateEnabled(true));
+}
+
+/**
+ * Chat bubbles: the newest three of a player's messages stacked, newest nearest the head; an expired one, a
+ * system notice and a duel announcement never show.
+ */
+async function chatBubbles() {
+  const talker: PlatePlayer = { id: "talker", name: "Chatty", power: 4_444, hp: 1, maxHp: 1 };
+  const quiet: PlatePlayer = { id: "quiet", name: "Quiet", power: 5_555, hp: 1, maxHp: 1 };
+  const chat = [
+    chatLine(talker, "too old to show", 8_000, 1), chatLine(talker, "oldest still up", 7_000, 2), chatLine(talker, "middle", 3_000, 3),
+    chatLine(talker, "newer", 2_000, 4), chatLine(talker, "newest", 1_000, 5),
+    { ...chatLine(quiet, "Quiet has logged in.", 1_000, 6), sender: "system", senderName: "" },
+    { ...chatLine(quiet, "A duel finished.", 1_000, 7), sender: "duel", senderName: "DUEL", replayId: 1n },
+  ];
+  return plateRow("Plates · chat bubbles: newest three stacked, newest nearest; system and duel notices stay in chat", [talker, quiet], { chat }, 330);
+}
+
+/** The plate sits over the top of the art: a bare head, a felt cap, an antler hood, the tallest helmet; and Invisible. */
+async function helmetHeights() {
+  const players: PlatePlayer[] = [
+    { id: "bare", name: "Bare", power: 10, hp: 1, maxHp: 1 },
+    { id: "cap", name: "Cap", power: 20, hp: 1, maxHp: 1, headItem: "crude_light_helmet" },
+    { id: "antlers", name: "Antlers", power: 30, hp: 1, maxHp: 1, headItem: "mythic_light_helmet" },
+    { id: "tallest", name: "Tallest", power: 40, hp: 1, maxHp: 1, headItem: "celestial_medium_helmet" },
+    { id: "hiding", local: true, name: "Hiding", power: 50, hp: 60, maxHp: 100, headItem: "celestial_medium_helmet" },
+  ];
+  return plateRow("Plates · over a bare head, a cap, an antler hood, the tallest helmet; my own plate while Invisible", players, { invisible: id => id === "hiding" });
+}
+
+/**
+ * Plates as Safari measures text: no glyph bounds (zero ascent), only the font box. Text must still sit on its
+ * lines, not jump up or clip.
+ */
+async function webkitMetrics() {
+  const players: PlatePlayer[] = [
+    { id: "wk-guest", name: "Guest7313", guest: true, power: 6_161, hp: 40, maxHp: 100, fighting: true },
+    { id: "wk-desc", name: "Jiggly_gpqy", power: 7_171, hp: 1, maxHp: 1, gender: PLAYER_GENDER_FEMALE },
+    { id: "wk-me", local: true, name: "Safari Me", power: 8_181, hp: 90, maxHp: 100 },
+  ];
+  const draw = await plateRow("Plates · Safari's text metrics (no glyph bounds): the font-box fallback", players);
+  const proto = CanvasRenderingContext2D.prototype;
+  const real = proto.measureText;
+  const webkit = function (this: CanvasRenderingContext2D, text: string) {
+    const metrics = real.call(this, text);
+    return { width: metrics.width, actualBoundingBoxAscent: 0, actualBoundingBoxDescent: 0, fontBoundingBoxAscent: metrics.fontBoundingBoxAscent,
+      fontBoundingBoxDescent: metrics.fontBoundingBoxDescent } as TextMetrics;
+  };
+  return () => draw(() => { proto.measureText = webkit; }, () => { proto.measureText = real; });
 }
 
 type Motion = "idle" | "walk" | "attack";
-const MOTIONS: Motion[] = ["idle", "walk", "attack"];
 
 /**
  * One enemy at one frame of one motion, through drawEnemy and its animation sampler: a first, clipped-out
- * draw starts the motion, the second lands on the middle of frame `frame`.
+ * draw starts the motion, the second lands on the middle of frame `frame`. `extra` is the rest of its state
+ * (a death under way, a hit).
  */
-function drawEnemyFrame(world: Awaited<ReturnType<typeof createWorld>>, ctx: CanvasRenderingContext2D, kind: string, motion: Motion, frame: number, x: number, y: number, facingX: -1 | 1 = 1) {
+function drawEnemyFrame(world: Awaited<ReturnType<typeof createWorld>>, ctx: CanvasRenderingContext2D, kind: string, motion: Motion, frame: number, x: number, y: number, facingX: -1 | 1 = 1, extra: Partial<EnemyState> = {}) {
   const animation = ENEMY_SPRITE_LAYOUTS[kind].animation!;
   const clip = animation.animations[motion];
   const start = 100;
-  const enemy = fakeEnemy(kind, x, y, { hideStatus: true, facingX, vx: motion === "walk" ? 50 : 0 });
+  const enemy = fakeEnemy(kind, x, y, { hideStatus: true, facingX, vx: motion === "walk" ? 50 * facingX : 0 });
   const definition = ENEMY_TYPES[kind as EnemyKind] ?? enemy.definition!;
   const middle = (frame + .5) * clip.frameDurationMs;
   if (motion === "attack") {
@@ -160,12 +173,22 @@ function drawEnemyFrame(world: Awaited<ReturnType<typeof createWorld>>, ctx: Can
   ctx.clip();
   world.actor.drawEnemy(enemy);
   ctx.restore();
+  Object.assign(enemy, extra);
   world.setGameTime(motion === "attack" ? start : start + middle / 1_000);
   world.actor.drawEnemy(enemy);
 }
 
-function framePicks(count: number) {
-  return [...new Set([0, Math.floor(count / 2)])];
+type EnemyCell = { name: string; motion: Motion; frame: number; facingX: -1 | 1; extra?: Partial<EnemyState> };
+/** Idle and walk loops, the attack from its start, the same facing left, and the death fade. */
+function enemyCells(kind: string): EnemyCell[] {
+  const middle = (motion: Motion) => Math.floor(ENEMY_SPRITE_LAYOUTS[kind].animation!.animations[motion].frames.length / 2);
+  return [
+    { name: "idle 0", motion: "idle", frame: 0, facingX: 1 }, { name: `idle ${middle("idle")}`, motion: "idle", frame: middle("idle"), facingX: 1 },
+    { name: `walk ${middle("walk")}`, motion: "walk", frame: middle("walk"), facingX: 1 },
+    { name: "attack 0", motion: "attack", frame: 0, facingX: 1 }, { name: `attack ${middle("attack")}`, motion: "attack", frame: middle("attack"), facingX: 1 },
+    { name: "← walk", motion: "walk", frame: middle("walk"), facingX: -1 }, { name: "← attack", motion: "attack", frame: middle("attack"), facingX: -1 },
+    { name: "dying", motion: "idle", frame: 0, facingX: 1, extra: { remoteCombatDeathProgress: .5 } },
+  ];
 }
 
 /** Map → its enemy kinds, then "unplaced" for kinds no authored map lists (Endless and the like). */
@@ -189,12 +212,13 @@ async function enemies() {
   const labelWidth = 120;
   const draws: (() => void)[] = [];
   for (const [mapId, kinds] of groups) {
-    const cellWidth = Math.max(...kinds.map(kind => ENEMY_SPRITE_LAYOUTS[kind].animation!.w)) + 12;
-    const rowHeights = kinds.map(kind => { const animation = ENEMY_SPRITE_LAYOUTS[kind].animation!; return animation.bottom - animation.top + 34; });
-    const cells = kinds.map(kind => MOTIONS.flatMap(motion => framePicks(ENEMY_SPRITE_LAYOUTS[kind].animation!.animations[motion].frames.length).map(frame => ({ motion, frame }))));
+    const cells = kinds.map(enemyCells);
     const columns = Math.max(...cells.map(row => row.length));
+    // Frames carry transparent margins: a cell narrower than the widest frame still holds its art.
+    const cellWidth = Math.min(Math.max(...kinds.map(kind => ENEMY_SPRITE_LAYOUTS[kind].animation!.w)) + 12, Math.floor((1280 - labelWidth) / columns));
+    const rowHeights = kinds.map(kind => { const animation = ENEMY_SPRITE_LAYOUTS[kind].animation!; return animation.bottom - animation.top + 34; });
     const width = labelWidth + columns * cellWidth, height = rowHeights.reduce((sum, value) => sum + value, 0);
-    const host = section(`Enemies · ${mapId} · idle / walk / attack at frames 0 and middle`);
+    const host = section(`Enemies · ${mapId} · idle and walk loops, the attack, facing left, dying`);
     const scene = sceneCanvas(host, width, height);
     const world = await createWorld(scene.ctx, { zoom: 1, viewport: { width, height }, enemySprites: sprites });
     draws.push(() => {
@@ -203,10 +227,10 @@ async function enemies() {
       kinds.forEach((kind, row) => {
         const bounds = enemySpriteVerticalBounds(sprites[kind], ENEMY_TYPES[kind as EnemyKind]?.r ?? 18);
         label(scene.ctx, kind, 6, top + 6, "left");
-        cells[row].forEach(({ motion, frame }, column) => {
+        cells[row].forEach(({ name, motion, frame, facingX, extra }, column) => {
           const x = labelWidth + (column + .5) * cellWidth;
-          drawEnemyFrame(world, scene.ctx, kind, motion, frame, x, top + 28 - bounds.top);
-          label(scene.ctx, `${motion} ${frame}`, x, top + 4);
+          drawEnemyFrame(world, scene.ctx, kind, motion, frame, x, top + 28 - bounds.top, facingX, extra);
+          label(scene.ctx, name, x, top + 4);
         });
         top += rowHeights[row];
       });
@@ -226,10 +250,15 @@ async function parts() {
   }
   const sprites = await enemySprites([...families.values()].flat());
   const labelWidth = 120, cellWidth = 120;
+  // Aimed at a target up and right, down and right, and up and left (dx, dy from the enemy).
   const poses = [
-    { name: "right", facingX: 1 as const, engaged: false },
-    { name: "left", facingX: -1 as const, engaged: false },
-    { name: "aiming", facingX: 1 as const, engaged: true },
+    { name: "right", facingX: 1 as const, engaged: false, target: [200, -120] },
+    { name: "left", facingX: -1 as const, engaged: false, target: [200, -120] },
+    { name: "aim ↗", facingX: 1 as const, engaged: true, target: [200, -120] },
+    { name: "aim ↘", facingX: 1 as const, engaged: true, target: [200, 120] },
+    { name: "aim ↖", facingX: -1 as const, engaged: true, target: [-200, -120] },
+    { name: "hit", facingX: 1 as const, engaged: false, target: [200, -120], extra: { hurt: .1 } },
+    { name: "dying", facingX: 1 as const, engaged: false, target: [200, -120], extra: { remoteCombatDeathProgress: .5 } },
   ];
   const draws: (() => void)[] = [];
   for (const [family, kinds] of families) {
@@ -246,7 +275,7 @@ async function parts() {
         label(scene.ctx, kind, 6, top + 6, "left");
         poses.forEach((pose, column) => {
           const x = labelWidth + (column + .5) * cellWidth, y = top + 20 - bounds.top;
-          const enemy = fakeEnemy(kind, x, y, { hideStatus: true, facingX: pose.facingX, engaged: pose.engaged, combatTargetX: x + 200, combatTargetY: y - 120 });
+          const enemy = fakeEnemy(kind, x, y, { hideStatus: true, facingX: pose.facingX, engaged: pose.engaged, combatTargetX: x + pose.target[0], combatTargetY: y + pose.target[1], ...pose.extra });
           world.setGameTime(0);
           world.actor.drawEnemy(enemy);
           label(scene.ctx, pose.name, x, top + 4);

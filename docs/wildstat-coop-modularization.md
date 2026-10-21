@@ -1,6 +1,6 @@
 # Multiplayer client module map
 
-`src/wildstat-coop.ts` is the browser-facing composition root. It preserves the existing `window.wildstatCoop`, named export, default export, and Vite entry contract, but it must remain below 1,000 lines. `src/coop/wildstat-coop-boundary.test.ts` enforces that limit.
+`src/wildstat-coop.ts` is the browser-facing composition root. It preserves the existing `window.wildstatCoop`, named export, default export, and Vite entry contract, but it must remain below 1,000 lines. `npm run check:code-health` (`scripts/check-code-health.mjs`) enforces that limit.
 
 The original extraction was behavior-preserving. Later realtime protocol work changed generated bindings and subscription queries without moving those responsibilities back into the composition root; public method names and ownership boundaries remain stable.
 

@@ -126,7 +126,6 @@ assignments, texture budgets and the unchanged in-game hit/death presentation.
 ```sh
 npm run art:unity:prepare  # create/update tool files, without launching Unity
 npm run art:unity:check    # compile against installed Unity APIs; run C# math checks
-npx vitest run scripts/unity-sprite-exporter.test.ts scripts/repository-layout.test.ts
 ```
 
 The compile check uses the installed Unity C# compiler and references, not stub

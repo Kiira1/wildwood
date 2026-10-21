@@ -523,8 +523,7 @@ export function createPresenceRuntime(deps: PresenceRuntimeDeps) {
   // restriction twice, the motion row three times, and playerProgress,
   // playerResearch and an inventory decode on every packet just to learn the
   // owned speed. Now a heartbeat makes 7 and a start or stop 8, and every
-  // accepted position, velocity, facing and row write is what it was
-  // (movement-state-equivalence.test.ts replays the old code against this).
+  // accepted position, velocity, facing and row write is what it was.
   // The caller has just made the restriction lookup itself, through
   // blockedSession, to drop a blocked tab's queued packets quietly.
   function applyMovementState(

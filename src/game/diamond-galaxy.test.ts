@@ -1,11 +1,9 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
-  DEVELOPER_ITEM_IDS, DIAMOND_GALAXY_ARMOR, DIAMOND_GALAXY_BOOTS, DIAMOND_GALAXY_BOW, DIAMOND_GALAXY_HELMET,
-  GALAXY_ARMOR, GALAXY_BOOTS, GALAXY_BOW, GALAXY_HELMET, canDestroyEquipment, isCosmeticOnlyItem, itemDefinition,
+  DIAMOND_GALAXY_ARMOR, DIAMOND_GALAXY_BOOTS, DIAMOND_GALAXY_BOW, DIAMOND_GALAXY_HELMET,
+  GALAXY_ARMOR, GALAXY_BOOTS, GALAXY_BOW, GALAXY_HELMET, isCosmeticOnlyItem, itemDefinition,
 } from "../../shared/items";
-import { PATREON_DIAMOND_ITEM_IDS, patreonLooks, wearsUnlentLook } from "../../shared/patreon-cosmetics";
-import { cosmeticUnlocks } from "../../shared/cosmetic-conversion";
-import { isOxShopItem } from "../../shared/ox-shop";
+import { PATREON_DIAMOND_ITEM_IDS } from "../../shared/patreon-cosmetics";
 import { galaxyFinishFrame } from "./galaxy-finish";
 import { appearanceHasGalaxyFinish, itemArtMarkup, itemFinish, itemPresentation } from "./item-presentation";
 import { cosmeticInventoryStacks, inventoryFromSave } from "./inventory";
@@ -13,6 +11,7 @@ import { cosmeticInventoryStacks, inventoryFromSave } from "./inventory";
 const DIAMOND_SET = [DIAMOND_GALAXY_HELMET, DIAMOND_GALAXY_ARMOR, DIAMOND_GALAXY_BOOTS, DIAMOND_GALAXY_BOW];
 const GALAXY_SET = [GALAXY_HELMET, GALAXY_ARMOR, GALAXY_BOOTS, GALAXY_BOW];
 
+// Lending, wearing, a reload and a lapse are played in tests/scenarios/gear.test.ts (GEAR-20).
 describe("the Diamond Galaxy set", () => {
   it("is four Patreon Diamond cosmetics on the Galaxy silhouettes, in the Diamond sky", () => {
     expect(DIAMOND_SET.map(id => itemDefinition(id)?.slot)).toEqual(["HEAD", "CHEST", "FEET", "HAND"]);
@@ -29,15 +28,7 @@ describe("the Diamond Galaxy set", () => {
     expect(itemArtMarkup(GALAXY_ARMOR)).toContain("var(--galaxy-art-texture,");
   });
 
-  it("is never owned outright: not developer stock, not sold, not a bought look, not destroyable", () => {
-    for (const id of DIAMOND_SET) {
-      expect(DEVELOPER_ITEM_IDS, id).not.toContain(id);
-      expect(isOxShopItem(id), id).toBe(false);
-      expect(canDestroyEquipment(id), id).toBe(false);
-    }
-    // Even written into the bought looks, it does not count.
-    expect(cosmeticUnlocks(JSON.stringify(DIAMOND_SET))).toEqual([]);
-  });
+
 
   it("stays on as the server saved it while the membership is still loading, so a sign-in does not save it off", () => {
     const loading = inventoryFromSave("[]", "", "", "", false, false, "", "", "", DIAMOND_GALAXY_ARMOR, "", "", "", "[]", null);
@@ -48,20 +39,7 @@ describe("the Diamond Galaxy set", () => {
     expect(inventoryFromSave("[]", "", "", "", false, false, "", "", "", GALAXY_ARMOR, "", "", "", "[]", null).cosmeticChest).toBe(GALAXY_ARMOR);
   });
 
-  it("shows in Cosmetics only while a membership lends it, and the server takes it off once it stops", () => {
-    const save = (lent: readonly string[] | null) => inventoryFromSave("[]", "", "", "", false, false, "", "", "", DIAMOND_GALAXY_ARMOR, "", "", "", "[]", lent);
-    const lent = save(patreonLooks(true));
-    expect(cosmeticInventoryStacks(lent).map(stack => stack.itemId)).toEqual(expect.arrayContaining(DIAMOND_SET));
-    expect(lent.cosmeticChest).toBe(DIAMOND_GALAXY_ARMOR);
-    const lapsed = save(patreonLooks(false));
-    expect(cosmeticInventoryStacks(lapsed).map(stack => stack.itemId)).not.toContain(DIAMOND_GALAXY_ARMOR);
-    // Not offered once the membership stops; worn, it stays as saved until the server's next check
-    // takes it off (spacetimedb/src/diamond-galaxy.test.ts), so a guess here never saves anything off.
-    expect(lapsed.cosmeticChest).toBe(DIAMOND_GALAXY_ARMOR);
-    expect(wearsUnlentLook({ cosmeticChest: DIAMOND_GALAXY_ARMOR }, patreonLooks(false))).toBe(true);
-    expect(wearsUnlentLook({ cosmeticChest: DIAMOND_GALAXY_ARMOR }, patreonLooks(true))).toBe(false);
-    expect(wearsUnlentLook({ cosmeticChest: GALAXY_ARMOR }, [])).toBe(false);
-  });
+
 });
 
 describe("the sky finish's palettes", () => {

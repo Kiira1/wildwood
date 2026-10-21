@@ -15,6 +15,7 @@
 import { createGameBootstrap } from '../../game-bootstrap';
 import { createEnemyLifecycle } from '../../enemies/enemy-lifecycle';
 import { createEnemySimulation, LOCAL_REGULAR_ENEMY_TARGET_ID } from '../../enemies/enemy-simulation';
+import type { RemoteCombatStats, RemotePlayer } from '../../../../wildstat-coop';
 import { createPlayerCombatController, type PlayerCombatController } from '../../player-combat-controller';
 import { createPlayerController, type PlayerController } from '../../player-controller';
 import { createMapController } from '../../map-controller';
@@ -254,12 +255,18 @@ function installBalance(mapId: string) {
  * One virtual player, built and ready to run. `run(seconds)` advances the
  * simulation; `report()` is everything measured so far.
  */
-export function createVirtualPlayer(profile: VirtualPlayerProfile, options: { duel?: BossDuelSetup } = {}) {
-  const clock = { ms: SIM_EPOCH_MS };
+export function createVirtualPlayer(profile: VirtualPlayerProfile, options: {
+  duel?: BossDuelSetup;
+  /** For tests: the browser storage it keeps (a reload passes the last page's), and the clock it starts at. */
+  storage?: ReturnType<typeof memoryStorage>; startMs?: number;
+  /** Respawn and boss-fight memory read the simulated clock, as the browser's would read the real one (the Lab keeps the wall clock). */
+  memoryOnSimClock?: boolean;
+} = {}) {
+  const clock = { ms: options.startMs ?? SIM_EPOCH_MS };
   const random = mulberry32(profile.seed);
   const restoreGlobals = installSimGlobals(clock, random);
   const identity = `vp-${profile.name}`;
-  const storage = memoryStorage();
+  const storage = options.storage ?? memoryStorage();
   storage.setItem(AUTO_FARM_ADVANCE_KEY, profile.advance ? '1' : '0');
   if (profile.moveAt) writeMovePower(profile.moveAt, () => storage as Storage);
   storage.setItem(AUTO_FARM_PULL_KEY, profile.pull ? '1' : '0');
@@ -299,8 +306,8 @@ export function createVirtualPlayer(profile: VirtualPlayerProfile, options: { du
   let running = false;
   let gameTime = 0;
   let deathAt: number | null = null;
-  const respawnMemory = createRespawnMemory(storage, () => identity);
-  const bossFightMemory = createBossFightMemory(storage, () => identity);
+  const respawnMemory = createRespawnMemory(storage, () => identity, options.memoryOnSimClock ? () => clock.ms : undefined);
+  const bossFightMemory = createBossFightMemory(storage, () => identity, options.memoryOnSimClock ? () => clock.ms : undefined);
   const enemyRespawnKey = (site: typeof spawnSites[number]) => `enemy:${currentMapId}:${site.id}:${site.type}:${site.campName}`;
   const noop = () => {};
   const enemyLifecycle = createEnemyLifecycle(enemies, spawnSites, noop, {
@@ -380,9 +387,13 @@ export function createVirtualPlayer(profile: VirtualPlayerProfile, options: { du
 
   let autoFarm!: AutoFarmController;
   let lastCommand = { x: 0, y: 0 };
+  /** Keys or stick held by whoever drives the player (tests); autofarm yields to it as it does to a player. */
+  let manualInput: { x: number; y: number; source: 'none' | 'keyboard' } = { x: 0, y: 0, source: 'none' };
   let playerCombat!: PlayerCombatController;
   let playerController!: PlayerController;
   let kills = 0;
+  /** Kills by what the game reports them as (an enemy type, or an Endless site), as a kill report sends them. */
+  const claims: Record<string, number> = {};
   const onDeath: (() => void)[] = [];
   const onBossDefeated: ((mapId: string) => void)[] = [];
 
@@ -441,6 +452,9 @@ export function createVirtualPlayer(profile: VirtualPlayerProfile, options: { du
     }
     engageEnemy(enemy, targetId, startedAtTick);
   }
+  // Other players on the map, for tests: none unless one is placed.
+  const remotePlayers: RemotePlayer[] = [];
+  const remoteCombatStats = new Map<string, RemoteCombatStats>();
   const proceduralBoss = createProceduralBossController({
     mapId: () => currentMapId, state: mapId => ({ ready: true, completed: endlessCompleted, boss: personalBosses.proceduralState(mapId) }),
     enemies, player, spawn: spawnFromSite,
@@ -453,7 +467,8 @@ export function createVirtualPlayer(profile: VirtualPlayerProfile, options: { du
     (amount, source) => taken(source?.generatedBoss ? 'boss' : source && (source.definition ?? ENEMY_TYPES[source.type])?.elite ? 'elite' : 'regular',
       () => playerCombat.damagePlayer(amount, source)), {
       currentMapId: () => currentMapId, serverNowMs: () => clock.ms, localIdentity: () => identity,
-      remotePlayers: () => [], playerMovementSpeed: () => player.speed * movementMultiplier(),
+      remotePlayers: () => remotePlayers, remoteCombatStats: id => remoteCombatStats.get(id),
+      playerMovementSpeed: () => player.speed * movementMultiplier(),
       playerAttackRange: () => weaponAttackRange(weapon(), player.attackRange),
       pullAggro: enemy => autoFarm.pulls(enemy) || autoFarm.forced(enemy),
     });
@@ -552,7 +567,7 @@ export function createVirtualPlayer(profile: VirtualPlayerProfile, options: { du
       regularEnemyRespawn.schedule(site);
       respawnMemory.remember(enemyRespawnKey(site), (site.respawnAt - gameTime) * 1000);
     },
-    recordRegularEnemyDefeat: () => { kills += 1; earn(1, false); }, incrementKills: noop,
+    recordRegularEnemyDefeat: (_mapId, enemy) => { kills += 1; claims[enemy] = (claims[enemy] ?? 0) + 1; earn(1, false); }, incrementKills: noop,
     currentMapId: () => currentMapId, spawnBurst: noop, spawnParticle: noop,
     spawnDamageNumber: (x, y, _amount, _critical, damageTaken, reflected) => {
       if (damageTaken || reflected) return;
@@ -590,7 +605,7 @@ export function createVirtualPlayer(profile: VirtualPlayerProfile, options: { du
     clearPlayerCombat: () => playerCombat.clearPendingThrow(),
     resetBosses: () => bossController.resetAll(),
     onResetUI: () => { gameTime = 0; },
-    movement: dt => { const command = autoFarm.movement({ x: 0, y: 0, source: 'none' }, dt); lastCommand = command; return command; },
+    movement: dt => { const command = autoFarm.movement(manualInput, dt); lastCommand = command; return command; },
     isMapTransitioning: () => mapController.isMapTransitioning(),
     resolvePortalCollision: () => mapController.resolvePortalCollision(),
     resolveBossCollision: () => bossController.forMap(currentMapId)?.resolveCollision(),
@@ -798,12 +813,12 @@ export function createVirtualPlayer(profile: VirtualPlayerProfile, options: { du
     report.visits.push(visit);
   }
 
-  async function run(seconds: number, onProgress?: (report: VirtualPlayerReport) => void) {
+  async function run(seconds: number, onProgress?: (report: VirtualPlayerReport) => void, runOptions: { autofarm?: boolean } = {}) {
     const wallStart = process.hrtime.bigint();
     const end = clock.ms + seconds * 1000;
     let nextSample = clock.ms;
     let nextProgress = clock.ms + 1_800_000;
-    if (!autoFarm.state().active) autoFarm.start([]);
+    if (runOptions.autofarm !== false && !autoFarm.state().active) autoFarm.start([]);
     while (clock.ms < end) {
       const from = currentMapId;
       step();
@@ -861,6 +876,21 @@ export function createVirtualPlayer(profile: VirtualPlayerProfile, options: { du
     bossShare,
     power,
     mapId: () => currentMapId,
+    /** The running game's pieces, for tests that drive or inspect them (tests/scenarios). */
+    parts: {
+      player, enemies, spawnSites, bosses, bossHazards, projectileStore, inventory, storage, clock, research, mapConfig,
+      autoFarm: () => autoFarm, playerCombat: () => playerCombat, mapController, bossController, personalBosses, proceduralBoss, enemySimulation,
+      /** Every kill so far, as the game reports them to the server. */
+      claims: () => ({ ...claims }),
+      /** Another player on the map, fighting with these stats (as their rows would say). */
+      addRemotePlayer(remote: RemotePlayer, stats: RemoteCombatStats) { remotePlayers.push(remote); remoteCombatStats.set(remote.id, stats); },
+      /** Holds a direction (unit-ish x/y, as the keys give) until set back to 0, 0. */
+      setInput(x: number, y: number) { manualInput = x || y ? { x, y, source: 'keyboard' } : { x: 0, y: 0, source: 'none' }; },
+      running: () => running,
+      gameTime: () => gameTime,
+      onDeath: (listener: () => void) => { onDeath.push(listener); },
+      onBossDefeated: (listener: (mapId: string) => void) => { onBossDefeated.push(listener); },
+    },
   };
 }
 

@@ -216,8 +216,7 @@ const { runPendingModuleMigrations } = createModuleMigrations({
   effectivePowerForProgress, effectivePowerStatsForProgress, playerWithMotion,
   syncPlayerMotionIdentity, persistWorldLocation, transitionPlayerMap, refreshLeaderboard,
   markPlayerBalanceCurrent, playerBalanceProgress, samePlayerProgressValues,
-  resultIncludesContributor, contributedToLatestPrismshell, isVirtualPlayer, sameIdentity,
-  applyGemBalanceChange, ensureWorldStatus, ensureMaintenanceSweepSchedule,
+  resultIncludesContributor, contributedToLatestPrismshell, sameIdentity, ensureWorldStatus, ensureMaintenanceSweepSchedule,
 });
 
 // Exact-own lifecycle and physical compatibility row. Current clients never

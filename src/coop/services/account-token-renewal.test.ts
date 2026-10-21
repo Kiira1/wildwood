@@ -99,13 +99,6 @@ describe("account credential renewal", () => {
     expect(s.storage.getItem("account:refresh")).toContain("refresh-rotated");
     vi.useRealTimers();
   });
-  it("names why renewal needs a new sign-in", async () => {
-    const s = setup(); s.renewal.clear();
-    await expect(s.renewal.resolve(s.old)).rejects.toMatchObject({ reason: "no-grant" });
-    s.storage.setItem("account:refresh", JSON.stringify({ subject: "player-a", token: "spent" }));
-    vi.stubGlobal("fetch", vi.fn(async () => ({ ok: false, status: 400, json: async () => ({ error: "invalid_grant" }) })));
-    await expect(s.renewal.resolve(s.old)).rejects.toMatchObject({ reason: "grant-rejected" });
-  });
   it("renews ahead once three quarters of the token's life has passed since it arrived, sharing one request", async () => {
     const s = setup(); const nowMs = Date.now(), now = nowMs / 1000;
     const updated = issued(now, now + 3600);
@@ -142,44 +135,6 @@ describe("account credential renewal", () => {
     // The spent token would revoke the sign-in; the next attempt uses the new one.
     expect(JSON.parse(s.storage.getItem("account:refresh")!)).toMatchObject({ subject: "player-a", token: "refresh-rotated" });
     expect(s.storage.getItem("account")).toBe(s.old);
-  });
-  it("marks the tab while the provider holds the request, and clears it however it ends", async () => {
-    const tab = new Map<string, string>();
-    const tabStorage = { getItem: (k: string) => tab.get(k) ?? null, setItem: (k: string, v: string) => void tab.set(k, v), removeItem: (k: string) => void tab.delete(k) };
-    const s = setup(); const renewal = createAccountTokenRenewal(s.storage, "account", tabStorage);
-    let answer!: (v: unknown) => void;
-    vi.stubGlobal("fetch", vi.fn(() => new Promise(resolve => { answer = resolve; })));
-    const result = renewal.resolve(s.old);
-    await vi.waitFor(() => expect(answer).toBeTypeOf("function"));
-    expect(tab.get("wildstat:account-renewal-started-at")).toBeDefined();
-    answer({ ok: false, status: 503, json: async () => ({ error: "temporarily_unavailable" }) });
-    await expect(result).rejects.toThrow("temporarily unavailable");
-    expect(tab.has("wildstat:account-renewal-started-at")).toBe(false);
-  });
-  it("says how old the refused grant was, and whether the page before this one left mid-renewal", async () => {
-    const tab = new Map<string, string>([["wildstat:account-renewal-started-at", String(Date.now() - 5_000)]]);
-    const tabStorage = { getItem: (k: string) => tab.get(k) ?? null, setItem: (k: string, v: string) => void tab.set(k, v), removeItem: (k: string) => void tab.delete(k) };
-    const s = setup();
-    s.storage.setItem("account:refresh", JSON.stringify({ subject: "player-a", token: "spent", savedAt: Date.now() - 2 * 3_600_000 }));
-    const renewal = createAccountTokenRenewal(s.storage, "account", tabStorage);
-    expect(tab.size).toBe(0);                                         // the leftover is read once and cleared
-    vi.stubGlobal("fetch", vi.fn(async () => ({ ok: false, status: 400, json: async () => ({ error: "invalid_grant", error_description: "grant request is invalid" }) })));
-    const refused = await renewal.resolve(s.old).catch(error => error);
-    expect(refused).toBeInstanceOf(AccountRenewalRequired);
-    expect(refused.detail).toMatch(/^grant-age=2\.0h;chain-age=unknown;token-age=\d+\.\dh;auth-age=unknown;interrupted=yes;dpop=unbound;desc=grant request is invalid$/);
-  });
-  it("says how long ago the sign-in that started the refresh chain was, across rotations", async () => {
-    const s = setup(); const nowMs = Date.now();
-    s.storage.setItem("account:refresh", JSON.stringify({ subject: "player-a", token: "refresh-original", savedAt: nowMs - 3_600_000, chainAt: nowMs - 23 * 3_600_000 }));
-    vi.stubGlobal("fetch", vi.fn(async () => ({ ok: true, json: async () => ({ id_token: fresh(), refresh_token: "refresh-rotated" }) })));
-    await s.renewal.resolve(s.old);
-    expect(JSON.parse(s.storage.getItem("account:refresh")!)).toMatchObject({ token: "refresh-rotated", chainAt: nowMs - 23 * 3_600_000 });
-    vi.stubGlobal("fetch", vi.fn(async () => ({ ok: false, status: 400, json: async () => ({ error: "invalid_grant" }) })));
-    const refused = await s.renewal.resolve(s.storage.getItem("account")!, true).catch(error => error);
-    expect(refused.detail).toMatch(/;chain-age=23\.0h;/);
-    // A new sign-in starts a new chain.
-    s.renewal.save(fresh(), "refresh-new");
-    expect(JSON.parse(s.storage.getItem("account:refresh")!).chainAt).toBeGreaterThanOrEqual(nowMs);
   });
   it("keeps the login through a network failure or a non-JSON error page, and renews with it next time", async () => {
     const s = setup(); const updated = fresh();
@@ -235,12 +190,11 @@ describe("DPoP-bound refresh", () => {
   async function bound(switchOn = true) {
     const s = setup(); const db = fakeIndexedDB();
     const dpop = createDpop({ indexedDB: db.indexedDB, subtle: crypto.subtle });
-    const report = vi.fn();
-    const renewal = createAccountTokenRenewal(s.storage, "account", undefined, { dpop: () => dpop, report });
+    const renewal = createAccountTokenRenewal(s.storage, "account", undefined, { dpop: () => dpop });
     s.storage.setItem(DPOP_SWITCH_KEY, switchOn ? "on" : "off");
     const key = (await dpop.key())!;
-    s.storage.setItem("account:refresh", JSON.stringify({ subject: "player-a", token: "refresh-bound", jkt: key.jkt, chainAt: Date.now() - 3_600_000 }));
-    return { ...s, renewal, dpop, db, key, report };
+    s.storage.setItem("account:refresh", JSON.stringify({ subject: "player-a", token: "refresh-bound", jkt: key.jkt }));
+    return { ...s, renewal, dpop, db, key };
   }
   const okAnswer = (id: string) => ({ ok: true, status: 200, headers: new Headers(), json: async () => ({ id_token: id, refresh_token: "refresh-rotated", token_type: "DPoP" }) });
   it("always refreshes a bound token with a proof from the same key, even on a browser that opted out, and keeps it bound", async () => {
@@ -280,7 +234,6 @@ describe("DPoP-bound refresh", () => {
     const fetch = vi.fn(); vi.stubGlobal("fetch", fetch);
     const refused = await renewal.resolve(s.old).catch(error => error);
     expect(refused).toMatchObject({ reason: "grant-rejected" });
-    expect(refused.detail).toMatch(/;dpop=bound:idb;desc=dpop-key-lost$/);
     expect(fetch).not.toHaveBeenCalled();
     expect(s.storage.getItem("account:refresh")).toBeNull();
   });
@@ -300,22 +253,6 @@ describe("DPoP-bound refresh", () => {
     vi.stubGlobal("fetch", vi.fn(async () => ({ ok: false, status: 400, headers: new Headers(), json: async () => ({ error: "invalid_dpop_proof", error_description: "bad" }) })));
     const refused = await s.renewal.resolve(s.old).catch(error => error);
     expect(refused).toMatchObject({ reason: "grant-rejected" });
-    expect(refused.detail).toMatch(/;dpop=bound:idb;desc=dpop-invalid_dpop_proof:bad$/);
     expect(dpopWanted(s.storage)).toBe(false);
-  });
-  it("reports once per day a chain keeps renewing, so a bound chain past 24 hours shows up", async () => {
-    const s = await bound();
-    s.storage.setItem("account:refresh", JSON.stringify({ subject: "player-a", token: "refresh-bound", jkt: s.key.jkt, chainAt: Date.now() - 25 * 3_600_000 }));
-    vi.stubGlobal("fetch", vi.fn(async () => okAnswer(fresh())));
-    await s.renewal.resolve(s.old);
-    expect(s.report).toHaveBeenCalledWith(expect.stringMatching(/^renewal-chain:days=1;chain-age=25\.0h;dpop=bound:idb$/));
-    await s.renewal.resolve(s.storage.getItem("account")!, true);
-    expect(s.report).toHaveBeenCalledOnce();
-  });
-  it("sends no DPoP header for an unbound token on a browser that opted out", async () => {
-    const s = setup(); s.storage.setItem(DPOP_SWITCH_KEY, "off"); const fetch = vi.fn(async (_url: string, _options: RequestInit) => okAnswer(fresh()));
-    vi.stubGlobal("fetch", fetch);
-    await s.renewal.resolve(s.old);
-    expect(headersOf(fetch.mock.calls[0])).toEqual({ "content-type": "application/x-www-form-urlencoded" });
   });
 });

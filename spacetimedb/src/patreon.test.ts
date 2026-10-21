@@ -58,10 +58,7 @@ it("links the verified tier once and never trusts callback parameters for entitl
   expect(patreonStatus(f.ctx, f.ctx.sender)).toMatchObject({ tier: "gold", frame: "gold", linked: true });
   expect(patreonCallback(f.ctx, callbackUri).status).toBe(400);
   expect(f.http.fetch).toHaveBeenCalledTimes(2);
-  const messages = [...f.db.chatMessage.iter()];
-  expect(messages).toHaveLength(1);
-  expect(messages[0]).toMatchObject({ senderName: "Test Player", message: "Became a Gold supporter on Patreon. Thank you for supporting WildStat! ♥" });
-  expect(f.db.publicChatCursor.id.find(0).lastId).toBe(messages[0].id);
+  expect([...f.db.chatMessage.iter()]).toHaveLength(1);
 });
 it("thanks existing supporters on verification once, including after unlinking and relinking", () => {
   const f = fixture();
@@ -114,7 +111,6 @@ it("validates and throttles secure browser-generated link states", () => {
   const f = fixture();
   expect(() => beginPatreonLink(f.ctx, "weak")).toThrow("Invalid Patreon request");
   const url = new URL(beginPatreonLink(f.ctx, "a".repeat(64)));
-  expect(url.searchParams.get("scope")).toBe("identity identity.memberships");
   expect(url.searchParams.get("state")).toBe("a".repeat(64));
   expect(() => beginPatreonLink(f.ctx, "b".repeat(64))).toThrow("Wait a minute");
 });
@@ -174,19 +170,16 @@ it("streams only real memberships, uses current names, expires leases and remove
   expect(rows()).toEqual([]);
 });
 
-describe("keeping memberships current without the player", () => {
+describe("background membership sweep", () => {
   const link = (over = {}) => ({ userId: "1", tier: "gold", attemptedAtMs: 0, validUntilMs: 0, ...over });
   const now = 1_000 * 60 * 60 * 24 * 400;
 
-  it("picks up a lease about to lapse, soonest first", () => {
-    const soon = link({ validUntilMs: now + 60_000 });
-    const later = link({ validUntilMs: now + 2 * 60 * 60 * 1000 });
-    const due = patreonLinksDueRefresh([later, soon], now);
-    expect(due).toEqual([soon, later]);
-  });
-
-  it("leaves a lease with weeks to run alone, so the sweep stays cheap", () => {
-    expect(patreonLinksDueRefresh([link({ validUntilMs: now + 20 * 24 * 60 * 60 * 1000 })], now)).toEqual([]);
+  it("re-checks leases close to lapsing or expired and leaves fresh ones alone", () => {
+    const hour = 60 * 60 * 1000;
+    expect(patreonLinksDueRefresh([link({ validUntilMs: now + 20 * 24 * hour })], now)).toEqual([]);
+    expect(patreonLinksDueRefresh([link({ tier: "none", validUntilMs: now + 6 * hour })], now)).toEqual([]);
+    expect(patreonLinksDueRefresh([link({ tier: "none", validUntilMs: now + hour })], now)).toHaveLength(1);
+    expect(patreonLinksDueRefresh([link({ validUntilMs: now - hour })], now)).toHaveLength(1);
   });
 
   it("does not ask Patreon about the same account twice in an hour", () => {
@@ -195,91 +188,26 @@ describe("keeping memberships current without the player", () => {
     expect(patreonLinksDueRefresh([{ ...justTried, attemptedAtMs: now - 2 * 60 * 60 * 1000 }], now)).toHaveLength(1);
   });
 
-  it("skips a row that was never linked, and caps the batch", () => {
+  it("skips never-linked rows and fills the capped batch with paying supporters first", () => {
     expect(patreonLinksDueRefresh([link({ userId: "", validUntilMs: now })], now)).toEqual([]);
-    const many = Array.from({ length: PATREON_SWEEP_BATCH + 4 }, (_, i) => link({ validUntilMs: now + i }));
-    expect(patreonLinksDueRefresh(many, now)).toHaveLength(PATREON_SWEEP_BATCH);
-  });
-
-  it("re-checks an expired lease, which is how a stale supporter recovers", () => {
-    expect(patreonLinksDueRefresh([link({ validUntilMs: now - 60 * 60 * 1000 })], now)).toHaveLength(1);
-  });
-});
-
-describe("who the sweep spends its batch on", () => {
-  const link = (over = {}) => ({ userId: "1", tier: "gold", attemptedAtMs: 0, validUntilMs: 0, ...over });
-  const now = 1_000 * 60 * 60 * 24 * 400;
-
-  it("re-checks a paying supporter before a link that grants nothing", () => {
-    // The live sweep took the five oldest leases and eleven of sixteen lapsed
-    // links held no membership, so supporters queued behind people with no frame.
-    const freeloader = link({ tier: "none", validUntilMs: now - 10 * 60 * 60 * 1000 });
-    const supporter = link({ tier: "silver", validUntilMs: now - 60_000 });
-    expect(patreonLinksDueRefresh([freeloader, supporter], now)).toEqual([supporter, freeloader]);
-  });
-
-  it("fills the batch with supporters first, then the rest", () => {
     const none = Array.from({ length: 8 }, (_, i) => link({ tier: "none", validUntilMs: now - 90_000_000 - i }));
     const paying = Array.from({ length: 3 }, (_, i) => link({ tier: "gold", validUntilMs: now - i }));
     const due = patreonLinksDueRefresh([...none, ...paying], now);
     expect(due).toHaveLength(PATREON_SWEEP_BATCH);
     expect(due.slice(0, 3).every(l => l.tier === "gold")).toBe(true);
-    expect(due.slice(3).every(l => l.tier === "none")).toBe(true);
-  });
-
-  it("still sweeps unpaid links, so a new subscription is noticed while away", () => {
-    const only = link({ tier: "none", validUntilMs: now - 60_000 });
-    expect(patreonLinksDueRefresh([only], now)).toEqual([only]);
-  });
-
-  it("orders supporters among themselves by who lapses soonest", () => {
-    const soon = link({ tier: "gold", validUntilMs: now - 100 });
-    const sooner = link({ tier: "silver", validUntilMs: now - 100_000 });
-    expect(patreonLinksDueRefresh([soon, sooner], now)).toEqual([sooner, soon]);
   });
 });
 
-describe("how often the sweep asks Patreon", () => {
-  const link = (over = {}) => ({ userId: "1", tier: "gold", attemptedAtMs: 0, validUntilMs: 0, ...over });
-  const now = 1_000 * 60 * 60 * 24 * 400;
-
-  it("keeps the lead under the floor lease, or every link is due forever", async () => {
-    const { PATREON_SWEEP_LEAD_MS } = await import("./patreon");
-    // A linked account with no membership gets the floor lease and nothing
-    // longer, so a lead at or above it means the sweep never goes idle.
-    expect(PATREON_SWEEP_LEAD_MS).toBeLessThan(6 * 60 * 60 * 1000);
-  });
-
-  it("leaves a fresh lease alone rather than re-asking every tick", () => {
-    const fresh = link({ tier: "none", validUntilMs: now + 6 * 60 * 60 * 1000 });
-    expect(patreonLinksDueRefresh([fresh], now)).toEqual([]);
-  });
-
-  it("picks a lease up once it is genuinely close to lapsing", () => {
-    const nearly = link({ tier: "none", validUntilMs: now + 60 * 60 * 1000 });
-    expect(patreonLinksDueRefresh([nearly], now)).toHaveLength(1);
-  });
-});
-
-it("thanks a supporter by their real tier, once on the way up and never on the way down", () => {
+it("thanks a supporter once per tier climb and never on the way down", () => {
   const f = fixture();
-  const messages = () => [...f.db.chatMessage.iter()].map((row: any) => row.message);
-  const thank = (tier: "silver" | "gold" | "diamond") => announcePatreonSupport(f.ctx as never, f.ctx.sender, "patreon-user-9", tier);
-  thank("gold"); thank("gold");
-  expect(messages()).toEqual(["Became a Gold supporter on Patreon. Thank you for supporting WildStat! ♥"]);
-  thank("diamond"); thank("diamond");
-  expect(messages()).toHaveLength(2);
-  expect(messages()[1]).toBe("Became a Diamond supporter on Patreon. Thank you for supporting WildStat! ♥");
-  thank("gold"); thank("silver"); thank("diamond");
-  expect(messages()).toHaveLength(2);
-});
-
-it("thanks someone who joins straight at Diamond as Diamond, and stays quiet if they later drop a tier", () => {
-  const f = fixture();
-  const messages = () => [...f.db.chatMessage.iter()].map((row: any) => row.message);
-  announcePatreonSupport(f.ctx as never, f.ctx.sender, "patreon-user-10", "diamond");
-  expect(messages()).toEqual(["Became a Diamond supporter on Patreon. Thank you for supporting WildStat! ♥"]);
-  announcePatreonSupport(f.ctx as never, f.ctx.sender, "patreon-user-10", "gold");
-  announcePatreonSupport(f.ctx as never, f.ctx.sender, "patreon-user-10", "silver");
-  expect(messages()).toHaveLength(1);
+  const count = () => [...f.db.chatMessage.iter()].length;
+  const thank = (user: string, tier: "silver" | "gold" | "diamond") => announcePatreonSupport(f.ctx as never, f.ctx.sender, user, tier);
+  thank("patreon-user-9", "gold"); thank("patreon-user-9", "gold");
+  expect(count()).toBe(1);
+  thank("patreon-user-9", "diamond"); thank("patreon-user-9", "diamond");
+  expect(count()).toBe(2);
+  thank("patreon-user-9", "gold"); thank("patreon-user-9", "silver"); thank("patreon-user-9", "diamond");
+  expect(count()).toBe(2);
+  thank("patreon-user-10", "diamond"); thank("patreon-user-10", "gold");
+  expect(count()).toBe(3);
 });

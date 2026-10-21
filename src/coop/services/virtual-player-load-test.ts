@@ -127,7 +127,7 @@ export function virtualPlayerStartupConcurrency(count: number) {
   return Math.min(MAX_CONCURRENT_BOOTSTRAPS, safeCount);
 }
 
-/** Pure random-walk step shared by runtime and boundary tests. */
+/** Pure random-walk step. */
 export function advanceVirtualPlayerMotion(
   current: VirtualPlayerMotion,
   elapsedSeconds: number,

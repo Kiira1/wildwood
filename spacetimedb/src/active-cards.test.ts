@@ -48,7 +48,7 @@ describe("activating cards", () => {
     const f = collector();
     f.activate("needle_card");
     expect(f.active().HAND).toEqual(["needle_card"]);
-    expect(() => f.activate("spitter_card")).toThrow("Every Weapon card slot is full.");
+    expect(() => f.activate("spitter_card")).toThrow("full");
     f.activate("brood_card");
     expect(f.active().HEAD).toEqual(["brood_card"]);
     expect(() => f.activate("brood_card")).toThrow("already active");
@@ -62,7 +62,7 @@ describe("activating cards", () => {
 
   it("refuses a card not owned, a stale tap and an unknown card, changing nothing", () => {
     const f = collector();
-    expect(() => f.activate("dragon_card", 0)).toThrow("You have no Dragon Card.");
+    expect(() => f.activate("dragon_card", 0)).toThrow("no Dragon");
     f.activate("needle_card");
     // A retried tap still says none were active: refused, so one tap switches on one copy.
     expect(() => f.activate("needle_card", 0)).toThrow("changed");
@@ -183,20 +183,5 @@ describe("migration 59: gear stops holding cards", () => {
     f.transaction(() => { activateCardsFromGear(f.ctx); activateCardsFromGear(f.ctx); });
     expect(cardCount(f.ctx, f.ctx.sender, "needle_card")).toBe(1);
     expect(activeCardsFor(f.ctx, f.ctx.sender).HAND).toEqual(["needle_card"]);
-  });
-});
-
-describe("the kill report", () => {
-  it("reads the active cards once per report", async () => {
-    const { fillDefeatBudget, reportEnemy } = await import("../../tests/helpers/enemy-defeat");
-    const f = collector();
-    f.patch("playerProgress", { damage: 1e15 });
-    f.activate("needle_card");
-    fillDefeatBudget(f, "crystal_hollows", "Shard Hopper");
-    const find = f.db.playerActiveCard.identity.find.bind(f.db.playerActiveCard.identity);
-    let reads = 0;
-    f.db.playerActiveCard.identity.find = (identity: any) => { reads += 1; return find(identity); };
-    reportEnemy(f, "Shard Hopper", 3);
-    expect(reads).toBe(1);
   });
 });

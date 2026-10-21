@@ -23,7 +23,7 @@
  * three in four players were still on the old client an hour later.
  *
  * Nothing ships until the checks pass: check:release (the 0.907.0 deploy
- * failed on it), both typechecks, the server bindings against a fresh
+ * failed on it; it includes the code-health ratchets), both typechecks, the server bindings against a fresh
  * generate, and the unit tests (--quick leaves those to GitHub Actions).
  *
  * Nor while the live balance is not the repo's (balanceVerdict): there is one

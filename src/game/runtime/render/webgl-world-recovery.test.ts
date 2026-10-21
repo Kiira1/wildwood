@@ -2,6 +2,7 @@ import { afterEach, expect, it, vi } from "vitest";
 import { parseHTML } from "linkedom";
 import { createWebGLStaticWorldLayer, type StaticWorldLayerFrame } from "./webgl-static-world-layer";
 
+// Falling back to Canvas on a GPU allocation failure is covered by tests/scenarios/rendering.test.ts.
 afterEach(() => { vi.restoreAllMocks(); vi.unstubAllGlobals(); });
 
 function fixture() {
@@ -55,19 +56,6 @@ it("releases the old view before uploading movement tiles and checks only upload
   expect(f.layer.render(f.frame)).toBe(true);
   expect(f.operations).toEqual(["allocate:1", "release:1", "allocate:2"]);
   expect(f.gl.getError).toHaveBeenCalledTimes(2);
-});
-
-it("requests Canvas fallback immediately when moving triggers a silent GPU allocation error", () => {
-  const f = fixture();
-  expect(f.layer.render(f.frame)).toBe(true);
-  f.frame.tiles = [{ ...f.frame.tiles[0], key: "next" }];
-  f.gl.getError.mockReturnValueOnce(f.gl.OUT_OF_MEMORY);
-  expect(f.layer.render(f.frame)).toBe(false);
-  expect(f.layer.active()).toBe(false);
-  expect(f.document.getElementById("gameGpu")!.hidden).toBe(true);
-  expect(f.document.documentElement.dataset.worldRenderer).toBe("canvas2d");
-  expect(f.layer.render(f.frame)).toBe(false);
-  expect(f.gl.createTexture).toHaveBeenCalledTimes(2);
 });
 
 it("isolates vertex attributes across terrain, projectiles, particles, and the next frame", () => {

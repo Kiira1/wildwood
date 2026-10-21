@@ -4,6 +4,7 @@
 //
 //   node tools/visual-check/capture.mjs --out <dir> [--scenes plates,gear] [--dpr 1,2] [--cap 2|3] [--no-build]
 //     [--build-dir <dir>] [--public-dir <dir>] [--port 4517] [--cdp-port 9351]
+// A scene can name its one width and pixel ratio: --scenes plates@2,hud:390@1 (the rest use --dpr and every width).
 import { spawn, spawnSync } from "node:child_process";
 import { createReadStream, existsSync, mkdirSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { createServer } from "node:http";
@@ -19,6 +20,11 @@ const VIEWPORTS = {
   gear: [{ width: 1280, height: 800, full: true }],
   enemies: [{ width: 1280, height: 800, full: true }],
   parts: [{ width: 1280, height: 800, full: true }],
+  "combat-hits": [{ width: 390, height: 844, full: true }],
+  world: [{ width: 1280, height: 800, full: true }],
+  town: [{ width: 1280, height: 800, full: true }],
+  bosses: [{ width: 1280, height: 800, full: true }],
+  "guild-battlefield": [{ width: 1280, height: 800, full: true }],
   icons: [{ width: 390, height: 844, full: true }, { width: 1280, height: 800, full: true }],
   hud: [{ width: 390, height: 844, full: false }, { width: 1280, height: 800, full: false }],
   wordmark: [{ width: 390, height: 844, full: false }, { width: 1280, height: 800, full: false }],
@@ -37,7 +43,7 @@ function parseArgs(argv) {
       return next;
     };
     if (flag === "--out") args.out = resolve(value());
-    else if (flag === "--scenes") args.scenes = value().split(",").filter(Boolean);
+    else if (flag === "--scenes") args.scenes = value().split(",").filter(Boolean).map(parseScene);
     else if (flag === "--dpr") args.dpr = value().split(",").map(Number);
     else if (flag === "--cap") args.cap = Number(value());
     else if (flag === "--no-build") args.build = false;
@@ -54,6 +60,13 @@ function parseArgs(argv) {
   if ([args.port, args.cdpPort].some(port => port === 3000 || port === 8000)) throw new Error("Ports 3000 and 8000 belong to the local game server and dev site; pick another.");
   args.buildDir ??= join(repo, "local-data/visual-check-build");
   return args;
+}
+
+/** "plates", "plates@2" or "hud:390@1": the scene, and optionally its one width and pixel ratio. */
+function parseScene(spec) {
+  const match = /^([\w-]+)(?::(\d+))?(?:@([\d.]+))?$/.exec(spec);
+  if (!match) throw new Error(`Bad scene "${spec}"; use name, name@dpr or name:width@dpr`);
+  return { name: match[1], width: match[2] ? Number(match[2]) : null, dpr: match[3] ? Number(match[3]) : null };
 }
 
 function readUsage() {
@@ -271,7 +284,7 @@ async function main() {
   const { server, missing } = await startServer(args.port, [args.buildDir, args.publicDir]);
   cleanup.server = server;
   const profile = resolve(process.env.VISUAL_CHECK_PROFILE ?? join(args.out, "..", ".visual-chrome-profile"));
-  const { target } = await launchChrome(args.cdpPort, profile);
+  const { target, version } = await launchChrome(args.cdpPort, profile);
   const cdp = await connect(target.webSocketDebuggerUrl);
   cleanup.cdp = cdp;
   await cdp.send("Page.enable");
@@ -285,15 +298,17 @@ async function main() {
   const listed = await capture(cdp, `${base}?run=${run++}#__list`, DEFAULT_VIEWPORT[0], 1).catch(() => null);
   const available = JSON.parse((await cdp.send("Runtime.evaluate", { expression: "JSON.stringify(window.__visualScenes ?? [])", returnByValue: true })).result.value);
   if (!listed && !available.length) throw new Error("The harness did not load; see the build output above");
-  const scenes = args.scenes ?? available;
-  const unknown = scenes.filter(scene => !available.includes(scene));
+  const scenes = args.scenes ?? available.map(name => ({ name, width: null, dpr: null }));
+  const unknown = scenes.map(scene => scene.name).filter(scene => !available.includes(scene));
   if (unknown.length) throw new Error(`Unknown scene(s) ${unknown.join(", ")}; available: ${available.join(", ")}`);
 
   const manifest = [];
   let failed = 0;
-  for (const scene of scenes) {
-    for (const viewport of VIEWPORTS[scene] ?? DEFAULT_VIEWPORT) {
-      for (const dpr of args.dpr) {
+  for (const { name: scene, width, dpr: sceneDpr } of scenes) {
+    const viewports = (VIEWPORTS[scene] ?? DEFAULT_VIEWPORT).filter(viewport => width === null || viewport.width === width);
+    if (!viewports.length) throw new Error(`Scene ${scene} has no ${width}px viewport`);
+    for (const viewport of viewports) {
+      for (const dpr of sceneDpr ? [sceneDpr] : args.dpr) {
         const name = `${scene}-${viewport.width}w@${dpr}x${args.cap === null ? "" : `-cap${args.cap}`}.png`;
         const started = Date.now();
         try {
@@ -308,7 +323,7 @@ async function main() {
       }
     }
   }
-  writeFileSync(join(args.out, "manifest.json"), JSON.stringify({ capturedAt: new Date().toISOString(), buildDir: args.buildDir, captures: manifest, missing: [...missing] }, null, 2));
+  writeFileSync(join(args.out, "manifest.json"), JSON.stringify({ capturedAt: new Date().toISOString(), chrome: version?.Browser, buildDir: args.buildDir, captures: manifest, missing: [...missing] }, null, 2));
   if (missing.size) console.warn(`Not found on the server (${missing.size}): ${[...missing].slice(0, 12).join(", ")}${missing.size > 12 ? " …" : ""}`);
   console.log(`${manifest.length} capture(s) in ${args.out}${failed ? `, ${failed} failed` : ""}`);
   return failed ? 1 : 0;

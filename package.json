@@ -37,7 +37,8 @@
     "release": "node scripts/release.mjs",
     "release:live": "node scripts/release-live.mjs",
     "ship": "node scripts/ship.mjs",
-    "check:release": "node scripts/release.mjs --check && node scripts/subscribed-schema.mjs",
+    "check:release": "node scripts/release.mjs --check && node scripts/subscribed-schema.mjs && node scripts/check-code-health.mjs",
+    "check:code-health": "node scripts/check-code-health.mjs",
     "typecheck:coop": "tsc --noEmit -p config/tsconfig.coop.json",
     "typecheck:balance": "tsc --noEmit -p config/tsconfig.balance.json",
     "typecheck:loadtest": "tsc --noEmit -p config/tsconfig.loadtest.json",
@@ -67,7 +68,8 @@
     "boss:tuner": "node scripts/boss-tuner-server.mjs",
     "balance:scorecard": "tsx scripts/balance-scorecard.ts",
     "visual:capture": "node tools/visual-check/capture.mjs",
-    "visual:diff": "node tools/visual-check/diff.mjs"
+    "visual:diff": "node tools/visual-check/diff.mjs",
+    "visual:check": "node tools/visual-check/check.mjs"
   },
   "dependencies": {
     "spacetimedb": "2.12.0"

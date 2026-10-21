@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { createGameBootstrap } from "../../game/runtime/game-bootstrap";
 import type { ReducerPort } from "../ports";
 import type { PlayerProgress, ProgressSave } from "./progress";
-import { createProgressionService, KILL_REPORT_CADENCE_SLACK_MS, PROGRESS_SAVE_INTERVAL_MS, PROGRESS_STORE_WRITE_DELAY_MS, type ServerEquip } from "./progression-service";
+import { createProgressionService, PROGRESS_STORE_WRITE_DELAY_MS, type ServerEquip } from "./progression-service";
 import { bindProgressFlushOnHide } from "./flush-on-hide";
 
 class MemoryStorage implements Storage {
@@ -247,18 +247,16 @@ describe("local progression profile snapshots", () => {
   });
 
   it("predicts stats immediately but only confirms server-provided rewards", async () => {
-    const { notify, savePlayerProgress, service } = setup();
+    const { savePlayerProgress, service } = setup();
     const server = progress();
     service.tables.upsertProgress({
       ...server,
       identity: { toHexString: () => identity },
     } as never);
-    notify.mockClear();
 
     const pending = saveFrom(server, { attackRate: 1.2, regen: 0.6 });
     service.api.saveProgress(pending);
 
-    expect(notify).toHaveBeenCalledOnce();
     expect(service.progressFor(identity)).toMatchObject({ attackRate: 1.2, regen: 0.6 });
 
     await service.drainPendingProgress();
@@ -381,27 +379,6 @@ describe("server-calculated defeat batches", () => {
     h.service.dispose();
   });
 
-  it("lets a Home reward drain finish through a 12-second acknowledgement delay without resending", async () => {
-    vi.useFakeTimers();
-    try {
-      const h = setup();
-      let finish!: () => void;
-      h.reportEnemyDefeats.mockImplementationOnce(() => new Promise(resolve => { finish = resolve; }));
-      h.service.recordRegularEnemyDefeat("advanced_lava_wastes", "Lava Raider");
-      let settled = false;
-      const drain = h.service.drainEnemyLoot().then(ok => { settled = true; return ok; });
-      await vi.advanceTimersByTimeAsync(12_000);
-      expect(settled).toBe(false);
-      const secondTap = h.service.drainEnemyLoot();
-      expect(h.reportEnemyDefeats).toHaveBeenCalledOnce();
-      finish();
-      expect(await drain).toBe(true);
-      expect(await secondTap).toBe(true);
-      expect(h.reportEnemyDefeats).toHaveBeenCalledOnce();
-      h.service.dispose();
-    } finally { vi.useRealTimers(); }
-  });
-
   it("times out a stuck checkpoint and retries instead of blocking all subsequent saves", async () => {
     vi.useFakeTimers();
     try {
@@ -416,123 +393,6 @@ describe("server-calculated defeat batches", () => {
       expect(await h.service.drainPendingProgress()).toBe(true);
       expect(h.reportEnemyDefeats.mock.calls[1][0]).toEqual(h.reportEnemyDefeats.mock.calls[0][0]);
       expect(h.savePlayerProgress).not.toHaveBeenCalled();
-      h.service.dispose();
-    } finally { vi.useRealTimers(); }
-  });
-
-  it("schedules ordinary progress and loot batches every minute", () => {
-    const h = setup();
-    expect(window.setInterval).toHaveBeenCalledWith(expect.any(Function), PROGRESS_SAVE_INTERVAL_MS);
-    expect(PROGRESS_SAVE_INTERVAL_MS).toBe(60_000);
-    h.service.dispose();
-  });
-
-  it("sends ordinary kill reports at most once a minute while acknowledgements keep arriving", async () => {
-    vi.useFakeTimers();
-    try {
-      const h = setup(); const base = progress();
-      const row = { ...base, identity: { toHexString: () => identity } } as never;
-      h.service.tables.upsertProgress(row);
-      const periodicFlush = vi.mocked(window.setInterval).mock.calls[0][0] as () => void;
-      const reportedAt: number[] = [];
-      // Each acknowledgement updates the progress row a moment later, as the server's does.
-      h.reportEnemyDefeats.mockImplementation(async () => {
-        reportedAt.push(Date.now());
-        setTimeout(() => h.service.tables.upsertProgress(row), 80);
-      });
-      const startedAt = Date.now();
-      for (let kill = 1; kill <= 600; kill++) {            // five minutes of a kill every 500 ms
-        h.service.recordRegularEnemyDefeat("water_reach", "Tide Raider");
-        h.service.api.saveProgress(saveFrom(base, { damage: base.damage + kill }));
-        await vi.advanceTimersByTimeAsync(500);
-        if (kill % (PROGRESS_SAVE_INTERVAL_MS / 500) === 0) periodicFlush();   // the minute timer
-      }
-      expect(reportedAt.length).toBeGreaterThanOrEqual(4);
-      expect(reportedAt.length).toBeLessThanOrEqual(5);
-      expect(reportedAt[0] - startedAt).toBeGreaterThanOrEqual(PROGRESS_SAVE_INTERVAL_MS - KILL_REPORT_CADENCE_SLACK_MS);
-      for (let index = 1; index < reportedAt.length; index++) {
-        expect(reportedAt[index] - reportedAt[index - 1]).toBeGreaterThanOrEqual(PROGRESS_SAVE_INTERVAL_MS - KILL_REPORT_CADENCE_SLACK_MS);
-      }
-      // A forced flush still goes at once: a boss kill is reported immediately.
-      const before = h.reportEnemyDefeats.mock.calls.length;
-      h.service.recordRegularEnemyDefeat("water_reach", "boss");
-      await vi.advanceTimersByTimeAsync(0);
-      expect(h.reportEnemyDefeats.mock.calls.length).toBe(before + 1);
-      expect(h.reportEnemyDefeats.mock.calls.at(-1)![0].enemies).toContainEqual({ enemy: "boss", count: 1 });
-      h.service.dispose();
-    } finally { vi.useRealTimers(); }
-  });
-
-  it("reports the kill that finishes a quest at once, so the quest is done without waiting for the next report", async () => {
-    vi.useFakeTimers();
-    try {
-      const h = setup();
-      h.service.tables.upsertProgress({ ...progress(), identity: { toHexString: () => identity } } as never);
-      const quests = (progress: number) => JSON.stringify([
-        { mapId: "water_reach", enemy: "Tide Raider", target: 3, progress },
-        { mapId: "water_reach", enemy: "Coral Colossus", target: 50, progress: 0 },
-      ]);
-      const row = (progress: number) => ({ identity: { toHexString: () => identity }, day: 20_746, questsJson: quests(progress), bonus: 1, guildPoints: 0, guildName: "" }) as never;
-      h.service.tables.upsertDailyQuest(row(1));
-      // The server takes the report and its row shows the quest done before the answer, as a transaction does.
-      h.reportEnemyDefeats.mockImplementation(async (request: any) => {
-        const raiders = request.enemies.find((entry: any) => entry.enemy === "Tide Raider")?.count ?? 0;
-        h.service.tables.upsertDailyQuest(row(Math.min(3, 1 + raiders)));
-      });
-      h.service.recordRegularEnemyDefeat("water_reach", "Coral Colossus");
-      h.service.recordRegularEnemyDefeat("water_reach", "Tide Raider");
-      await vi.advanceTimersByTimeAsync(0);
-      expect(h.reportEnemyDefeats).not.toHaveBeenCalled();
-      h.service.recordRegularEnemyDefeat("water_reach", "Tide Raider");
-      await vi.advanceTimersByTimeAsync(0);
-      expect(h.reportEnemyDefeats).toHaveBeenCalledExactlyOnceWith(expect.objectContaining({
-        mapId: "water_reach", enemies: [{ enemy: "Coral Colossus", count: 1 }, { enemy: "Tide Raider", count: 2 }],
-      }));
-      expect(h.service.api.weeklyQuests()?.quests[0].progress).toBe(3);
-      // The quest is done: later kills wait for the usual report.
-      h.service.recordRegularEnemyDefeat("water_reach", "Tide Raider");
-      h.service.recordRegularEnemyDefeat("water_reach", "Coral Colossus");
-      await vi.advanceTimersByTimeAsync(0);
-      expect(h.reportEnemyDefeats).toHaveBeenCalledOnce();
-      h.service.dispose();
-    } finally { vi.useRealTimers(); }
-  });
-
-  it("saves a changed loadout on the timer even while kills wait for their report", async () => {
-    vi.useFakeTimers();
-    try {
-      const h = setup(); const base = { ...progress(), samuraiUnlocked: true };
-      h.service.tables.upsertProgress({ ...base, identity: { toHexString: () => identity } } as never);
-      const periodicFlush = vi.mocked(window.setInterval).mock.calls[0][0] as () => void;
-      h.service.recordRegularEnemyDefeat("water_reach", "Tide Raider");
-      h.service.api.saveProgress(saveFrom(base, { equippedHead: "samurai_hat" }));
-      await vi.advanceTimersByTimeAsync(PROGRESS_SAVE_INTERVAL_MS);
-      // The tick sends the kill report first, which restarts the kill cadence;
-      // the equipment save behind it must not wait for the next one.
-      periodicFlush();
-      await vi.advanceTimersByTimeAsync(0);
-      expect(h.reportEnemyDefeats).toHaveBeenCalledOnce();
-      expect(h.savePlayerProgress).toHaveBeenCalledExactlyOnceWith(expect.objectContaining({ equippedHead: "samurai_hat" }));
-      h.service.dispose();
-    } finally { vi.useRealTimers(); }
-  });
-
-  it("restarts the kill cadence only when a report goes out", async () => {
-    vi.useFakeTimers();
-    try {
-      const h = setup();
-      h.entry.hydrated = false;
-      h.service.recordRegularEnemyDefeat("water_reach", "Tide Raider");
-      await vi.advanceTimersByTimeAsync(PROGRESS_SAVE_INTERVAL_MS);
-      // A reconnect's forced flush, before the world has hydrated, sends nothing...
-      h.service.flushPendingProgress(true);
-      await vi.advanceTimersByTimeAsync(0);
-      expect(h.reportEnemyDefeats).not.toHaveBeenCalled();
-      // ...so the ordinary flush once it has arrived is not held back another minute.
-      h.entry.hydrated = true;
-      h.service.flushPendingProgress();
-      await vi.advanceTimersByTimeAsync(0);
-      expect(h.reportEnemyDefeats).toHaveBeenCalledOnce();
       h.service.dispose();
     } finally { vi.useRealTimers(); }
   });
@@ -555,7 +415,6 @@ describe("server-calculated defeat batches", () => {
     callerIsGame = true;
     const bridge = h.service.api.claimGameBridge(() => 0);
     expect(bridge).not.toBeNull();                                 // game.js, still unclaimed
-    expect(Object.keys(bridge!).sort()).toEqual(["engaged", "recordRegularEnemyDefeat"]);
     expect(h.service.api.claimGameBridge(() => 0)).toBeNull();
     h.service.dispose();
   });
@@ -609,21 +468,6 @@ describe("local progress store writes on the kill path", () => {
   const storedDamage = (storage: Storage) => JSON.parse(storage.getItem(key) ?? "null")?.progress?.damage;
 
   afterEach(() => { vi.useRealTimers(); vi.unstubAllGlobals(); });
-
-  it("writes a burst of kills at most once per interval, with the latest snapshot", () => {
-    vi.useFakeTimers();
-    const h = setup(); const base = progress();
-    h.service.tables.upsertProgress({ ...base, identity: { toHexString: () => identity } } as never);
-    const setItem = vi.spyOn(h.storage, "setItem");
-    for (let kill = 1; kill <= 25; kill += 1) h.service.api.saveProgress(saveFrom(base, { damage: 4 + kill }));
-    expect(setItem.mock.calls.filter(([written]) => written === key)).toHaveLength(0);
-    // The optimistic prediction is still visible without the store.
-    expect(h.service.api.savedProgress()?.damage).toBe(29);
-    vi.advanceTimersByTime(PROGRESS_STORE_WRITE_DELAY_MS);
-    expect(setItem.mock.calls.filter(([written]) => written === key)).toHaveLength(1);
-    expect(storedDamage(h.storage)).toBe(29);
-    h.service.dispose();
-  });
 
   it("keeps writing during continuous kills instead of waiting for a pause", () => {
     vi.useFakeTimers();

@@ -78,7 +78,7 @@ It is retained for browsing source packs; use Character Studio to check the
 current in-game appearance. The enemy aligner remains a separate tool.
 
 Checks: `npm run typecheck:coop`, `npm run art:align:build`, and
-`npx vitest run src/game/player-appearance.test.ts src/game/player-layer-alignment.test.ts src/tools/sprite-aligner/state.test.ts`.
+`npx vitest run src/game/player-appearance.test.ts src/game/player-layer-alignment.test.ts`.
 The build command validates the tool bundle; run the development server to use
 the local artwork library.
 

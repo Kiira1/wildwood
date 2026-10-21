@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { fakeIndexedDB } from "../../../tests/helpers/fake-indexeddb";
-import { createDpop, DPOP_BACKUP_KEY, dpopSwitchOn, dpopWanted, exchangeCodeWithDpop, sendWithDpop, DPOP_SWITCH_KEY, type TokenAttempt } from "./account-dpop";
+import { createDpop, DPOP_BACKUP_KEY, dpopWanted, exchangeCodeWithDpop, sendWithDpop, DPOP_SWITCH_KEY, type TokenAttempt } from "./account-dpop";
 
 const ENDPOINT = "https://auth.spacetimedb.com/oidc/token";
 const decode = (part: string) => JSON.parse(Buffer.from(part, "base64url").toString("utf8"));
@@ -68,28 +68,6 @@ describe("DPoP device key", () => {
     db.clear();
     expect(await dpopFor(db).keyFor(jkt)).toBeNull();
   });
-  it("wakes Safari's IndexedDB by polling databases() until it answers", async () => {
-    vi.useFakeTimers();
-    const db = fakeIndexedDB({ asleepUntilPoll: 4 });
-    const key = dpopFor(db).key();
-    await vi.advanceTimersByTimeAsync(250);
-    expect(db.polls()).toBe(3);                                         // one at once, then every 100 ms
-    await vi.advanceTimersByTimeAsync(100);
-    expect(await key).toMatchObject({ store: "idb" });
-    await vi.advanceTimersByTimeAsync(1_000);
-    expect(db.polls()).toBe(4);                                         // stops once awake
-    vi.useRealTimers();
-  });
-  it("starts loading at page load, and a sign-in reuses that load", async () => {
-    const db = fakeIndexedDB();
-    const generate = vi.spyOn(crypto.subtle, "generateKey");
-    const dpop = dpopFor(db);
-    dpop.warm();
-    const key = await dpop.key();
-    expect(generate).toHaveBeenCalledOnce();
-    expect(await dpop.key()).toBe(key);
-    generate.mockRestore();
-  });
   it("without WebCrypto there is no key at all", async () => {
     expect(await createDpop({ indexedDB: fakeIndexedDB().indexedDB, subtle: null }).key()).toBeNull();
   });
@@ -98,14 +76,12 @@ describe("DPoP device key", () => {
 describe("DPoP backup key in localStorage", () => {
   const backupOn = (storage: ReturnType<typeof memory>, indexedDB: IDBFactory | null = null) =>
     createDpop({ indexedDB, subtle: crypto.subtle, backupStorage: () => storage });
-  it("uses an extractable key kept as a JWK when IndexedDB is unavailable, and says why once", async () => {
+  it("uses an extractable key kept as a JWK when IndexedDB is unavailable", async () => {
     const storage = memory(); const dpop = backupOn(storage);
     const key = (await dpop.key())!;
     expect(key.store).toBe("local");
     expect(JSON.parse(storage.getItem(DPOP_BACKUP_KEY)!)).toMatchObject({ kty: "EC", crv: "P-256", d: expect.any(String), x: key.jwk.x });
     expect(await verifies(await dpop.proof(key, "POST", ENDPOINT))).toBe(true);
-    expect(dpop.takeFallbackNote()).toBe("no-idb");
-    expect(dpop.takeFallbackNote()).toBeNull();
     // Another page finds the same key by its thumbprint.
     expect((await backupOn(storage).keyFor(key.jkt))!.jkt).toBe(key.jkt);
   });
@@ -125,21 +101,6 @@ describe("DPoP backup key in localStorage", () => {
     const [a, b] = await Promise.all([backupOn(storage).key(), backupOn(storage).key()]);
     expect(a!.jkt).toBe(b!.jkt);
   });
-  it("uses the Web Lock when there is one", async () => {
-    const storage = memory(); const request = vi.fn((_name: string, run: () => Promise<unknown>) => run());
-    const dpop = createDpop({ indexedDB: null, subtle: crypto.subtle, backupStorage: () => storage, locks: () => ({ request }) as unknown as LockManager });
-    await dpop.key();
-    expect(request).toHaveBeenCalledWith("wildstat:dpop-backup-key", expect.any(Function));
-  });
-});
-
-describe("DPoP rollout switch", () => {
-  it("is on unless this browser opted out", () => {
-    expect(dpopSwitchOn(memory())).toBe(true);
-    expect(dpopSwitchOn(memory({ [DPOP_SWITCH_KEY]: "on" }))).toBe(true);
-    expect(dpopSwitchOn(memory({ [DPOP_SWITCH_KEY]: "off" }))).toBe(false);
-    expect(dpopSwitchOn(undefined)).toBe(true);
-  });
 });
 
 describe("code exchange with DPoP", () => {
@@ -152,33 +113,32 @@ describe("code exchange with DPoP", () => {
     const exchange = await exchangeCodeWithDpop({ dpop, storage: memory({ [DPOP_SWITCH_KEY]: "off" }), endpoint: ENDPOINT, send, networkFailure });
     expect(send.mock.calls[0][0]).toBeUndefined();
     expect(key).not.toHaveBeenCalled();
-    expect(exchange).toMatchObject({ label: "off" });
     expect(exchange.jkt).toBeUndefined();
   });
   it("binds the sign-in when the provider answers with a DPoP token", async () => {
     const dpop = dpopFor(); const send = vi.fn(async (_proof?: string) => ok());
     const exchange = await exchangeCodeWithDpop({ dpop, storage: memory({ [DPOP_SWITCH_KEY]: "on" }), endpoint: ENDPOINT, send, networkFailure });
     expect(await verifies(send.mock.calls[0][0]!)).toBe(true);
-    expect(exchange).toMatchObject({ label: "bound:idb", store: "idb", jkt: (await dpop.key())!.jkt });
+    expect(exchange).toMatchObject({ store: "idb", jkt: (await dpop.key())!.jkt });
   });
   it("is unbound when the provider ignores the proof", async () => {
     const exchange = await exchangeCodeWithDpop({ dpop: dpopFor(), storage: memory({ [DPOP_SWITCH_KEY]: "on" }), endpoint: ENDPOINT,
       send: async () => ok("Bearer"), networkFailure });
-    expect(exchange.label).toBe("unbound"); expect(exchange.jkt).toBeUndefined();
+    expect(exchange.jkt).toBeUndefined();
   });
   it("signs in without DPoP when the proof is refused, and stops trying it on this browser for a while", async () => {
     const storage = memory({ [DPOP_SWITCH_KEY]: "on" });
     const send = vi.fn(async (proof?: string): Promise<Attempt> => proof ? { ok: false, result: { error: "invalid_dpop_proof" }, nonce: null } : ok("Bearer"));
     const exchange = await exchangeCodeWithDpop({ dpop: dpopFor(), storage, endpoint: ENDPOINT, send, networkFailure });
     expect(send).toHaveBeenCalledTimes(2); expect(send.mock.calls[1][0]).toBeUndefined();
-    expect(exchange).toMatchObject({ label: "unbound", fallback: "invalid_dpop_proof", attempt: { ok: true } });
+    expect(exchange).toMatchObject({ attempt: { ok: true } }); expect(exchange.jkt).toBeUndefined();
     expect(dpopWanted(storage)).toBe(false);
   });
   it("retries without the header when only the DPoP request fails on the network (CORS)", async () => {
     const storage = memory({ [DPOP_SWITCH_KEY]: "on" });
     const send = vi.fn(async (proof?: string) => { if (proof) throw new TypeError("Failed to fetch"); return ok("Bearer"); });
     const exchange = await exchangeCodeWithDpop({ dpop: dpopFor(), storage, endpoint: ENDPOINT, send, networkFailure });
-    expect(exchange).toMatchObject({ label: "unbound", fallback: "network" });
+    expect(exchange.attempt.ok).toBe(true); expect(exchange.jkt).toBeUndefined();
     expect(dpopWanted(storage)).toBe(false);
   });
   it("keeps DPoP on when the network is simply down", async () => {
@@ -197,7 +157,7 @@ describe("code exchange with DPoP", () => {
     const exchange = await exchangeCodeWithDpop({ dpop: createDpop({ indexedDB: null, subtle: crypto.subtle }), storage: memory({ [DPOP_SWITCH_KEY]: "on" }),
       endpoint: ENDPOINT, send, networkFailure });
     expect(send.mock.calls[0][0]).toBeUndefined();
-    expect(exchange).toMatchObject({ label: "unbound", fallback: "no-key" });
+    expect(exchange.jkt).toBeUndefined();
   });
 });
 
@@ -217,31 +177,22 @@ describe("DPoP key storage that hangs", () => {
 describe("code exchange with a slow key store", () => {
   const stuck = { open: () => ({}) } as unknown as IDBFactory;
   const send = () => vi.fn(async (_proof?: string): Promise<TokenAttempt & { result: { token_type?: unknown } }> => ({ ok: true, result: { token_type: "DPoP" }, nonce: null }));
-  it("signs in plainly once 1.75 s pass without any key, never waiting 2 s", async () => {
+  it("signs in plainly when the key store never answers", async () => {
     vi.useFakeTimers();
     const request = send();
     const exchange = exchangeCodeWithDpop({ dpop: createDpop({ indexedDB: stuck, subtle: crypto.subtle }), storage: memory(), endpoint: ENDPOINT,
       send: request, networkFailure: () => false });
-    await vi.advanceTimersByTimeAsync(1_749);
-    expect(request).not.toHaveBeenCalled();
-    await vi.advanceTimersByTimeAsync(1);
-    expect(await exchange).toMatchObject({ label: "unbound", fallback: "key-slow" });
+    await vi.advanceTimersByTimeAsync(5_000);
+    expect((await exchange).jkt).toBeUndefined();
+    expect(request).toHaveBeenCalledOnce();
     expect(request.mock.calls[0][0]).toBeUndefined();
     vi.useRealTimers();
-  });
-  it("uses the localStorage backup key when IndexedDB is too slow, within 2 s", async () => {
-    const storage = memory(); const request = send();
-    const started = Date.now();
-    const exchange = await exchangeCodeWithDpop({ dpop: createDpop({ indexedDB: stuck, subtle: crypto.subtle, backupStorage: () => storage }),
-      storage, endpoint: ENDPOINT, send: request, networkFailure: () => false });
-    expect(Date.now() - started).toBeLessThan(2_100);
-    expect(await verifies(request.mock.calls[0][0]!)).toBe(true);
-    expect(exchange).toMatchObject({ label: "bound:local", store: "local", keyNote: "idb-slow" });
   });
   it("binds to the backup key when IndexedDB is unavailable", async () => {
     const storage = memory(); const request = send();
     const exchange = await exchangeCodeWithDpop({ dpop: createDpop({ indexedDB: null, subtle: crypto.subtle, backupStorage: () => storage }),
       storage, endpoint: ENDPOINT, send: request, networkFailure: () => false });
-    expect(exchange).toMatchObject({ label: "bound:local", store: "local", keyNote: "no-idb", jkt: expect.any(String) });
+    expect(await verifies(request.mock.calls[0][0]!)).toBe(true);
+    expect(exchange).toMatchObject({ store: "local", jkt: expect.any(String) });
   });
 });

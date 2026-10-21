@@ -8,7 +8,7 @@ Realtime ownership and sequencing are diagrammed in `docs/realtime-data-flow.md`
 
 | Module | Responsibility |
 | --- | --- |
-| `src/main.ts` | Composition root only. It wires controllers; new behavior belongs in a typed runtime or UI module. Its size is held by the ratchets in `src/main-boundary.test.ts` (see below). |
+| `src/main.ts` | Composition root only. It wires controllers; new behavior belongs in a typed runtime or UI module. Its size is held by the ratchets in `scripts/check-code-health.mjs` (see below). |
 | `src/game/runtime/coop-access.ts` | Null-safe reads of the coop client with the defaults the game shows before it connects; the wiring modules below take it as `coop`. |
 | `src/game/runtime/`: `player-combat-wiring.ts`, `player-controller-wiring.ts`, `game-session-wiring.ts`, `coop-session-wiring.ts`, `auto-farm/auto-farm-wiring.ts`, `duel/duel-wiring.ts`, `town-runtimes.ts`, `world-places.ts`, `displayed-power.ts` | The bands `main.ts` composes, one factory each taking one typed deps object: player combat, the local player, the game session's update order, the coop client's notifications, Auto Farm, duels, the Town's stations, the quest board, travel, Soul Dimension and guild halls, and displayed power. Objects created after a factory runs are passed as `later` getters, read only once play needs them. |
 | `src/game/runtime/render/world-render-wiring.ts`, `map-asset-loading.ts`, `player-identity-wiring.ts` | The world and frame renderers' wiring, the minimap's canvas box, map art and balance loading with neighbouring-map preloads, and players' name plates. |
@@ -25,18 +25,19 @@ Realtime ownership and sequencing are diagrammed in `docs/realtime-data-flow.md`
 | `src/ui/` | UI controllers and views for HUD, inventory, profiles, leaderboard, developer tools, overlays, startup, chat, and interaction bindings. |
 | `src/ui/hud.ts` | HUD and inventory DOM rendering. |
 | `src/ui/chat.ts` | Chat UI behavior. |
-| `src/wildstat-coop.ts` | Browser-facing multiplayer composition root and connection/reconnect policy; kept below 1,000 lines, with the same long-line and byte ratchets, by `src/coop/wildstat-coop-boundary.test.ts`. |
+| `src/wildstat-coop.ts` | Browser-facing multiplayer composition root and connection/reconnect policy; kept below 1,000 lines, with the same long-line and byte ratchets, by `scripts/check-code-health.mjs`. |
 | `src/coop/services/` | Account, base-subscription, presence, profile, progression, chat, duel, boss, and developer service ownership. See `docs/wildstat-coop-modularization.md`. |
 
 Keep static definitions and pure calculations outside `main.ts`. `main.ts` is a composition root, not a feature destination. Add a runtime/UI controller with an explicit input/output boundary, then wire it from `main.ts`. Keep mutable combat state together until it has that boundary; splitting individual functions that share hidden state creates harder coupling, not useful modularity.
 
 ### Size guards on the composition roots
 
-`main.ts` is about 940 lines today and, like `wildstat-coop.ts`, must stay below 1,000. The tests hold these, and every recorded number may only go down:
+`main.ts` is about 940 lines today and, like `wildstat-coop.ts`, must stay below 1,000. `npm run check:code-health` holds these (it also runs inside `npm run check:release`, so ship and CI run it), and every recorded number may only go down:
 
 - **Line ratchet:** the line count stays below 1,000 and never exceeds its last recorded value.
 - **No long lines:** the count of lines over 160 characters, and over 300, never grows. New code stays under 160 characters per line.
 - **Byte budget:** the file size never grows, so code cannot be packed to dodge the line count.
+- **Import cycles:** the same script fails on any runtime import cycle within `shared/` or within `spacetimedb/src/`; a cycle can leave a module half-initialised at load.
 
 When wiring does not fit, extract a named module (a factory that takes its dependencies as one typed object) and wire it in one call. Do not lengthen lines, chain statements onto one line, or delete useful comments to make room. Lower the recorded numbers in the same change whenever an extraction frees space.
 
@@ -53,6 +54,7 @@ When wiring does not fit, extract a named module (a factory that takes its depen
 - Run `npm run build:client` before every player-facing commit. Generated `dist/` files are never committed; GitHub Pages builds the same artifact in CI.
 - Run `npm run typecheck:coop`, `npm run test:unit`, `npm run build:client`, `npm run check:release`, and `git diff --check` before release.
 - Run `npm run test:unit` when changing combat, inventory, duel replay, or progress persistence rules.
+- Which tests to write, and which never to write, is in the Tests section of `CLAUDE.md`.
 - Use the prepared countdown flow in [scheduled-releases.md](scheduled-releases.md) for planned releases after its one-time activation. `npm run release:live` remains the immediate client-only hotfix path. Use `npm run release -- <version>` only when preparing release/cache versions manually, then add the matching entry in `src/app/changelog.ts`.
 - For incompatible server changes, update the shared protocol constant, publish the one Maincloud database (`npm run spacetime:publish:live`), regenerate bindings when reducer/schema signatures change, then deploy the matching client.
 - Never publish production with destructive database flags.
@@ -91,7 +93,7 @@ Consequences to keep in mind before changing boss code:
 ### Next architectural work
 
 1. Keep `src/wildstat-coop.ts` as the sub-1,000-line composition root. New multiplayer state belongs in the service map documented by `docs/wildstat-coop-modularization.md`; connection lifecycle and cross-service policy remain in the façade.
-2. Keep splitting `spacetimedb/src/index.ts` by domain. The pattern, established 2026-09-20 across `boss-combat.ts`, `account-lifecycle.ts`, `module-migrations.ts`, `presence-runtime.ts` and `duel-runtime.ts`: reducer, procedure, view and table declarations stay in `index.ts` (they are the published schema; fixtures call `server.<name>`); bodies and helpers move; a side module imports from `./index` only as `import type`, and anything it still needs from `index.ts` arrives through a `createX(deps)` factory that destructures `deps` at the top, so the moved code stays byte-identical. Verify an extraction with typecheck, the full suite, `npm run spacetime:generate` producing an empty bindings diff (the schema did not move), and `npm run spacetime:build`; `spacetimedb/src/index-boundary.test.ts` ratchets the line count. For a reducer body, the declaration keeps its argument schema and becomes a one-line call (`(ctx, args) => changePlayerMap(ctx, args)`); the named body moves. The 2026-10-12 cleanup moved `savePlayerProgress`, `changeMap`, `devUpdatePlayerSave`, `refreshLeaderboard` and chat send this way. Remaining candidates: the virtual-player load-test reducers and the dev account tools, which need `removeVirtualPlayerData`/`removePlayerIdentityData` from the account-lifecycle factory. Tests exercise reducers through `server.<name>` rather than reading source text, so moving a body never breaks a test that has not changed behaviour.
+2. Keep splitting `spacetimedb/src/index.ts` by domain. The pattern, established 2026-09-20 across `boss-combat.ts`, `account-lifecycle.ts`, `module-migrations.ts`, `presence-runtime.ts` and `duel-runtime.ts`: reducer, procedure, view and table declarations stay in `index.ts` (they are the published schema; fixtures call `server.<name>`); bodies and helpers move; a side module imports from `./index` only as `import type`, and anything it still needs from `index.ts` arrives through a `createX(deps)` factory that destructures `deps` at the top, so the moved code stays byte-identical. Verify an extraction with typecheck, the full suite, `npm run spacetime:generate` producing an empty bindings diff (the schema did not move), and `npm run spacetime:build`; `npm run check:code-health` ratchets the line count. For a reducer body, the declaration keeps its argument schema and becomes a one-line call (`(ctx, args) => changePlayerMap(ctx, args)`); the named body moves. The 2026-10-12 cleanup moved `savePlayerProgress`, `changeMap`, `devUpdatePlayerSave`, `refreshLeaderboard` and chat send this way. Remaining candidates: the virtual-player load-test reducers and the dev account tools, which need `removeVirtualPlayerData`/`removePlayerIdentityData` from the account-lifecycle factory. Tests exercise reducers through `server.<name>` rather than reading source text, so moving a body never breaks a test that has not changed behaviour.
 3. Consider splitting the base-subscription registry into gameplay and account/UI ownership modules only if both still share one hydration boundary and preserve the SDK initial-callback suppression rule.
 4. Add automated tests for reset/account migration, identity-scoped pending saves, scheduled research repair, subscription cancellation, projectile collision, and boss hitbox range.
 
@@ -134,7 +136,7 @@ the next person starts from numbers rather than guesses.
    `myBalanceApologyNotice`, `myUpgradeBench`, `myInventoryCapacity`,
    `myCutsceneHistory`, `myItemGifts`, `myDefeatSessionRestriction`,
    `myOnboarding`, `mySocialMessages`, `mySocialHub`, `myGemPurchases` —
-   verify which tables each reads. `change-map-host-calls.test.ts` guards the
+   verify which tables each reads. `spacetimedb/src/change-map-host-calls.test.ts` guards the
    call count (Home 38, portal 45); fewer calls is still cheaper despite not
    being the main cost driver.
 

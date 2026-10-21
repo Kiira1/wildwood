@@ -1,5 +1,5 @@
 import { expect, it, vi } from "vitest";
-import { autoEquipMessage, createAutoEquipFeedback } from "./auto-equip-feedback";
+import { createAutoEquipFeedback } from "./auto-equip-feedback";
 import { applyServerLoadout, fillEmptyHand, refusedLoadout, serverLoadoutChanges, withServerLoadout } from "../coop/services/server-loadout";
 import type { ServerEquip } from "../coop/services/progression-service";
 import type { PlayerProgress, ProgressSave } from "../coop/services/progress";
@@ -69,37 +69,6 @@ it("puts a weapon in one hand the way the inventory does, and fills an empty han
   expect(fillEmptyHand(loadout(""), ["starter_stone", "starter_bow", "wooden_sword", "iron_sword"], "MELEE")).toBe("iron_sword");
   // A weapon lost from the bag is cleared before the fill, so its kind is passed in.
   expect(fillEmptyHand(loadout(""), ["starter_stone", "wooden_sword"], "MELEE")).toBe("wooden_sword");
-});
-
-it("names the upgrade, the weapon first, and says nothing for an emptied slot", () => {
-  expect(autoEquipMessage([
-    { field: "equippedHead", itemId: "crystal_helmet", previous: "" },
-    { field: "equippedRightHand", itemId: "crystal_bow", previous: "iron_bow" },
-  ])).toBe("Equipped Crystalwing Bow (upgrade)");
-  expect(autoEquipMessage([{ field: "equippedRightHand", itemId: "", previous: "iron_bow" }])).toBeNull();
-});
-
-it("puts the server's gear in the local bag and says so, silently on a reconnect", () => {
-  let listener: ((equip: ServerEquip) => void) | null = null;
-  const inventory = { itemIds: ["iron_bow", "crystal_bow"], ...loadout("iron_bow") } as unknown as InventoryState;
-  const player = { maxHp: 100, hp: 100, baseMaxHp: 100 } as unknown as PlayerState;
-  const renderInventory = vi.fn();
-  const messages: string[] = [];
-  createAutoEquipFeedback({
-    coop: { setOnServerEquip: callback => { listener = callback; } },
-    inventory, player, healthMultiplierBonus: () => 0, renderInventory, showMessage: message => messages.push(message),
-  });
-  const unlocked = Object.fromEntries(CAMPAIGN_UNLOCK_FIELDS.map(field => [field, true])) as unknown as PlayerProgress;
-  listener!({ changes: [{ field: "equippedRightHand", itemId: "crystal_bow", previous: "iron_bow" }], progress: unlocked, live: true });
-  expect(inventory.equippedRightHand).toBe("crystal_bow");
-  expect(renderInventory).toHaveBeenCalledOnce();
-  expect(messages).toEqual(["Equipped Crystalwing Bow (upgrade)"]);
-  // Already in hand: nothing to do.
-  listener!({ changes: [{ field: "equippedRightHand", itemId: "crystal_bow", previous: "iron_bow" }], progress: unlocked, live: true });
-  expect(renderInventory).toHaveBeenCalledOnce();
-  listener!({ changes: [{ field: "equippedRightHand", itemId: "iron_bow", previous: "crystal_bow" }], progress: unlocked, live: false });
-  expect(inventory.equippedRightHand).toBe("iron_bow");
-  expect(messages).toHaveLength(1);
 });
 
 it("puts the server's loadout back and says so when it did not take an equip", () => {

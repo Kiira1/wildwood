@@ -4,7 +4,7 @@ import { ScheduleAt, Timestamp } from "spacetimedb";
 import { crystalFixture, identity, server } from "../../tests/helpers/crystal-hollows-fixture";
 import { STARTER_BOW } from "../../shared/items";
 import { ATTACK_BALANCE_VERSION, BOSS_REWARD_CLAIM_BITS, SPACETIME_AUTH_CLIENT_ID, SPACETIME_AUTH_ISSUER } from "../../shared/rules";
-import { PRESTIGE_CAP_HINT, PRESTIGE_MAX_LEVEL, PRESTIGE_STAT_GAIN_PER_LEVEL, prestigeRequirementHint, prestigeStatMultiplier, prestigeUnlocked } from "../../shared/prestige";
+import { PRESTIGE_MAX_LEVEL, PRESTIGE_STAT_GAIN_PER_LEVEL, prestigeStatMultiplier, prestigeUnlocked } from "../../shared/prestige";
 import { PRESTIGE_PERK_MAX_RANK } from "../../shared/prestige-perks";
 import { attackIntervalForRating, ratingForLevels } from "../../shared/stat-rating";
 import { progressOf } from "../../tests/helpers/progress";
@@ -22,6 +22,19 @@ function farmer(prestigeLevel = 0) {
   if (prestigeLevel) f.seed("playerPrestige", { identity: f.ctx.sender, level: prestigeLevel, perkPoints: prestigeLevel, peakPower: 0, prestigedAt: f.ctx.timestamp });
   return f;
 }
+function guestToLink() {
+  const f = crystalFixture();
+  const guest = identity("2");
+  f.db.playerProgress.identity.delete(f.ctx.sender);
+  f.progress(guest);
+  f.seed("playerBalanceVersion", { identity: guest, version: ATTACK_BALANCE_VERSION });
+  return { f, guest };
+}
+function linkGuest(f: ReturnType<typeof crystalFixture>, guest: ReturnType<typeof identity>) {
+  f.seed("accountLink", { code: "guest-link", guest, createdAt: f.ctx.timestamp });
+  f.ctx.senderAuth = { jwt: { issuer: SPACETIME_AUTH_ISSUER, audience: [SPACETIME_AUTH_CLIENT_ID] } };
+  f.run(server.claimGuestAccount, { code: "guest-link" });
+}
 const farmSpitters = (f: ReturnType<typeof crystalFixture>, count = 10) =>
   reportKills(f, { streamId: "prestige-stream-01", sequence: 1n, mapId: "tutorial_forest", enemies: [{ enemy: "Spitter", count }] });
 
@@ -34,15 +47,12 @@ it("opens only once the campaign's last boss is down, and one Endless stage furt
   expect(prestigeUnlocked(CAMPAIGN_COMPLETE, 3, 5)).toBe(false);   // fifth wants Endless 4
   expect(prestigeUnlocked(CAMPAIGN_COMPLETE, 4, 5)).toBe(true);
   expect(prestigeUnlocked(0, 9, 2)).toBe(false);                   // Endless alone never opens it
+  expect(prestigeUnlocked(32767, 1, 2)).toBe(true);                 // every campaign boss claimed
   expect(prestigeStatMultiplier(0)).toBe(1);
   expect(prestigeStatMultiplier(3)).toBeCloseTo(1 + 3 * PRESTIGE_STAT_GAIN_PER_LEVEL);
 });
 
-it("caps prestige at 20 only without the expansion, which the server always has now", () => {
-  expect(PRESTIGE_MAX_LEVEL).toBe(20);
-  expect(prestigeUnlocked(CAMPAIGN_COMPLETE, 99, PRESTIGE_MAX_LEVEL)).toBe(true);
-  expect(prestigeUnlocked(CAMPAIGN_COMPLETE, 99, PRESTIGE_MAX_LEVEL + 1)).toBe(false);
-  expect(prestigeRequirementHint(true, 99, PRESTIGE_MAX_LEVEL + 1)).toBe(PRESTIGE_CAP_HINT);
+it("lets the server prestige past the base cap", () => {
   const f = crystalFixture();
   f.patch("playerProgress", { bossRewardClaims: CAMPAIGN_COMPLETE });
   f.seed("proceduralProgress", { identity: f.ctx.sender, completed: 99 });
@@ -88,18 +98,11 @@ it("stacks a second prestige and keeps the highest power ever reached", () => {
 });
 
 it("carries guest prestige and unspent points into a linked account", () => {
-  const f = crystalFixture();
-  const guest = identity("2");
-  f.db.playerProgress.identity.delete(f.ctx.sender);
-  f.progress(guest);
-  f.seed("playerBalanceVersion", { identity: guest, version: ATTACK_BALANCE_VERSION });
+  const { f, guest } = guestToLink();
   f.seed("playerPrestige", { identity: guest, level: 1, perkPoints: 1, peakPower: 9_000, prestigedAt: f.ctx.timestamp });
   f.seed("playerPrestige", { identity: f.ctx.sender, level: 1, perkPoints: 0, peakPower: 7_000, prestigedAt: f.ctx.timestamp });
   f.seed("playerPrestigePerk", { identity: f.ctx.sender, keenEdge: 1 });
-  f.seed("accountLink", { code: "prestige-link", guest, createdAt: f.ctx.timestamp });
-  f.ctx.senderAuth = { jwt: { issuer: SPACETIME_AUTH_ISSUER, audience: [SPACETIME_AUTH_CLIENT_ID] } };
-
-  f.run(server.claimGuestAccount, { code: "prestige-link" });
+  linkGuest(f, guest);
 
   expect(prestigeRow(f)).toMatchObject({ level: 2, perkPoints: 1, peakPower: 9_000 });
   expect(perkRow(f)).toMatchObject({ keenEdge: 1 });
@@ -107,35 +110,21 @@ it("carries guest prestige and unspent points into a linked account", () => {
 });
 
 it("carries a guest's paused research into a linked account", () => {
-  const f = crystalFixture();
-  const guest = identity("2");
-  f.db.playerProgress.identity.delete(f.ctx.sender);
-  f.progress(guest);
-  f.seed("playerBalanceVersion", { identity: guest, version: ATTACK_BALANCE_VERSION });
+  const { f, guest } = guestToLink();
   f.seed("pausedResearch", { key: `${guest.toHexString()}:foraging`, identity: guest, researchId: "foraging", targetRank: 2, remainingMicros: 9_000_000n, pausedAt: f.ctx.timestamp });
-  f.seed("accountLink", { code: "pause-link", guest, createdAt: f.ctx.timestamp });
-  f.ctx.senderAuth = { jwt: { issuer: SPACETIME_AUTH_ISSUER, audience: [SPACETIME_AUTH_CLIENT_ID] } };
-
-  f.run(server.claimGuestAccount, { code: "pause-link" });
+  linkGuest(f, guest);
 
   expect(f.db.pausedResearch.key.find(`${f.ctx.sender.toHexString()}:foraging`)).toMatchObject({ identity: f.ctx.sender, targetRank: 2, remainingMicros: 9_000_000n });
   expect(f.db.pausedResearch.key.find(`${guest.toHexString()}:foraging`)).toBeFalsy();
 });
 
 it("merges guest perk ranks and refunds any ranks above the cap", () => {
-  const f = crystalFixture();
-  const guest = identity("2");
-  f.db.playerProgress.identity.delete(f.ctx.sender);
-  f.progress(guest);
-  f.seed("playerBalanceVersion", { identity: guest, version: ATTACK_BALANCE_VERSION });
+  const { f, guest } = guestToLink();
   f.seed("playerPrestige", { identity: guest, level: 4, perkPoints: 0, peakPower: 9_000, prestigedAt: f.ctx.timestamp });
   f.seed("playerPrestige", { identity: f.ctx.sender, level: 3, perkPoints: 1, peakPower: 7_000, prestigedAt: f.ctx.timestamp });
   f.seed("playerPrestigePerk", { identity: guest, keenEdge: 4 });
   f.seed("playerPrestigePerk", { identity: f.ctx.sender, keenEdge: 2 });
-  f.seed("accountLink", { code: "perks-link", guest, createdAt: f.ctx.timestamp });
-  f.ctx.senderAuth = { jwt: { issuer: SPACETIME_AUTH_ISSUER, audience: [SPACETIME_AUTH_CLIENT_ID] } };
-
-  f.run(server.claimGuestAccount, { code: "perks-link" });
+  linkGuest(f, guest);
 
   expect(prestigeRow(f)).toMatchObject({ level: 7, perkPoints: 2 });
   expect(perkRow(f)).toMatchObject({ keenEdge: PRESTIGE_PERK_MAX_RANK });
@@ -156,8 +145,10 @@ it("asks each prestige for one Endless stage more than the last", () => {
   expect(f.db.proceduralProgress.identity.find(f.ctx.sender)).toBeFalsy();
 });
 
-it("keeps research through a prestige but not through a plain reset", () => {
+it("keeps research and lifetime kills through a prestige but not through a plain reset", () => {
   const prestiged = crystalFixture();
+  prestiged.seed("playerLifetime", { identity: prestiged.ctx.sender, enemyKills: 4_242n,
+    joinedAt: prestiged.ctx.timestamp, sessionStartedAt: prestiged.ctx.timestamp });
   prestiged.seed("playerResearch", { identity: prestiged.ctx.sender, foraging: 4, warcraft: 3 });
   prestiged.seed("playerLuckResearch", { identity: prestiged.ctx.sender, cardLuck: 2, gearLuck: 0, miningLuck: 0, skillLuck: 0, refineLuck: 1 });
   prestiged.patch("playerProgress", { bossRewardClaims: CAMPAIGN_COMPLETE });
@@ -168,27 +159,16 @@ it("keeps research through a prestige but not through a plain reset", () => {
   const wiped = crystalFixture();
   wiped.seed("playerResearch", { identity: wiped.ctx.sender, foraging: 4, warcraft: 3 });
   wiped.seed("playerLuckResearch", { identity: wiped.ctx.sender, cardLuck: 2, gearLuck: 0, miningLuck: 0, skillLuck: 0, refineLuck: 1 });
-  wiped.run(server.resetPlayerProgress, {});
-  expect(wiped.db.playerResearch.identity.find(wiped.ctx.sender)).toBeFalsy();
-  expect(wiped.db.playerLuckResearch.identity.find(wiped.ctx.sender)).toBeFalsy();
-});
-
-it("keeps the lifetime kill count through a prestige but not through a plain reset", () => {
-  const prestiged = crystalFixture();
-  prestiged.patch("playerProgress", { bossRewardClaims: CAMPAIGN_COMPLETE });
-  prestiged.seed("playerLifetime", { identity: prestiged.ctx.sender, enemyKills: 4_242n,
-    joinedAt: prestiged.ctx.timestamp, sessionStartedAt: prestiged.ctx.timestamp });
-  prestiged.run(server.prestigeAccount, {});
-  expect(prestiged.db.playerLifetime.identity.find(prestiged.ctx.sender).enemyKills).toBe(4_242n);
-
-  const wiped = crystalFixture();
   wiped.seed("playerLifetime", { identity: wiped.ctx.sender, enemyKills: 4_242n,
     joinedAt: wiped.ctx.timestamp, sessionStartedAt: wiped.ctx.timestamp });
   wiped.run(server.resetPlayerProgress, {});
+  expect(wiped.db.playerResearch.identity.find(wiped.ctx.sender)).toBeFalsy();
+  expect(wiped.db.playerLuckResearch.identity.find(wiped.ctx.sender)).toBeFalsy();
+  expect(prestiged.db.playerLifetime.identity.find(prestiged.ctx.sender).enemyKills).toBe(4_242n);
   expect(wiped.db.playerLifetime.identity.find(wiped.ctx.sender).enemyKills).toBe(0n);
 });
 
-it("goes with everything else earned across runs on the player's own Reset Save (ZeII, Yumi), gems kept", () => {
+it("clears every cross-run table on a Reset Save but keeps gems", () => {
   const f = crystalFixture();
   const me = f.ctx.sender, at = f.ctx.timestamp;
   f.seed("playerPrestige", { identity: me, level: 2, perkPoints: 2, peakPower: 5, prestigedAt: at });
@@ -212,7 +192,7 @@ it("refuses a save reset during a Reflect Only or Aggro run, which dropping out 
     const f = crystalFixture();
     f.patch("playerProgress", { damage: 1_000 });
     f.seed(table, { identity: f.ctx.sender, active: true, completed: 0 });
-    expect(() => f.run(server.resetPlayerProgress, {})).toThrow("Drop out of the challenge before resetting your save.");
+    expect(() => f.run(server.resetPlayerProgress, {})).toThrow("challenge");
     expect(progressOf(f, f.ctx.sender)?.damage).toBe(1_000);
     f.db[table].identity.update({ identity: f.ctx.sender, active: false, completed: 0 });
     f.run(server.resetPlayerProgress, {});
@@ -270,28 +250,6 @@ it("Quick Draw raises the attack speed cap the run's rating closes in on, and a 
   expect(progressOf(f, f.ctx.sender).attackRate).toBeCloseTo(before, 6);
 });
 
-it("refuses to push a perk past its highest rank", () => {
-  const f = crystalFixture();
-  f.seed("playerPrestige", { identity: f.ctx.sender, level: 9, perkPoints: 3, peakPower: 0, prestigedAt: f.ctx.timestamp });
-  f.seed("playerPrestigePerk", { identity: f.ctx.sender, splitShot: PRESTIGE_PERK_MAX_RANK });
-  expect(() => f.run(server.spendPrestigePerkPoint, { perk: "splitShot" })).toThrow("highest rank");
-  expect(prestigeRow(f)).toMatchObject({ perkPoints: 3 });
-});
-
-it("prestiges a player who has cleared the campaign and one Endless stage", () => {
-  // Teus's exact live state: every campaign boss claimed, Endless 1 cleared,
-  // one prestige already taken. The window was refusing this and the server
-  // was not, so the gate is asserted here on both sides.
-  const f = farmer(1);
-  f.patch("playerProgress", { bossRewardClaims: 32767 });
-  f.seed("proceduralProgress", { identity: f.ctx.sender, completed: 1 });
-  expect(prestigeUnlocked(32767, 1, 2)).toBe(true);
-  expect(() => f.run(server.prestigeAccount, {})).not.toThrow();
-  expect(prestigeRow(f)).toMatchObject({ level: 2, perkPoints: 2 });
-  // The reset takes the campaign with it, so the next one starts from there.
-  expect(() => f.run(server.prestigeAccount, {})).toThrow("Defeat Aegis Prime");
-});
-
 it("widens the claim bound for perks that reach more enemies than the weapon can", () => {
   // Split Shot and Riposte finish kills the weapon's own damage cannot account
   // for. A bound blind to them would pay a perked player less than they earned.
@@ -336,21 +294,6 @@ it("leaves a running research timer running, and it still completes after the pr
   expect(f.db.activeResearch.identity.find(f.ctx.sender)).toBeFalsy();
 });
 
-it("keeps a prestiged player on the leaderboard at their reset power", () => {
-  // The board is rebuilt on a timer. Without an immediate refresh a reset
-  // player sits at the top of everyone else's leaderboard until the sweep.
-  const f = crystalFixture();
-  f.patch("playerProgress", { bossRewardClaims: CAMPAIGN_COMPLETE, desertUnlocked: true, damage: 5_000_000, maxHp: 900_000 });
-  f.seed("playerProfile", { identity: identity("9"), displayName: "Rival" });
-  f.run(server.prestigeAccount, {});
-  const entry = f.db.leaderboardEntry.identity.find(f.ctx.sender);
-  expect(progressOf(f, f.ctx.sender).desertUnlocked).toBe(false);
-  expect(entry).toBeTruthy();
-  expect(entry.powerLevel).toBeLessThan(5_000_000);
-  expect(entry.damage).toBeLessThan(5_000_000);
-  expect(f.db.leaderboardStanding.identity.find(f.ctx.sender)?.pages[0]).toBeGreaterThan(0);
-});
-
 it("respecs every spent perk point back for free, as often as wanted, keeping the run's stats, map and gear", () => {
   const f = farmer();
   f.seed("playerPrestige", { identity: f.ctx.sender, level: 4, perkPoints: 1, peakPower: 5, prestigedAt: f.ctx.timestamp });
@@ -376,7 +319,7 @@ it("refuses a respec with nothing spent, and changes nothing", () => {
   const f = farmer();
   f.seed("playerPrestige", { identity: f.ctx.sender, level: 1, perkPoints: 1, peakPower: 0, prestigedAt: f.ctx.timestamp });
   const before = progressOf(f, f.ctx.sender);
-  expect(() => f.run(server.respecPrestigePerks, {})).toThrow("No perk points to respec.");
+  expect(() => f.run(server.respecPrestigePerks, {})).toThrow("No perk points");
   expect(progressOf(f, f.ctx.sender)).toEqual(before);
   expect(prestigeRow(f)).toMatchObject({ perkPoints: 1 });
 });

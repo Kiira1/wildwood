@@ -21,6 +21,13 @@ function fixture() {
   };
   return { ...f, saved, ranks, reachNextPrestige };
 }
+function namedFixture() {
+  const f = fixture();
+  const profile = f.db.playerProfile.identity.find(f.ctx.sender);
+  if (profile) f.db.playerProfile.identity.update({ ...profile, displayName: "Phoe" });
+  else f.seed("playerProfile", { identity: f.ctx.sender, displayName: "Phoe" });
+  return f;
+}
 const zero = Object.fromEntries(PRESTIGE_PERK_IDS.map(perk => [perk, 0]));
 
 it("starts fresh with every prestige bonus off, and keeps the owned perks untouched", () => {
@@ -39,10 +46,12 @@ it("starts fresh with every prestige bonus off, and keeps the owned perks untouc
   expect(() => f.run(server.startPrestigeChallenge)).toThrow();
 });
 
-it("restarts the run on a death past Tutorial Forest", () => {
+it("restarts the run on a death past Tutorial Forest, but not on one inside it", () => {
   const f = fixture();
   f.run(server.startAggroRun);
   f.patch("playerProgress", { damage: 999, bossRewardClaims: BOSS_REWARD_CLAIM_BITS.dragon });
+  f.run(server.recordPlayerDeath);
+  expect(progressOf(f, f.ctx.sender)).toMatchObject({ damage: 999, bossRewardClaims: BOSS_REWARD_CLAIM_BITS.dragon });
   f.patch("player", { mapId: "beginner_desert" });
   f.run(server.recordPlayerDeath);
   expect(progressOf(f, f.ctx.sender)).toMatchObject({ bossRewardClaims: 0 });
@@ -52,16 +61,6 @@ it("restarts the run on a death past Tutorial Forest", () => {
   const g = fixture();
   g.run(server.recordPlayerDeath);
   expect(progressOf(g, g.ctx.sender).damage).toBe(12345);
-});
-
-it("keeps the run through a death in Tutorial Forest, the run's safe zone", () => {
-  const f = fixture();
-  f.run(server.startAggroRun);
-  f.patch("playerProgress", { damage: 999, bossRewardClaims: BOSS_REWARD_CLAIM_BITS.dragon });
-  expect(f.db.player.identity.find(f.ctx.sender).mapId).toBe("tutorial_forest");
-  f.run(server.recordPlayerDeath);
-  expect(progressOf(f, f.ctx.sender)).toMatchObject({ damage: 999, bossRewardClaims: BOSS_REWARD_CLAIM_BITS.dragon });
-  expect(f.db.playerAggroChallenge.identity.find(f.ctx.sender).active).toBe(true);
 });
 
 it("is won at a first prestige's requirement (the campaign's last boss), handing back the main run and its bonuses", () => {
@@ -120,14 +119,17 @@ it("switching between the challenges never loses the main run or the parked Refl
   expect(f.db.prestigeChallengeRun.identity.find(f.ctx.sender)).toBeTruthy();
   f.run(server.startAggroRun);
   expect(() => f.run(server.startPrestigeChallenge)).toThrow();
-  f.run(server.recordPlayerDeath);
+  f.patch("playerProgress", { damage: 222 });
   f.run(server.abandonAggroRun); mainRun(); clean();
   // The parked Reflect run outlived the Aggro run in between.
   f.run(server.startPrestigeChallenge);
   expect(progressOf(f, f.ctx.sender).damage).toBe(777);
   f.run(server.abandonPrestigeChallenge); mainRun(); clean();
-  f.run(server.startAggroRun); f.reachNextPrestige(); f.run(server.prestigeAccount);
+  f.run(server.startAggroRun);
+  expect(progressOf(f, f.ctx.sender).damage).toBe(222);
+  f.reachNextPrestige(); f.run(server.prestigeAccount);
   expect(progressOf(f, f.ctx.sender).damage).toBe(12345);
+  expect(f.db.playerAggroChallengeParked.identity.find(f.ctx.sender)).toBeNull();
   expect(f.db.playerAggroChallenge.identity.find(f.ctx.sender)).toMatchObject({ active: false, completed: 1 });
   expect(f.db.playerPrestigeChallenge.identity.find(f.ctx.sender)).toMatchObject({ active: false, completed: 0 });
   expect(prestigePerkRanks(f.ctx, f.ctx.sender)).toEqual(f.ranks);
@@ -140,7 +142,7 @@ it("refuses to drop out when the saved run can't be read, changing nothing", () 
   const backup = f.db.prestigeChallengeBackup.identity.find(f.ctx.sender);
   for (const broken of ["not json", JSON.stringify({ maxHp: 0, damage: 1, armor: 0, regen: 0, attackRate: 1 }), JSON.stringify({ damage: 5 })]) {
     f.db.prestigeChallengeBackup.identity.update({ ...backup, progressJson: broken });
-    expect(() => f.run(server.abandonAggroRun)).toThrow("still in the Aggro run");
+    expect(() => f.run(server.abandonAggroRun)).toThrow();
     expect(f.db.playerAggroChallenge.identity.find(f.ctx.sender).active).toBe(true);
     expect(f.db.prestigeChallengeBackup.identity.find(f.ctx.sender).progressJson).toBe(broken);
   }
@@ -149,28 +151,10 @@ it("refuses to drop out when the saved run can't be read, changing nothing", () 
   expect(progressOf(f, f.ctx.sender)).toEqual(f.saved);
 });
 
-it("an Aggro run parked beside a parked Reflect run keeps both", () => {
-  const f = fixture();
-  f.run(server.startPrestigeChallenge); f.patch("playerProgress", { damage: 111 }); f.run(server.abandonPrestigeChallenge);
-  f.run(server.startAggroRun); f.patch("playerProgress", { damage: 222 }); f.run(server.abandonAggroRun);
-  expect(progressOf(f, f.ctx.sender)).toEqual(f.saved);
-  f.run(server.startPrestigeChallenge);
-  expect(progressOf(f, f.ctx.sender).damage).toBe(111);
-  f.run(server.abandonPrestigeChallenge);
-  f.run(server.startAggroRun);
-  expect(progressOf(f, f.ctx.sender).damage).toBe(222);
-  f.reachNextPrestige(); f.run(server.prestigeAccount);
-  expect(f.db.playerAggroChallengeParked.identity.find(f.ctx.sender)).toBeNull();
-  expect(progressOf(f, f.ctx.sender)).toMatchObject({ damage: 12345 });
-});
-
 it("rebuilds a lost run as a parked one at the player's power, once, for exactly one player", async () => {
   const { rebuildParkedAggroRun } = await import("./aggro-challenge");
   const { effectivePlayerPower } = await import("../../shared/player-power");
-  const f = fixture();
-  const profile = f.db.playerProfile.identity.find(f.ctx.sender);
-  if (profile) f.db.playerProfile.identity.update({ ...profile, displayName: "Phoe" });
-  else f.seed("playerProfile", { identity: f.ctx.sender, displayName: "Phoe" });
+  const f = namedFixture();
   expect(rebuildParkedAggroRun(f.ctx, "phoe", 317_000)).toMatch(/^parked on /);
   // A second rebuild replaces the parked run rather than adding one.
   expect(rebuildParkedAggroRun(f.ctx, "phoe", 317_000)).toMatch(/^parked on /);
@@ -190,10 +174,7 @@ it("rebuilds a lost run as a parked one at the player's power, once, for exactly
 it("rebuilding while a run is under way sets that run's stats in place", async () => {
   const { rebuildParkedAggroRun } = await import("./aggro-challenge");
   const { effectivePlayerPower } = await import("../../shared/player-power");
-  const f = fixture();
-  const profile = f.db.playerProfile.identity.find(f.ctx.sender);
-  if (profile) f.db.playerProfile.identity.update({ ...profile, displayName: "Phoe" });
-  else f.seed("playerProfile", { identity: f.ctx.sender, displayName: "Phoe" });
+  const f = namedFixture();
   f.run(server.startAggroRun);
   expect(rebuildParkedAggroRun(f.ctx, "phoe", 317_000)).toBe("run under way rebuilt");
   const power = effectivePlayerPower(progressOf(f, f.ctx.sender), f.db.playerResearch.identity.find(f.ctx.sender));

@@ -93,6 +93,28 @@ There is no `npm run typecheck`. Use:
     npm run check:release
     npm run build:client
 
+`check:release` includes `npm run check:code-health`: the size ratchets on
+`src/main.ts`, `src/wildstat-coop.ts` and `spacetimedb/src/index.ts` and the
+import-cycle checks. Extract a module to pass them; never pack lines.
+
+## Tests
+
+- **Default: add no test.** Most changes need none.
+- **Core tests** (exact, beside the module) only for rules where a mistake hurts
+  silently: server validation and anti-cheat bounds, reward, price, odds and
+  balance math, data migrations, sign-in and tokens, and data-loss paths.
+- **Scenarios** (`tests/scenarios/`) for flows a player sees: one high-level test
+  driving the real game and real reducers, not one test per module.
+- Never mock our own modules. Fake only what is outside the repo (network,
+  clock, storage, browser APIs).
+- Never assert wording, markup, CSS classes, diagnostic strings, default flag
+  values, call order or source text.
+- Layout and art are checked with `tools/visual-check`, not tests.
+- Opt-in runners (`npm run test:balance`, `npm run sim:autofarm`,
+  `FORECAST_CALIBRATION=…`) stay out of the default suite (`vitest.config.ts`).
+- Delete an old test file only in the same change that adds the scenario
+  replacing it.
+
 ## Conventions
 
 - Reducers are the only mutation path; kills are client claims bounded server-side.

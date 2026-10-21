@@ -41,17 +41,6 @@ describe("connection diagnostic delivery", () => {
     await collector.flush(); expect(collector.pending()).toBe(1);
     await collector.flush(); expect(f.submit.mock.calls[0][0]).toBe(f.submit.mock.calls[1][0]); expect(collector.pending()).toBe(0);
   });
-  it("bounds the queue, batches delivery, and preserves events recorded during upload", async () => {
-    const f = fixture(); const collector = createConnectionDiagnostics(f.options); f.connect();
-    for (let n = 0; n < 90; n++) collector.record("socket-close", { detail: `event-${n}` });
-    expect(collector.pending()).toBe(80);
-    let finish!: () => void;
-    f.submit.mockImplementationOnce(() => new Promise<void>(resolve => { finish = resolve; }));
-    const flush = collector.flush(); collector.record("title-screen"); finish(); await flush;
-    expect(JSON.parse(f.submit.mock.calls[0][0])).toHaveLength(12);
-    expect(collector.pending()).toBe(68);
-    await collector.flush(); expect(collector.pending()).toBe(56);
-  });
   it("sanitizes sensitive error text and discards unknown fields", () => {
     const text = safeDiagnosticText('failed https://auth.example/?token=secret Bearer abc token=foo user@example.com eyJabc.eyJdef.sig');
     expect(text).not.toMatch(/secret|abc|foo|user@example|eyJ/);

@@ -1,6 +1,5 @@
 import { describe, expect, it } from "vitest";
 import type { SpawnSite } from "../../world";
-import * as respawn from "./regular-enemy-respawn";
 import { createRegularEnemyRespawn, REGULAR_ENEMY_RESPAWN_SECONDS } from "./regular-enemy-respawn";
 
 function site(overrides: Partial<SpawnSite> = {}): SpawnSite {
@@ -38,28 +37,24 @@ describe("regular enemy respawn", () => {
     expect(clock.respawnSeconds()).toBeCloseTo(10 / 3);
   });
 
-  it("no longer has a rewarded boost to halve it", () => {
-    // The ad pays Gems now: no bank, no switch, no halved clock.
-    expect(Object.keys(respawn).sort()).toEqual(["REGULAR_ENEMY_RESPAWN_SECONDS", "createRegularEnemyRespawn"]);
-    expect(Object.keys(createRegularEnemyRespawn(() => 0)).sort()).toEqual(["respawnSeconds", "schedule"]);
+  it("uses the current map configuration", () => {
+    let seconds = 20;
+    const target = site();
+    const clock = createRegularEnemyRespawn(() => 10, 1, () => seconds);
+    clock.schedule(target);
+    expect(target.respawnAt).toBe(30);
+    seconds = 30;
+    expect(clock.respawnSeconds()).toBe(30);
   });
-});
 
-it("uses the current map configuration", () => {
-  let seconds = 20;
-  const target = site();
-  const clock = createRegularEnemyRespawn(() => 10, 1, () => seconds);
-  clock.schedule(target); expect(target.respawnAt).toBe(30);
-  seconds = 30; expect(clock.respawnSeconds()).toBe(30);
-});
+  it("applies the owner's enemy respawn research", () => {
+    const clock = createRegularEnemyRespawn(() => 0, 1, () => 20, () => 5);
+    expect(clock.respawnSeconds()).toBe(17.5);
+  });
 
-it("applies the owner's enemy respawn research", () => {
-  const clock = createRegularEnemyRespawn(() => 0, 1, () => 20, () => 5);
-  expect(clock.respawnSeconds()).toBe(17.5);
-});
-
-it("brings enemies back sooner with Respawn cards, after research", () => {
-  const plain = createRegularEnemyRespawn(() => 0, 1, () => 10, () => 2);
-  const carded = createRegularEnemyRespawn(() => 0, 1, () => 10, () => 2, () => .03);
-  expect(carded.respawnSeconds()).toBeCloseTo(plain.respawnSeconds() / 1.03, 9);
+  it("brings enemies back sooner with Respawn cards, after research", () => {
+    const plain = createRegularEnemyRespawn(() => 0, 1, () => 10, () => 2);
+    const carded = createRegularEnemyRespawn(() => 0, 1, () => 10, () => 2, () => .03);
+    expect(carded.respawnSeconds()).toBeCloseTo(plain.respawnSeconds() / 1.03, 9);
+  });
 });

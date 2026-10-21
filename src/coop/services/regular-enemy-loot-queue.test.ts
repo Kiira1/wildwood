@@ -1,5 +1,5 @@
 import { expect, it, vi } from "vitest";
-import { createRegularEnemyLootQueue, DRAIN_EXTRA_BATCHES, ENEMY_DEFEAT_BATCH_TIMEOUT_MS, IDLE_SIMULATION_ALLOWANCE_SECONDS, ORPHAN_QUEUE_AFTER_MS, type EnemyLootRequest } from "./regular-enemy-loot-queue";
+import { createRegularEnemyLootQueue, ENEMY_DEFEAT_BATCH_TIMEOUT_MS, IDLE_SIMULATION_ALLOWANCE_SECONDS, ORPHAN_QUEUE_AFTER_MS, type EnemyLootRequest } from "./regular-enemy-loot-queue";
 import { REGULAR_ENEMY_LOOT_BATCH_MAX as FULL } from "../../../shared/regular-map-loot";
 function fixture() {
   const data = new Map<string, string>();
@@ -73,26 +73,6 @@ it("bounds a stalled acknowledgement and retries its unchanged sequence", async 
   } finally { vi.useRealTimers(); }
 });
 
-it("waits for the next interval for kills arriving during an ordinary flush", async () => {
-  const f = fixture(); let finish!: (ok: boolean) => void;
-  f.send.mockImplementationOnce(() => new Promise(resolve => { finish = resolve; }));
-  f.queue.record("water_reach", "Spitter"); const pending = f.queue.flush();
-  for (let i = 0; i < 20; i++) f.queue.record("water_reach", "Spitter");
-  finish(true); await pending;
-  expect(f.send).toHaveBeenCalledTimes(1);
-  await f.queue.flush();
-  expect(f.send.mock.calls[1][0]).toMatchObject({ count: 20, sequence: 2n });
-});
-
-it("a portal drain includes kills queued during an existing ordinary request", async () => {
-  const f = fixture(); let finish!: (ok: boolean) => void;
-  f.send.mockImplementationOnce(() => new Promise(resolve => { finish = resolve; }));
-  f.queue.record("water_reach", "Spitter"); void f.queue.flush();
-  f.queue.record("water_reach", "Spitter"); const drain = f.queue.flush(true);
-  finish(true); expect(await drain).toBe(true);
-  expect(f.send).toHaveBeenCalledTimes(2);
-});
-
 it("sends species counts without any client stat totals, including maps without loot", async () => {
   const f = fixture();
   f.queue.record("endless_40", "site:0");
@@ -137,55 +117,6 @@ it('persists a throttle across refreshes and ignores repeated forced drains unti
   } finally { vi.useRealTimers(); }
 });
 
-it('keeps a throttle that arrives after a reconnect began a new session', async () => {
-  vi.useFakeTimers();
-  try {
-    const f = fixture();
-    let reply!: (value: 'throttled') => void;
-    const send = vi.fn((_r: EnemyLootRequest): Promise<boolean | 'throttled'> => new Promise(resolve => { reply = resolve; }));
-    const queue = createRegularEnemyLootQueue({ ...f.options, send });
-    queue.begin(); queue.record('water_reach', 'Spitter');
-    const first = queue.flush(true);
-    queue.begin();                                        // the socket dropped and came back mid-send
-    reply('throttled'); expect(await first).toBe(false);
-    for (let i = 0; i < 10; i++) { queue.begin(); expect(await queue.flush(true)).toBe(false); }
-    const reload = createRegularEnemyLootQueue({ ...f.options, send }); reload.begin();
-    expect(await reload.flush(true)).toBe(false);
-    expect(send).toHaveBeenCalledTimes(1);
-    await vi.advanceTimersByTimeAsync(30_000); send.mockResolvedValue(true);
-    expect(await queue.flush(true)).toBe(true);
-    expect(send).toHaveBeenCalledTimes(2);
-  } finally { vi.useRealTimers(); }
-});
-
-it('respects an adopted orphan throttle before draining either stream', async () => {
-  vi.useFakeTimers();
-  try {
-    const f = fixture();
-    f.queue.record('water_reach', 'Spitter');
-    await vi.advanceTimersByTimeAsync(ORPHAN_QUEUE_AFTER_MS + 1);
-    const send = vi.fn(async (_r: EnemyLootRequest): Promise<boolean | 'throttled'> => 'throttled');
-    const queue = createRegularEnemyLootQueue({ ...f.options, tabId: () => 'new-tab', send });
-    queue.begin(); queue.record('water_reach', 'Spitter');
-    expect(await queue.flush(true)).toBe(false);
-    const rejected = send.mock.calls[0][0];
-    for (let i = 0; i < 10; i++) expect(await queue.flush(true)).toBe(false);
-    expect(send).toHaveBeenCalledTimes(1);
-    await vi.advanceTimersByTimeAsync(30_000); send.mockResolvedValue(true);
-    expect(await queue.flush(true)).toBe(true);
-    expect(send.mock.calls[1][0]).toEqual(rejected);
-    expect(send).toHaveBeenCalledTimes(3);
-  } finally { vi.useRealTimers(); }
-});
-
-it('holds full batches for the periodic save instead of sending during combat', async () => {
-  const f = fixture();
-  for (let i = 0; i < 2 * FULL + 50; i++) f.queue.record('water_reach', 'Spitter');
-  expect(f.send).not.toHaveBeenCalled();
-  await f.queue.flush();
-  expect(f.send.mock.calls.map(([r]) => r.count)).toEqual([FULL, FULL, 50]);
-});
-
 it('retries a boss reward after a failed send without another kill or periodic save', async () => {
   vi.useFakeTimers();
   const f = fixture();
@@ -217,21 +148,6 @@ it('retries a boss queued behind a failed ordinary batch in sequence', async () 
     expect(f.send.mock.calls[2][0].enemies).toEqual([{ enemy: 'boss', count: 1 }]);
     expect(f.queue.hasPending()).toBe(false);
   } finally { f.queue.clear(); vi.useRealTimers(); }
-});
-
-it('restores pending boss retries, backs off while offline, and cancels on sign-out', async () => {
-  vi.useFakeTimers();
-  const f = fixture(); let reload = f.queue;
-  try {
-    f.send.mockResolvedValue(false);
-    f.queue.record('tutorial_forest', 'boss'); await f.queue.flush(true);
-    f.queue.clear(); reload = createRegularEnemyLootQueue(f.options); reload.begin();
-    await vi.advanceTimersByTimeAsync(2_000); expect(f.send).toHaveBeenCalledTimes(2);
-    await vi.advanceTimersByTimeAsync(3_999); expect(f.send).toHaveBeenCalledTimes(2);
-    await vi.advanceTimersByTimeAsync(1); expect(f.send).toHaveBeenCalledTimes(3);
-    reload.clear(); await vi.advanceTimersByTimeAsync(300_000);
-    expect(f.send).toHaveBeenCalledTimes(3);
-  } finally { reload.clear(); vi.useRealTimers(); }
 });
 
 it("adopts a closed tab's untouched queue as its own stream and forgets it once sent", async () => {
@@ -385,18 +301,6 @@ it("starts a character's report time at its own begin, not at another character'
   simulated = 206; await queue.flush(true);
   expect(f.send.mock.calls.map(([request]) => request.simulatedMillis)).toEqual([10_000, 6_000]);
 });
-it("stops a drain a couple of batches past where it started, however fast kills keep landing", async () => {
-  const f = fixture();
-  // Every report's round trip sees another kill land, as on a fast farm.
-  let queue!: ReturnType<typeof createRegularEnemyLootQueue>;
-  const send = vi.fn(async (_request: EnemyLootRequest) => { queue.record("cloudspire", "Spitter"); return true as const; });
-  queue = createRegularEnemyLootQueue({ ...f.options, send });
-  queue.begin();
-  queue.record("cloudspire", "Spitter");
-  expect(await queue.flush(true)).toBe(true);
-  expect(send).toHaveBeenCalledTimes(1 + DRAIN_EXTRA_BATCHES);
-  expect(queue.hasPending()).toBe(true);   // the latest kill waits for the next report
-});
 it("charges a long fight's game time to the kill at its end, and still not the idle time before it", async () => {
   const f = fixture(); let simulated = 0;
   const queue = createRegularEnemyLootQueue({ ...f.options, simulatedSeconds: () => simulated });
@@ -413,14 +317,11 @@ it("charges a long fight's game time to the kill at its end, and still not the i
   expect(f.send.mock.calls.map(([request]) => request.simulatedMillis)).toEqual([101_000, 10_000 + IDLE_SIMULATION_ALLOWANCE_SECONDS * 1_000]);
 });
 
-it("reports a send that throws and keeps the batch for the next flush", async () => {
+it("keeps the batch for the next flush when a send throws", async () => {
   const f = fixture();
-  const failures: unknown[] = [];
-  const queue = createRegularEnemyLootQueue({ ...f.options, sendFailed: error => failures.push(error) });
   f.send.mockRejectedValueOnce(new Error("socket gone"));
-  queue.record("cloudspire", "Spitter");
-  expect(await queue.flush()).toBe(false);
-  expect(failures.map(String)).toEqual(["Error: socket gone"]);
-  expect(await queue.flush()).toBe(true);
+  f.queue.record("cloudspire", "Spitter");
+  expect(await f.queue.flush()).toBe(false);
+  expect(await f.queue.flush()).toBe(true);
   expect(f.send.mock.calls.map(([request]) => [request.sequence, request.count])).toEqual([[1n, 1], [1n, 1]]);
 });

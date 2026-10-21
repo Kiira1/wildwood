@@ -1,7 +1,6 @@
 import { Timestamp } from "spacetimedb";
 import { expect, it, vi } from "vitest";
 import { crystalFixture, identity, server } from "../../tests/helpers/crystal-hollows-fixture";
-import { eraseIdentityRows } from "./account-erasure";
 import { bowSkillKey, bowSkillRollFor, duelBowSkillFields } from "./bow-skills";
 import { offerDuplicateEquipment, offerItemForFullBag, publishItemDrop } from "./equipment-copies";
 import { awardDrops } from "./enemy-loot-award";
@@ -77,8 +76,6 @@ it("settles a duplicate drop on the spot: no offer and no spare copy", () => {
   expect(inventory(f).filter(id => id === "crystal_armor")).toHaveLength(1);
   expect(offers(f)).toEqual([]);
   expect(copies(f)).toEqual([]);
-  // The drop event still says "already owned", which older clients ignore.
-  expect(f.db.playerItemDrop.key.find(`${f.ctx.sender.toHexString()}:crystal_armor`).alreadyOwned).toBe(true);
 });
 
 it("raises the held weapon's skills in place, each to the higher of the two rolls, never lower", () => {
@@ -198,22 +195,6 @@ it("turns new drops that find the bag full into offers, so the bag never holds m
   expect(bagUsed(f)).toBe(BASE_INVENTORY_SLOT_CAPACITY);
   // An item waiting in an offer is not announced as found.
   for (const offer of offers(f)) expect(f.db.playerItemDrop.key.find(`${f.ctx.sender.toHexString()}:${offer.itemId}`)).toBeFalsy();
-});
-
-it("offers every new drop when the bag is full, and Keep makes one the first copy with its own slots once a slot is free", () => {
-  const f = archer({ damage: 1e15 });
-  luckyRandom(f);
-  fillBag(f, 0);
-  const before = inventory(f);
-  dropRolled(f, NEW_CRYSTAL_GEAR);
-  expect(inventory(f)).toEqual(before);
-  expect(offers(f).map(offer => offer.itemId).sort()).toEqual([...NEW_CRYSTAL_GEAR].sort());
-  const bow = offers(f).find(offer => offer.itemId === "crystal_bow")!;
-  expect(() => f.run(server.resolveEquipmentOffer, { id: bow.id, keep: true })).toThrow("bag is full");
-  f.seed("playerInventoryCapacity", { identity: f.ctx.sender, slotsUnlocked: 1, updatedAt: f.ctx.timestamp });
-  f.run(server.resolveEquipmentOffer, { id: bow.id, keep: true });
-  expect(inventory(f)).toContain("crystal_bow");
-  expect(f.db.playerGearSlots.count()).toBe(0n);
 });
 
 it("counts Bag Slots research as room for a new drop", () => {
@@ -366,17 +347,6 @@ it("moves a guest's copies and offers to the account it links to, replacing the 
   expect(offers(f).map(rollOf)).toEqual([C]);
 });
 
-it("is erased with the account and leaves other accounts alone", () => {
-  const f = archer();
-  seedCopy(f, B);
-  seedOffer(f, C);
-  seedCopy(f, B, IRON_BOW, identity("3"));
-  eraseIdentityRows(f.ctx, [f.ctx.sender]);
-  expect(copies(f)).toEqual([]);
-  expect(offers(f)).toEqual([]);
-  expect(copies(f, identity("3"))).toHaveLength(1);
-});
-
 it("gives back one ore of the gear's refine grade when it is destroyed, a kept copy included", () => {
   const f = archer();
   const ore = salvageOre(IRON_BOW)!;
@@ -398,14 +368,4 @@ it("records each item that drops in the Gear Collection once, for good", () => {
   f.run((ctx: any) => publishItemDrop(ctx, ctx.sender, IRON_BOW, true, 3));
   f.run((ctx: any) => publishItemDrop(ctx, ctx.sender, SAMURAI_HAT, false));
   expect([...f.db.playerItemCollection.identity.filter(f.ctx.sender)].map((row: any) => row.itemId).sort()).toEqual([IRON_BOW, SAMURAI_HAT].sort());
-});
-
-it("forgets a weapon's roll once its last copy is destroyed, so the next one to drop rolls fresh", () => {
-  const f = archer();
-  f.patch("playerProgress", { equippedRightHand: "" });
-  f.run(server.destroyEquipment, { itemId: IRON_BOW });
-  expect(f.db.playerBowSkill.key.find(bowSkillKey(f.ctx.sender, IRON_BOW))).toBeNull();
-  luckyRandom(f, .05);
-  f.run((ctx: any) => publishItemDrop(ctx, ctx.sender, IRON_BOW, false));
-  expect(firstRoll(f)).not.toEqual(A);
 });

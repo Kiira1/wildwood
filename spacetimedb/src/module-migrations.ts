@@ -32,9 +32,6 @@ import { unlockedPortalCutsceneMask } from "../../shared/portal-cutscenes";
 import { HOME_EXTERIOR_MAP_ID } from "../../shared/home";
 import { isTownMap, TOWN_ARRIVAL, TOWN_MAP_ID } from "../../shared/town";
 import { generateMap, isProceduralMap, proceduralMapId, proceduralMapNumber } from "../../shared/procedural-maps";
-import { balanceApologyTransactionReference, isBalanceApologyEligible } from "./balance-apology";
-import { BALANCE_APOLOGY_GEM_GIFT } from "../../shared/gems";
-import { grantGemHeartUnlock } from "./chat-reactions";
 import { GEM_KILL_CREDIT_PER_GEM } from "../../shared/gem-drops";
 import { syncPlayerJoinDate } from "./player-join-date";
 import { enrollInPrestigeChallenge } from "./prestige-challenge";
@@ -103,9 +100,7 @@ export type ModuleMigrationDeps = {
   samePlayerProgressValues: (left: any, right: any) => boolean;
   resultIncludesContributor: (latest: any, identity: any) => boolean;
   contributedToLatestPrismshell: (ctx: any, identity: any) => boolean;
-  isVirtualPlayer: (ctx: any, identity: any) => boolean;
   sameIdentity: (a: any, b: any) => boolean;
-  applyGemBalanceChange: (ctx: any, input: any) => any;
   ensureWorldStatus: (ctx: any) => void;
   ensureMaintenanceSweepSchedule: (ctx: any) => void;
 };
@@ -118,8 +113,7 @@ export function createModuleMigrations(deps: ModuleMigrationDeps) {
     effectivePowerForProgress, effectivePowerStatsForProgress, playerWithMotion,
     syncPlayerMotionIdentity, persistWorldLocation, transitionPlayerMap, refreshLeaderboard,
     markPlayerBalanceCurrent, playerBalanceProgress, samePlayerProgressValues,
-    resultIncludesContributor, contributedToLatestPrismshell, isVirtualPlayer, sameIdentity,
-    applyGemBalanceChange, ensureWorldStatus, ensureMaintenanceSweepSchedule,
+    resultIncludesContributor, contributedToLatestPrismshell, sameIdentity, ensureWorldStatus, ensureMaintenanceSweepSchedule,
   } = deps;
 
   function runPendingModuleMigrations(ctx: any) {
@@ -341,7 +335,7 @@ export function createModuleMigrations(deps: ModuleMigrationDeps) {
       }
       if (changedProgress) refreshLeaderboard(ctx);
     }
-    if (currentVersion < 17) grantBalanceApologyGifts(ctx);
+    // 17 gave the one-time balance apology gift; it ran live and the number stays spent.
     if (currentVersion < 18) {
       // Balance version 5 repairs only the five accounts separated from the
       // campaign by the measured legacy power gap. The shared transform also
@@ -511,11 +505,7 @@ export function createModuleMigrations(deps: ModuleMigrationDeps) {
     // 39: a make-good for the slot upgrades a prestige wiped, and for the
     // ones a sweep threw away while they were still running.
     if (currentVersion < 39) publishSlotUpgradeMail(ctx);
-    // Skittle's early gem-heart grant follows the account into production.
-    if (currentVersion < 40) {
-      const skittle = Identity.fromString("c2000fe3ee7c17481d5dcb88ae9d09af8a28a6f0d63643e59ed75a3fc3c80a8e");
-      grantGemHeartUnlock(ctx, skittle, true);
-    }
+    // 40 granted one account's early gem heart; it ran live and the number stays spent.
     // Scale the previous 2,000-credit ledger exactly into the new 6,000-credit
     // unit before any defeat is credited at the Auto Farm rate.
     if (currentVersion < 41) {
@@ -545,14 +535,11 @@ export function createModuleMigrations(deps: ModuleMigrationDeps) {
     if (currentVersion < 53) trimStoredSoulCritDamage(ctx);
     // 54 (0.901.47): attack speed and crit damage become ratings; soul stats converted so nobody is weaker (stat-rating-migration.ts).
     if (currentVersion < 54) convertToStatRatings(ctx);
-    // 55 (0.902): every map's sword joined its loot; a visit pinned before then kept loot without it until travel.
-    if (currentVersion < 55) repinMapBalances(ctx);
+    // 55 and 58 re-pinned visits when swords and staffs joined the loot; 64 re-pins every visit, so they are spent.
     // 56 (0.906.1): profiles show Mining; player_mining_level copies it from the pickaxes already out.
     if (currentVersion < 56) backfillMiningLevels(ctx);
     // 57 (0.907): the crit rating and stats past f32 move onto player_progress (shared/progress-row.ts).
     if (currentVersion < 57) moveCombatColumnsOntoProgress(ctx);
-    // 58 (0.911): every map's staff joined its loot; a visit pinned before then kept loot without it until travel.
-    if (currentVersion < 58) repinMapBalances(ctx);
     // 59 (0.912): gear stops holding cards; slotted cards return and the worn ones' best become active (active-cards.ts).
     if (currentVersion < 59) activateCardsFromGear(ctx);
     // 60 (0.915): the balance curve, every factor at 1, as the next revision, with every pinned visit moved onto it.
@@ -676,36 +663,6 @@ export function createModuleMigrations(deps: ModuleMigrationDeps) {
   }
   function contributedToLatestGravebloom(ctx: any, identity: any) {
     return resultIncludesContributor(ctx.db.gravebloomResult?.id.find(GRAVEBLOOM_ID), identity);
-  }
-
-  function grantBalanceApologyGifts(ctx: any) {
-    const nowMicros = ctx.timestamp.microsSinceUnixEpoch;
-    for (const lifetime of ctx.db.playerLifetime.iter() as Iterable<any>) {
-      if (isVirtualPlayer(ctx, lifetime.identity)) continue;
-      const audit = ctx.db.playerAccessAudit.identity.find(lifetime.identity);
-      const currentlyActive = Boolean(ctx.db.player.identity.find(lifetime.identity)) ||
-        sameIdentity(lifetime.identity, ctx.sender);
-      if (!isBalanceApologyEligible(nowMicros, {
-        lastSeenAtMicros: audit?.lastSeenAt.microsSinceUnixEpoch,
-        sessionStartedAtMicros: lifetime.sessionStartedAt.microsSinceUnixEpoch,
-        currentlyActive,
-      })) continue;
-
-      applyGemBalanceChange(ctx, {
-        identity: lifetime.identity,
-        delta: BALANCE_APOLOGY_GEM_GIFT,
-        kind: "balance_apology_gift",
-        note: "One-time apology gift for the major balance changes.",
-        externalReference: balanceApologyTransactionReference(lifetime.identity.toHexString()),
-      });
-      if (!ctx.db.balanceApologyNotice.identity.find(lifetime.identity)) {
-        ctx.db.balanceApologyNotice.insert({
-          identity: lifetime.identity,
-          amount: BALANCE_APOLOGY_GEM_GIFT,
-          createdAt: ctx.timestamp,
-        });
-      }
-    }
   }
 
   function rebaseLegacyPlayersToMaps(ctx: any) {

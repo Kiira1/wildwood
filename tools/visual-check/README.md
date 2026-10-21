@@ -13,16 +13,40 @@ Picked by URL hash in `visual-check.html`:
 
 | Scene | What it draws |
 | --- | --- |
-| `plates` | Players' and enemies' overhead plates at the phone camera framing: guest, prestige badge, gender, dev and guild tags, long name with descenders, power, low HP, a chat bubble; enemy bars with and without HP numbers |
-| `gear` | One character per grade × refine (★0 ★10 ★20) × armour class, all slots; then every non-graded piece with world art |
-| `enemies` | Every atlas-animated enemy at idle / walk / attack, frames 0 and middle, grouped by map |
-| `parts` | The parts-built enemies (goblins, skeletons, slimes …) facing right, left and aiming |
+| `plates` | Players' and enemies' overhead plates at the phone camera framing: guest, prestige badge, gender, dev and guild tags, long name with descenders, power, low HP, a chat bubble; enemy bars with and without HP numbers; Show My Name Plate off; chat bubbles stacked (system and duel notices left out); plate height over each helmet and the Invisible line; Safari's text metrics (no glyph bounds) |
+| `gear` | One character per grade × refine (★0 ★10 ★20) × armour class, all slots; the refine-look thresholds; every non-graded piece with world art; held weapons in either hand both ways, aim in eight directions, running sway and idle bob, attacks, tools by level, Galaxy and Diamond finishes, every skin tone, and the death fall |
+| `enemies` | Every atlas-animated enemy: idle and walk loops, the attack from its start, walking and attacking facing left, and dying, grouped by map |
+| `parts` | The parts-built enemies (goblins, skeletons, slimes …) facing right and left, aiming up-right, down-right and up-left, hit, and dying |
+| `combat-hits` | Damage numbers over a crowd at the phone framing (white dealt, yellow crits, red taken, a burst fanned out) as they rise, fade and go; each weapon's projectile and an enemy shot; bow, sword and staff skill effects partway through |
+| `bosses` | Every world boss through the game's boss renderer: idle at 0, 0.25 and 0.5 s, mid-attack, hit with the bar's loss flash, and its hitbox and anchor over the art |
+| `world` | Every campaign map, the first Endless map, the Soul Dimension and a guild hall where a player arrives, drawn by the game's own world renderer at the phone framing (ground, roads, decor, portals and their labels, camps, the minimap, the Night Forest's dark); players at a gate and at a boss for depth order; the Forest and the Night Forest at the desktop framing |
+| `town` | The Town at the phone framing: the arrival, the same with attack-range research (the camera must not move), the player's zoom at 50% and 150%, the river at the west bridge, Ox, the countryside's baked ground; and the desktop framing |
+| `guild-battlefield` | A guild battle replay's canvas: five a side walking in, at the first blow and midway; twenty a side midway, portrait and landscape |
 | `icons` | The inventory window over a full bag (every item, a few grades again at ★10 / ★20), at 390 and 1280 wide |
 | `hud` | The in-game HUD: player card, toolbar icons, gem wallet, minimap |
 | `wordmark` | The start screen with the wordmark |
 
+`world`, `town` and `bosses` build a map the way the game does (`game-world.ts`: the bootstrap state,
+the map's layout, camps and boss, `createWorldRendering`) with no server; workers are off so ground
+tiles are painted on the spot.
+
 Clocks, `Math.random`, animation and the device pixel ratio are pinned, so two captures of the same
 code are identical (0 changed pixels).
+
+## Check against the baseline
+
+    npm run visual:check                     # capture every checked scene and compare
+    npm run visual:check -- --scenes gear    # just some
+    npm run visual:check -- --update         # the change is intended: take a new baseline
+
+`local-data/visual-check-baseline/` holds each checked scene at one width and pixel ratio (lossless
+WebP, listed in its `manifest.json`). It is gitignored: pixels depend on the Chrome version and the
+machine's fonts, so each machine keeps its own. `--update` creates it; take it on the code before a
+change, then check after. The check captures into `local-data/visual-check-run/` and exits 1 when
+any pixel changed, with `*.side.png` pictures (baseline | now | changes in magenta) in its `diff/`
+folder. It needs Chrome, so it is not part of vitest or CI: run it before handing over a change that
+touches drawing. A new Chrome version can move text by a pixel; the check says when the baseline came
+from another version, and `--update` after looking at the pictures settles it.
 
 ## Capture
 

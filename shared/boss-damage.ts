@@ -81,7 +81,7 @@ export const BOSS_DAMAGE_PROFILES = {
 
 /**
  * Each boss's heaviest attack. Derived, not authored: it was a second copy of
- * the largest value in each profile above (src/game/boss-damage.test.ts held
+ * the largest value in each profile above (shared/boss-damage.test.ts holds
  * them equal). Computed once at load, before a map snapshot can retune the
  * profiles, so it stays the authored reference the campaign baseline expects.
  */

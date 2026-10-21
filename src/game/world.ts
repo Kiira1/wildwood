@@ -733,10 +733,10 @@ function authoredWorldLayout(playerSpawn: Point, mapId: MapId) {
  * Where no enemy of a campaign map may spawn: its arrival, its portals, in the forest where new
  * characters start, and the edge of every other region (so two camps' enemies stand apart). Regions
  * overlap some of these; since every map holds eight enemies a stat (0.901.47) their points are drawn
- * around them rather than hoping the draw misses (world.test.ts holds the rules).
+ * around them rather than hoping the draw misses (tests/scenarios/maps.test.ts holds the rules).
  */
 const NEIGHBOUR_REGION_GAP = 80;
-/** No enemy spawns this close to a map's boss (world.test.ts holds every map to 900). */
+/** No enemy spawns this close to a map's boss (tests/scenarios/maps.test.ts holds every map to 900). */
 const BOSS_ARENA_CLEARANCE = 920;
 /** The forest's starter camps (Spitters, Brambles) are the nearest to PLAYER_SPAWN; others keep this far from it. */
 const FOREST_STARTER_KINDS = new Set<string>(["Spitter", "Bramble"]);
@@ -811,7 +811,7 @@ export function createSpawnSites(_boss: Point, mapId: MapId = TUTORIAL_FOREST_MA
     const camp = camps[campIndex];
     const campTypes = seededCampTypes(camp, campIndex, mapSeed);
     // Anywhere in the region. Regions are laid out clear of the arrival and
-    // of the boss's arena (world.test.ts holds every map to it), so nothing
+    // of the boss's arena (tests/scenarios/maps.test.ts holds every map to it), so nothing
     // has to be pushed out of either here.
     const points = regionSpawnPoints(camp, WORLD.w, WORLD.h);
     for (let index = 0; index < camp.count; index += 1) {

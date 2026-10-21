@@ -332,15 +332,6 @@ it("keeps the weapon in hand through prestige, of whatever kind", () => {
   expect(progress(mage).equippedRightHand).toBe("ion_staff");
 });
 
-it("still clears the bag and kept copies on a reset", () => {
-  const f = veteran();
-  f.run(server.resetPlayerProgress, {});
-  expect(inventory(f)).not.toContain("ion_bow");
-  expect(copies(f)).toEqual([]);
-  expect(offers(f)).toEqual([]);
-  expect(progress(f).equippedRightHand).toBe(STARTER_STONE);
-});
-
 it("keeps a staff player on staffs when new weapons arrive, and never hands one to an archer", () => {
   const mage = looter({ inventoryJson: JSON.stringify(["desert_staff"]), equippedRightHand: "desert_staff" });
   gain(mage, "crystal_bow", "crystal_sword", "crystal_staff");

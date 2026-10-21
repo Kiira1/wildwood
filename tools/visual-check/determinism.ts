@@ -3,12 +3,18 @@ export const FIXED_NOW_MS = 100_000;
 const FIXED_EPOCH_MS = Date.UTC(2026, 9, 20, 12, 0, 0);
 
 const trackedImages = new Set<HTMLImageElement>();
+const SEED = 0x5eed1234;
+let seed = SEED;
+
+/** Starts Math.random's sequence over, so a drawing that rolls dice draws the same on every pass. */
+export function resetRandom() {
+  seed = SEED;
+}
 
 /** Pins the clocks and Math.random, and records every image the game asks for. */
 export function installDeterminism() {
   performance.now = () => FIXED_NOW_MS;
   Date.now = () => FIXED_EPOCH_MS;
-  let seed = 0x5eed1234;
   Math.random = () => {
     // mulberry32
     seed = (seed + 0x6d2b79f5) | 0;
@@ -16,6 +22,8 @@ export function installDeterminism() {
     t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
     return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
   };
+  // No workers: the ground tiles a worker would paint in its own time are painted on the spot instead.
+  Object.defineProperty(window, "Worker", { value: undefined, configurable: true, writable: true });
   const descriptor = Object.getOwnPropertyDescriptor(HTMLImageElement.prototype, "src")!;
   Object.defineProperty(HTMLImageElement.prototype, "src", {
     ...descriptor,
