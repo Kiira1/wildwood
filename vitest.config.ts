@@ -8,8 +8,6 @@ const runners = [
   { file: 'src/balance/simulator.test.ts', enabled: process.env.BALANCE_SIM === '1' },
   // npm run sim:autofarm.
   { file: 'src/game/runtime/auto-farm/autofarm-sim/autofarm-sim.test.ts', enabled: process.env.AUTOFARM_SIM === '1' },
-  // FORECAST_CALIBRATION=survey|trace|compare|fit|growth npx vitest run <file>.
-  { file: 'src/game/runtime/auto-farm/autofarm-sim/forecast-calibration.test.ts', enabled: Boolean(process.env.FORECAST_CALIBRATION) },
 ];
 
 export default defineConfig({

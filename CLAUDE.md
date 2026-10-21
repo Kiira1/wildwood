@@ -110,8 +110,8 @@ import-cycle checks. Extract a module to pass them; never pack lines.
 - Never assert wording, markup, CSS classes, diagnostic strings, default flag
   values, call order or source text.
 - Layout and art are checked with `tools/visual-check`, not tests.
-- Opt-in runners (`npm run test:balance`, `npm run sim:autofarm`,
-  `FORECAST_CALIBRATION=…`) stay out of the default suite (`vitest.config.ts`).
+- Opt-in runners (`npm run test:balance`, `npm run sim:autofarm`) stay out of
+  the default suite (`vitest.config.ts`).
 - Delete an old test file only in the same change that adds the scenario
   replacing it.
 

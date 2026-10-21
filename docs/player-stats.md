@@ -37,16 +37,16 @@ C = client world, P = profile, A = auto-farm and sims, S = server. "Same" means 
 
 | Stat | Client | Auto-farm / sims | Server | Can disagree? |
 |---|---|---|---|---|
-| Max HP | C `player-stats-runtime.ts` healthMultiplierBonus → `player-health.ts` applyPlayerMaxHealthMultiplierBonus; P `profile.ts` profileStatDisplayRows; HUD `stat-tracker-source.ts`; remote `remote-combat-stats-service.ts` | `auto-farm-build.ts` createFarmEvaluator, `forecast-inputs.ts` forecastBuild, `virtual-player.ts` (runtime, no cards, untiered) | `progress-helpers.ts` maxHealthForProgress, `player-power.ts` effectivePowerStatsForProgress | sims only, on purpose (8) |
-| Damage | C `player-combat-controller.ts` weaponDamage (`items.ts` equipmentDamage × research-controller damageMultiplier); P; HUD; remote | as max HP | `player-power.ts` researchedDamage, `boss-combat.ts` damageLoadout (kill bound), `duel-runtime.ts` duelSide (duels and guild fighters) | sims only (8) |
-| Armor | C `research-controller.ts` effectiveArmor; P; HUD; popups; remote | as max HP | `player-power.ts` researchedArmor | sims only (8) |
-| Regen/s | C `player-stats-runtime.ts` regenerationPerSecond; P; HUD; remote | as max HP | `player-power.ts` researchedRegen, `duel-runtime.ts` | sims only (8) |
-| Move speed | C `player-stats-runtime.ts` moveSpeed (combat's moveSpeedFactor uses the same `gearMoveSpeedFactor`); P | VP (runtime); `forecast-compare.ts`, `simulator.ts` simulationTravelSeconds | `player-speed.ts` effectiveMovementSpeedForProgress (saved), `movement-requests.ts` setPlayerSpeed (allowance) | server saved speed omits gear factors by design (allowance covers them) |
-| Attack interval | C `player-combat-controller.ts` (weaponAttackInterval / techniques); P; remote | evaluator, forecast, simulator (older floor, 8) | `player-speed.ts` attackIntervalForProgress, `prestige.ts` attackCapInPlay, `duel-runtime.ts` duelSide | sims only (8) |
+| Max HP | C `player-stats-runtime.ts` healthMultiplierBonus → `player-health.ts` applyPlayerMaxHealthMultiplierBonus; P `profile.ts` profileStatDisplayRows; HUD `stat-tracker-source.ts`; remote `remote-combat-stats-service.ts` | `auto-farm-build.ts` createFarmEvaluator, `virtual-player.ts` (runtime, no cards, untiered) | `progress-helpers.ts` maxHealthForProgress, `player-power.ts` effectivePowerStatsForProgress | sims only, on purpose (7) |
+| Damage | C `player-combat-controller.ts` weaponDamage (`items.ts` equipmentDamage × research-controller damageMultiplier); P; HUD; remote | as max HP | `player-power.ts` researchedDamage, `boss-combat.ts` damageLoadout (kill bound), `duel-runtime.ts` duelSide (duels and guild fighters) | sims only (7) |
+| Armor | C `research-controller.ts` effectiveArmor; P; HUD; popups; remote | as max HP | `player-power.ts` researchedArmor | sims only (7) |
+| Regen/s | C `player-stats-runtime.ts` regenerationPerSecond; P; HUD; remote | as max HP | `player-power.ts` researchedRegen, `duel-runtime.ts` | sims only (7) |
+| Move speed | C `player-stats-runtime.ts` moveSpeed (combat's moveSpeedFactor uses the same `gearMoveSpeedFactor`); P | VP (runtime); `simulator.ts` simulationTravelSeconds | `player-speed.ts` effectiveMovementSpeedForProgress (saved), `movement-requests.ts` setPlayerSpeed (allowance) | server saved speed omits gear factors by design (allowance covers them) |
+| Attack interval | C `player-combat-controller.ts` (weaponAttackInterval / techniques); P; remote | evaluator, simulator (older floor, 8) | `player-speed.ts` attackIntervalForProgress, `prestige.ts` attackCapInPlay, `duel-runtime.ts` duelSide | sims only (7) |
 | Range | C `progress-controller.ts` addedRange + `weaponAttackRange`; P (cards and Archery added the same way); remote | VP (Archery only) | `player-speed.ts` savedAttackRange | server omits Long Shot cards (never validated) |
-| Crit chance | C `research-controller.ts` criticalChance (→ `critChanceFor`); P; remote | evaluator; `forecast-soul.ts`; `simulator.ts` (rank only) | `crit-power.ts`, `duel-runtime.ts` | `simulator.ts` (8) |
-| Crit multiplier | C research-controller criticalDamageMultiplier; P; HUD; remote | evaluator; `forecast-soul.ts` | `crit-power.ts`, `duel-runtime.ts`, `boss-combat.ts` | `simulator.ts` (8) |
-| Reflect / DS / SS | C combat (`procChance`); P | forecast perks (no cards) | `duel-runtime.ts` (reflect clamped to 1), `boss-combat.ts` | forecast (8) |
+| Crit chance | C `research-controller.ts` criticalChance (→ `critChanceFor`); P; remote | evaluator; `simulator.ts` (rank only) | `crit-power.ts`, `duel-runtime.ts` | `simulator.ts` (7) |
+| Crit multiplier | C research-controller criticalDamageMultiplier; P; HUD; remote | evaluator | `crit-power.ts`, `duel-runtime.ts`, `boss-combat.ts` | `simulator.ts` (7) |
+| Reflect / DS / SS | C combat (`procChance`); P | none | `duel-runtime.ts` (reflect clamped to 1), `boss-combat.ts` | no |
 | Skill chance | C combat (`skillChanceFactor`) | combat in VP | `boss-combat.ts`, `duel-runtime.ts` | no |
 | Gold luck | not shown on the client | VP (`luckMultiplier`) | `gold.ts` goldChanceMultiplier | no |
 | Stat gain | C research-controller rewardMultiplier, `reward-display.ts`; P | evaluator | `prestige.ts` statRewardMultiplier | no |
@@ -61,9 +61,8 @@ These were pinned in `player-stats-golden.test.ts` and are now assertions that e
 4. Guild fighters are built by `duel-runtime.ts` duelSide, as duel sides are: a staff's bolt factor and cast interval and the Mastery fold. A crowd has no one opponent, so Parry and Ranged Slayer stay out, and Guard and Mana Shield count as extra health (max health and regen divided by the share of a hit let through).
 5. Armor reward popups pass the boots (`shared/reward-display.ts`).
 6. Profile Move Speed counts Black Boots (`countBlackBoots` is gone) and profile Range adds Long Shot cards and Archery's range as the world does.
-7. `forecast-soul.ts` crit damage counts Keen Edge.
-8. The sims stay simpler on purpose: the virtual player plays untiered gear without cards, and `simulator.ts` (the Balance Lab) uses an older attack-interval floor and no perks. They feed balance tuning, not live decisions.
-9. `spacetimedb/src/weapon-mastery.ts` bonusMoveSpeedFactor normalizes the boots' refine.
+7. The sims stay simpler on purpose: the virtual player plays untiered gear without cards, and `simulator.ts` (the Balance Lab) uses an older attack-interval floor and no perks. They feed balance tuning, not live decisions.
+8. `spacetimedb/src/weapon-mastery.ts` bonusMoveSpeedFactor normalizes the boots' refine.
 
 Server: S1, the kill reducer's power and `powerFieldsForProgress` both price power through `spacetimedb/src/power-stats.ts` `powerStatsFrom` (crit and research in play counted). S2, the duel's stored reflect chances are clamped to 1 (the roll already clamped them).
 

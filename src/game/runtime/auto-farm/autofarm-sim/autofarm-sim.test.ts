@@ -9,7 +9,7 @@
  * turns off the boss and next map for every profile, AUTOFARM_SIM_PULL=1 turns
  * on Pull Whole Group, AUTOFARM_SIM_AGGRO=n runs an Aggro run with n groups
  * chasing, AUTOFARM_SIM_SEED shifts every profile's seed for another sample,
- * AUTOFARM_SIM_GROWTH=0 runs autofarm without its growth planner, AUTOFARM_SIM_MOVE_AT sets
+ * AUTOFARM_SIM_MOVE_AT sets
  * Move At (Move On and the boss holding the way), AUTOFARM_SIM_SCALE multiplies every profile's stats (attack speed aside), and AUTOFARM_SIM_READINESS=0 goes by the old power
  * table instead of readiness from the live balance (what the game does).
  *
@@ -37,10 +37,6 @@ const pull = process.env.AUTOFARM_SIM_PULL === '1';
 /** AUTOFARM_SIM_AGGRO_GROUPS: stat groups switched to Aggro, comma separated (e.g. stat:health). */
 const aggroGroups = process.env.AUTOFARM_SIM_AGGRO_GROUPS?.split(',').filter(Boolean);
 const aggro = Number(process.env.AUTOFARM_SIM_AGGRO ?? 0);
-/** AUTOFARM_SIM_GROWTH=0: without the growth planner (auto-farm-growth.ts). */
-const growth = process.env.AUTOFARM_SIM_GROWTH !== '0';
-/** AUTOFARM_SIM_GROWTH_TUNING: the growth planner's tuning as JSON (GrowthTuning, e.g. '{"horizonMinutes":30}'). */
-const growthTuning = process.env.AUTOFARM_SIM_GROWTH_TUNING ? JSON.parse(process.env.AUTOFARM_SIM_GROWTH_TUNING) : undefined;
 const readiness = process.env.AUTOFARM_SIM_READINESS !== '0';
 const scale = Number(process.env.AUTOFARM_SIM_SCALE ?? 1);
 /** AUTOFARM_SIM_WEAPON: every profile wields this weapon instead (a sword or a staff). */
@@ -54,7 +50,7 @@ describe.skipIf(!enabled)('autofarm virtual players', () => {
     const reports: VirtualPlayerReport[] = [];
     for (const listed of virtualPlayers(references, labArrivalBuilds(out)).filter(entry => !only.length || only.includes(entry.name))) {
       const base = { ...listed.base, damage: listed.base.damage * scale, maxHp: listed.base.maxHp * scale, armor: listed.base.armor * scale, regen: listed.base.regen * scale };
-      const profile = { ...listed, base, ...weapon ? { weapon } : {}, seed: listed.seed + seedShift, kite, pull, aggroGroups, aggro, growth, growthTuning, readiness,
+      const profile = { ...listed, base, ...weapon ? { weapon } : {}, seed: listed.seed + seedShift, kite, pull, aggroGroups, aggro, readiness,
         ...moveAt ? { moveAt } : {}, ...farmOnly ? { advance: false } : {} };
       const player = createVirtualPlayer(profile);
       try {

@@ -45,7 +45,6 @@ import {
 } from "../game/world";
 import { BASIC_PAPER_HAT, ITEM_DEFINITIONS, STARTER_STONE, type ItemId } from "../../shared/items";
 import { effectivePlayerPowerStats, playerPowerForStats, type PlayerPowerStats } from "../../shared/player-power";
-import { AUTO_FARM_DEFEAT_LIMIT, AUTO_FARM_DEFEAT_WINDOW_MS } from "../game/runtime/auto-farm/growth-forecast";
 import { FARM_PUSHES } from "../game/runtime/auto-farm/auto-farm-brain";
 import {
   DEATH_SCREEN_SECONDS,
@@ -485,6 +484,9 @@ export type BalanceSimulationResult = {
   arrivalStates?: Partial<Record<BalanceMapId, SimulationStateSnapshot>>;
 };
 
+/** Deaths in a window that end the modelled Auto Farm's stay on a map. */
+const AUTO_FARM_DEFEAT_LIMIT = 5;
+const AUTO_FARM_DEFEAT_WINDOW_MS = 180_000;
 const SAMPLE_COUNT = 180;
 /** More deaths an hour than this (one every six minutes) and the map is flagged as one the build cannot hold. */
 export const DEATHS_PER_HOUR_WARNING = 10;
