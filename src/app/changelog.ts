@@ -3,6 +3,7 @@ export const RELEASE_NOTES: Record<string, string[]> = {
     "Endless bosses now drop six Warden cards, one for every ten maps",
     "Oak and Elder Trees drop two new woodcutting cards",
     "The Warden II card carries you to the next map when you beat the boss that opens it",
+    "Cosmetics made from ★10 and ★20 gear keep the refined look",
   ],
   "0.916.18": [
     "Enemy health bars and reward labels are sharper",
@@ -3759,6 +3760,7 @@ const RELEASE_DATES: Record<string, string> = {
 };
 
 export const RELEASE_DAYS: Record<string, string> = {
+  "0.916.19": "2026-10-21",
   "0.916.18": "2026-10-20",
   "0.916.17": "2026-10-20",
   "0.916.16": "2026-10-20",
