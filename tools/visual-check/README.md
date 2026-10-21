@@ -27,6 +27,7 @@ Picked by URL hash in `visual-check.html`:
 | `wordmark` | The start screen with the wordmark |
 | `profile-own`, `profile-other` | The profile window's header: your own with the pencil and gear, another player's with the guild row and the ⋯ menu open |
 | `shops` | The Smith on Reforge, the Weapon Seller on Sell and the Armor Seller on Buy, stacked, at phone width |
+| `gem-shop` | The gem Shop at phone width: the Patreon rows and the dev note's Silver, Gold and Diamond frames, with the Diamond Galaxy set under Diamond |
 
 `world`, `town` and `bosses` build a map the way the game does (`game-world.ts`: the bootstrap state,
 the map's layout, camps and boss, `createWorldRendering`) with no server; workers are off so ground

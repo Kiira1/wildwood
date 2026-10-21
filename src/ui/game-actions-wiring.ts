@@ -20,6 +20,7 @@ export type GameActionsDeps = {
   clearInput: () => void;
   minimizeChat: () => void;
   openSupporter: () => void;
+  drawDiamondLook: (canvas: HTMLCanvasElement) => void;
   closeIconPicker: () => void;
   leaveDuelResult: () => void;
   closeDuelReplay: () => void;
@@ -55,7 +56,7 @@ export function createGameActions(deps: GameActionsDeps) {
   const { profile, leaderboard, devPanel } = windows;
   return createGameActionsRuntime({
     coop: coop.client,
-    openSupporter: deps.openSupporter,
+    openSupporter: deps.openSupporter, drawDiamondLook: deps.drawDiamondLook,
     setShopOpen: () => { deps.clearInput(); },
     e, inventory: deps.inventory, renderInventory: deps.renderInventory, logPickup: deps.logPickup, showMessage: deps.showMessage,
     leaveDuelResult: deps.leaveDuelResult,

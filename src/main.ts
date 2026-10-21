@@ -7,6 +7,7 @@ import { installQuestTracker } from "./ui/quest-tracker";
 import { createStatTrackerSource } from "./ui/stat-tracker-source";
 import { refreshMapBalanceEnemies } from "./game/runtime/enemies/map-balance-enemies";
 import { createMapBalanceLoader } from "./game/runtime/map-balance-loader";
+import { createDiamondLookDrawer } from "./game/runtime/diamond-look-preview";
 import { installAccountDeletion } from "./ui/account-deletion-controller";
 import { MAP_IDS as CAMPAIGN_MAP_IDS } from "../shared/rules";
 import { weaponAttackRange } from "./game/weapon-combat";
@@ -888,6 +889,7 @@ import { MAX_PLAYER_STAT, PLAYER_SPAWN } from "../shared/rules";
   const handleInputEscape = createGameActions({
     coop: coopAccess, e: gameElements, inventory, inventoryController, itemInspection: itemInspectionController, renderInventory,
     logPickup, showMessage, clearInput: playerInput.clear, minimizeChat: chatRuntime.minimize, openSupporter: openProfileIconPicker,
+    drawDiamondLook: createDiamondLookDrawer(playerAppearanceAssets),
     closeIconPicker: closeProfileIconPicker, leaveDuelResult, closeDuelReplay: duelRuntime.closeReplayWindow,
     closeBootUpgrade: worldProgression.closeBootUpgrade,
     windows: {

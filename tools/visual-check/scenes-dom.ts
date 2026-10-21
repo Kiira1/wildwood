@@ -13,6 +13,8 @@ import { createSmithController } from "../../src/ui/smith-window";
 import { createGearSellerController, type GearSellerDeps } from "../../src/ui/gear-seller-window";
 import { renderProfileGuild } from "../../src/ui/profile-guild";
 import { createProfileActionsMenu } from "../../src/ui/profile-actions-menu";
+import { createGemShopController } from "../../src/ui/gem-shop-controller";
+import { createDiamondLookDrawer } from "../../src/game/runtime/diamond-look-preview";
 import { settleFrames, settleImages } from "./determinism";
 import { GROUND, playerAppearance } from "./world";
 
@@ -194,6 +196,17 @@ async function shops() {
   await settleCssImages();
 }
 
+/** The gem Shop on the web: the Patreon rows and the dev note with its three frames and the Diamond Galaxy set. */
+async function gemShop() {
+  await gameMarkup();
+  document.body.style.background = GROUND;
+  const assets = await playerAppearance();
+  const button = document.createElement("button");
+  document.body.append(button);
+  createGemShopController({ button, setOpen: () => {}, drawDiamondLook: createDiamondLookDrawer(assets) }).open();
+  await settleCssImages();
+}
+
 /**
  * The profile window's header from the game shell's own markup: the name, online line and guild row,
  * the pencil on your own and the ⋯ button on anyone else's. The stats and preview stay empty.
@@ -217,5 +230,5 @@ async function profileWindow(own: boolean) {
   await settleCssImages();
 }
 
-export const DOM_SCENES: Record<string, () => Promise<void>> = { icons, hud, wordmark, shops,
+export const DOM_SCENES: Record<string, () => Promise<void>> = { icons, hud, wordmark, shops, "gem-shop": gemShop,
   "profile-own": () => profileWindow(true), "profile-other": () => profileWindow(false) };

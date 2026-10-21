@@ -12,12 +12,15 @@ export function createGemShopController(options: {
   setOpen: (open: boolean) => void;
   openSupporter?: () => void;
   supporter?: Pick<SupporterActions, 'patreonStatus' | 'beginPatreonLink'>;
+  /** Draws a player wearing the Diamond Galaxy set, shown under the Diamond frame. */
+  drawDiamondLook?: (canvas: HTMLCanvasElement) => void;
 }) {
   const dialog = document.createElement('dialog');
   dialog.id = 'gemShop';
   dialog.className = 'gem-shop';
   dialog.setAttribute('aria-labelledby', 'gemShopTitle');
   const nativeShop = isNativePreview();
+  let diamondLook: HTMLCanvasElement | null = null;
   if (nativeShop) dialog.setAttribute('aria-describedby', 'gemShopLimit');
   dialog.innerHTML = `
     <div class="gem-shop-content">
@@ -87,6 +90,7 @@ export function createGemShopController(options: {
       + '<p class="shop-dev-sign">- RyMel</p>'
       + '<div class="shop-frame-tiers" role="list" aria-label="Patreon supporter frames"></div>';
     const tiers = note.querySelector('.shop-frame-tiers')!;
+    // The Diamond tier also lends the Diamond Galaxy set; a player wearing it stands under that frame.
     // A face in each frame, from the featured portrait sheet, so they read like they do in game.
     for (const [frame, face] of [['silver', 64], ['gold', 65], ['diamond', 66]] as const) {
       const tier = document.createElement('div');
@@ -101,6 +105,13 @@ export function createGemShopController(options: {
       const name = document.createElement('span');
       name.className = 'shop-frame-name'; name.textContent = frame[0].toUpperCase() + frame.slice(1);
       tier.append(portrait, name);
+      if (frame === 'diamond' && options.drawDiamondLook) {
+        diamondLook = document.createElement('canvas');
+        diamondLook.className = 'shop-diamond-look'; diamondLook.setAttribute('aria-hidden', 'true');
+        const label = document.createElement('span');
+        label.className = 'shop-diamond-look-name'; label.textContent = 'Diamond Galaxy Set';
+        tier.append(diamondLook, label);
+      }
       tier.setAttribute('aria-label', `${name.textContent} supporter frame`);
       tiers.append(tier);
     }
@@ -199,6 +210,7 @@ export function createGemShopController(options: {
       options.setOpen(true);
       options.button.setAttribute('aria-expanded', 'true');
       back.focus();
+      if (diamondLook) options.drawDiamondLook?.(diamondLook);
       void loadTestProducts();
     },
     close,
