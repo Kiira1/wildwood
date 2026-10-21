@@ -1,17 +1,16 @@
 import { table, t } from "spacetimedb/server";
 
-// The launch countdown for prestige past 20 and the new perks. It ended on 2026-09-30 and nothing
-// reads it now; the table goes in the next release that breaks clients (docs/pending-client-break.md).
+// The launch countdown for prestige past 20 and the new perks. Nothing reads it; the table goes in the next release that breaks clients (docs/pending-client-break.md).
 export const prestigeExpansion = table({ name: "prestige_expansion", public: true }, {
   id: t.u8().primaryKey(), launchedAt: t.timestamp(), unlocksAt: t.timestamp(),
 });
 export const playerPrestigeExpansionPerk = table({ name: "player_prestige_expansion_perk", public: true }, {
   identity: t.identity().primaryKey(), bossSlayer: t.u32(), secondWind: t.u32(), longShot: t.u32(), fleetFoot: t.u32(),
-  // Quick Draw (0.901.47): appended with a default, so existing rows migrate; the publish breaks clients once (they reload anyway).
+  // Quick Draw: appended with a default, so existing rows stay valid.
   quickDraw: t.u32().default(0),
 });
 
-/** The Card Slots perks (0.912), in a table of their own so no subscribed row changes shape. No row is all zero. */
+/** The Card Slots perks, in a table of their own so no subscribed row changes shape. No row is all zero. */
 export const playerPrestigeCardPerk = table({ name: "player_prestige_card_perk", public: true }, {
   identity: t.identity().primaryKey(), weaponCards: t.u32(), helmetCards: t.u32(), armorCards: t.u32(),
 });

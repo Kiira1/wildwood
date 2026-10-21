@@ -16,7 +16,7 @@ const socialMessage = table({ name: "social_message", public: false }, {
   replySender: t.identity().index("btree"), replyToMessageId: t.u64(), replyToSenderName: t.string(), replyToMessage: t.string(),
 });
 /**
- * A private message that carries a duel's result (0.857): the replay it
+ * A private message that carries a duel's result: the replay it
  * links to. Beside social_message rather than in it, so that table's shape is
  * untouched; the two duellists subscribe to their own rows. Both go after a day.
  */

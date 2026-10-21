@@ -16,7 +16,7 @@ function counting(index: { find: (...args: any[]) => any }, run: () => void) {
 }
 
 it("reads the save and the worn cards a few times per kill report, not once per helper", () => {
-  // Since cards (0.903), each helper read the save and the gear's cards again: about eight progress
+  // Each helper reading the save and the gear's cards again would cost about eight progress
   // reads and eighteen card-slot reads a report, on the busiest reducer the game has.
   const f = crystalFixture();
   f.patch("playerProgress", { equippedRightHand: STARTER_BOW, inventoryJson: '["starter_bow"]', damage: 1e15 });
@@ -33,7 +33,7 @@ it("reads the save and the worn cards a few times per kill report, not once per 
 });
 
 it("reads the account's clocks once per kill report and writes them twice", () => {
-  // The report limiter, simulation clock, combat clock and kill-rate watch were four rows, each read and written.
+  // The report limiter, simulation clock, combat clock and kill-rate watch share one row.
   const f = crystalFixture();
   f.patch("playerProgress", { equippedRightHand: STARTER_BOW, inventoryJson: '["starter_bow"]', damage: 1e15 });
   fillDefeatBudget(f, MAP, ENEMY);

@@ -30,9 +30,8 @@ import { luckInPlay } from "./luck-research";
  * player_bow_skill, player_sword_skill or player_staff_skill. It is always the copy an equipment slot holds: equipping
  * another copy swaps the two rolls (see select below), so kill validation,
  * duels and the client's combat keep reading the equipped weapon's roll by item
- * id, and inventoryJson, the equipment fields and every catalog lookup stay as
- * they were. Old clients see one copy of each item and nothing else changes
- * for them. Other gear stores zero skill chances.
+ * id, and inventoryJson, the equipment fields and every catalog lookup hold
+ * only the first copy. Older clients see one copy of each item. Other gear stores zero skill chances.
  *
  * Private, read through the caller-scoped my_equipment_copies view. New
  * tables rather than columns: a column on a table every session reads would
@@ -51,7 +50,7 @@ export const playerEquipmentCopy = table({ name: "player_equipment_copy", public
 
 /**
  * Every item a player has ever had drop, for the Gear Collection in the map window: one row per item, kept for
- * good. Gear held from before it existed counts too, read from the bag on the client.
+ * good. Gear in the bag counts too, row or not, read on the client.
  */
 export const playerItemCollection = table({ name: "player_item_collection", public: false }, {
   key: t.string().primaryKey(),
@@ -134,7 +133,7 @@ function insertOffer(ctx: Ctx, identity: Identity, itemId: string, roll: WeaponS
   setStaffOfferRoll(ctx, identity, itemId, offer.id, roll);
 }
 
-/** Offers `count` copies of an item the player already holds. Anything that is not equipment is dropped as before. */
+/** Offers `count` copies of an item the player already holds. Anything that is not equipment is dropped. */
 export function offerDuplicateEquipment(ctx: Ctx, identity: Identity, itemId: string, count = 1, skillLuck = 0) {
   const canonical = canonicalItemId(itemId);
   if (!canonical || !isDuplicateOfferItem(canonical)) return;
@@ -352,7 +351,7 @@ export function createEquipmentCopies(deps: {
 
   /**
    * Destroys one copy. `copyId` 0 is the first copy, the one in inventoryJson,
-   * and is what destroy_equipment has always destroyed. When another copy is
+   * and is what destroy_equipment destroys. When another copy is
    * kept, the oldest one takes the first copy's place, in its slot if it was
    * equipped, and the bag loses a copy rather than the item. The slot's tier
    * survives either way: it was never the item's to take away. A refine is the

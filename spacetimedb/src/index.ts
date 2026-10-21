@@ -223,8 +223,8 @@ const { runPendingModuleMigrations } = createModuleMigrations({
 // Exact-own lifecycle and physical compatibility row. Current clients never
 // subscribe to remote rows; continuous coordinates live in private analytical
 // anchors and remote presentation lives in playerMotionIdentity below.
-// Zone indexes were dropped in 0.877: nothing filtered on them, and the
-// subscription planner ignores an index wider than three columns.
+// No zone indexes: nothing filters on them, and the subscription planner
+// ignores an index wider than three columns.
 const player = table(
   { public: true },
   {
@@ -560,8 +560,8 @@ const playerProgress = table(
     // Zero derives speed from stat equipment. Positive values are durable,
     // developer-authored base-speed overrides and cannot be supplied by saves.
     speedOverride: t.f32().default(0),
-    // Appended default preserves existing rows while Magmalisk now owns the
-    // permanent unlock for the next map.
+    // Magmalisk owns the permanent unlock for the next map; the default keeps
+    // existing rows valid.
     infernalUnlocked: t.bool().default(false),
     // Gloomroot owns the additive unlock for Water Reach. The default keeps
     // every existing progress row migration-safe.
@@ -653,10 +653,8 @@ const activeResearch = table(
 /**
  * One row per account per upgrade slot: the tier that slot has reached.
  *
- * It used to be one row per item. Tiers moved to the slot so a better drop
- * inherits the work already done instead of starting again, and the rows were
- * rewritten in place by module migration 38. The columns carry their original
- * names because adding or renaming one would make every player reload:
+ * Tiers live on the slot so a better drop inherits the work already done.
+ * The column names stay because adding or renaming one would make every player reload:
  * `itemId` holds the slot ("HAND", "HEAD", "CHEST") and `level` its tier.
  */
 const playerItemUpgrade = table(
@@ -673,8 +671,7 @@ const playerItemUpgrade = table(
 );
 
 // A running job owns the item until it completes or is canceled. The paused
-// and remaining fields stay for additive-schema compatibility with v0.476;
-// new jobs never enter a paused state.
+// and remaining fields stay for schema compatibility; jobs never pause.
 const activeItemUpgrade = table(
   { public: true },
   {
@@ -689,8 +686,8 @@ const activeItemUpgrade = table(
   },
 );
 
-// Kept separate from the legacy identity-keyed slot-one table so adding a
-// concurrent queue is an additive, data-preserving schema migration.
+// Separate from the identity-keyed slot-one table, so the second concurrent
+// queue leaves that table's schema untouched.
 const activeItemUpgradeSlotTwo = table(
   { name: "active_item_upgrade_slot_two", public: true },
   {
@@ -753,7 +750,7 @@ const playerGemDrop = table(
 
 // Shared periodic ranking snapshot. Clients fetch only server-selected rank
 // windows; this table stays outside all normal client subscriptions. Stats are
-// f64 (0.856): the f32 table they came from could not hold past 3.4e38.
+// f64: f32 cannot hold past 3.4e38.
 const leaderboardEntry = table(
   { name: "leaderboard_entry_v2", public: true },
   {
@@ -1031,8 +1028,8 @@ const accountLink = table(
 
 // Clients read the public page through latest_chat_messages_with_reactions and
 // the history procedure, never the table, so it carries no client sync cost.
-// The indexes serve the sweep, account merge/erasure, and guild replay lookups
-// that used to scan every message.
+// The indexes serve the sweep, account merge/erasure, and guild replay lookups,
+// so none of them scans every message.
 const chatMessage = table(
   {
     public: false,
@@ -1500,9 +1497,8 @@ export default spacetimedb;
 // table are OR'd: a row reaches its owner, and a presence row reaches everyone
 // only while its player is visible.
 //
-// player_motion_detail_frame has no rule. Its 3 Hz rows, one per observer, were
-// checked against every connected player's subscription instead of only their
-// recipient's: evaluated queries ran 40-50 times the matched ones from 0.877 on.
+// player_motion_detail_frame has no rule: a rule on its 3 Hz rows, one per
+// observer, is checked against every connected player's subscription.
 // A frame holds only visible players, and only a visible observer gets one, so
 // it shows nothing the map frames do not.
 export const visiblePlayerRows = spacetimedb.clientVisibilityFilter.sql("SELECT * FROM player WHERE is_visible = true");
@@ -1910,8 +1906,8 @@ function enterWorldPresence(ctx: any, tabId: string, forceTakeover = false, supp
 
   const existing = playerWithMotion(ctx, ctx.db.player.identity.find(ctx.sender));
   const presencePreference = ctx.db.developerPresencePreference.identity.find(ctx.sender);
-  // Cached mobile builds cannot complete the new tutorial. Returning through a
-  // legacy entry safely skips it without rewards rather than hiding the player.
+  // Cached mobile builds cannot complete the tutorial. Entering from one
+  // skips it without rewards rather than hiding the player.
   if (!supportsTutorial && needsOnboarding(ctx, ctx.sender)) {
     const onboarding = ctx.db.playerOnboarding.identity.find(ctx.sender)!;
     ctx.db.playerOnboarding.identity.update({ ...onboarding, step: 6 });
@@ -2002,7 +1998,7 @@ function enterWorldPresence(ctx: any, tabId: string, forceTakeover = false, supp
     ...playerZone(savedLocation.x, savedLocation.y),
     mapId: savedLocation.mapId,
     facing: savedLocation.facing,
-    // Required by the legacy physical schema. These are never synchronized.
+    // Required by the player table's schema. These are never synchronized.
     hp: existingProgress.maxHp,
     maxHp: existingProgress.maxHp,
     ...powerFieldsForProgress(ctx, existingProgress),
@@ -2521,7 +2517,7 @@ export const setDeveloperPresence = spacetimedb.reducer(
 
 export const setMultiplayerEnabled = spacetimedb.reducer({ enabled: t.bool() }, (ctx, { enabled }) => applyPresence(ctx, enabled, enabled));
 // The eye (`enabled`: see others, and be seen) and, with it off, whether to be seen anyway while idle or
-// autofarming (`shown`): a still or puppet player costs other players next to nothing (0.898.8).
+// autofarming (`shown`): a still or puppet player costs other players next to nothing.
 export const setPresence = spacetimedb.reducer({ enabled: t.bool(), shown: t.bool() }, (ctx, { enabled, shown }) => applyPresence(ctx, enabled, enabled || shown));
 function applyPresence(ctx: GameReducerContext, enabled: boolean, seen: boolean) {
   const player = requireControllingPlayer(ctx);
@@ -2730,8 +2726,8 @@ function devDeleteLegacy(ctx: ModuleReducerCtx, { identity, expectedDisplayName 
   removePlayerIdentityData(ctx, identity);
 }
 
-// Maintenance-only correction for legacy account links created before all
-// lifetime metadata was reliably transferred. The CLI runs it as the database
+// Maintenance-only correction for account links whose lifetime metadata was
+// not transferred. The CLI runs it as the database
 // owner; the developer account needs its signed-in game session like every
 // other developer tool. It can only move a join date earlier.
 export const devRepairPlayerJoinedAt = spacetimedb.reducer(
@@ -3316,10 +3312,8 @@ export const myOfflineProgress = spacetimedb.view(
 /**
  * The account's own consent row.
  *
- * Acceptance is per account and already lives on the server, but the client
- * decided whether to ask from a token-scoped localStorage entry, so the same
- * account was asked its age again on every new device and after every token
- * change. This lets the client read what the account already agreed to.
+ * Acceptance is per account and lives on the server. This lets the client read
+ * what the account already agreed to, so a new device or token does not ask again.
  */
 export const myLegalConsent = spacetimedb.view(
   { name: "my_legal_consent", public: true }, t.array(playerLegalConsent.rowType),
@@ -3866,7 +3860,7 @@ function requireSocialPlayer(ctx: ModuleReducerCtx) {
   if (isVirtualPlayer(ctx, ctx.sender)) throw new SenderError("Use your main character connection.");
 }
 /** The viewer's chat role: their moderator heart, and whether their reports remove messages. */
-// A profile's online line: player rows of eye-off players are withheld from other clients (0.877).
+// A profile's online line: player rows of eye-off players are withheld from other clients.
 export const getPlayerPresence = spacetimedb.procedure({ identity: t.identity() }, t.string(), (ctx, { identity }) => ctx.withTx(tx => JSON.stringify(playerPresence(tx, identity))));
 export const getMapIndexBalance = spacetimedb.procedure({ mapId: t.string() }, t.string(), (ctx, { mapId }) => ctx.withTx(tx => mapBalanceForIndex(tx, mapId)));
 export const getChatRole = spacetimedb.procedure({}, t.string(), ctx => ctx.withTx(tx => { requireSocialPlayer(tx); return JSON.stringify({ moderatorHeart: moderatorHeartFor(tx, tx.sender), canModerate: (isDeveloperIdentity(tx.sender) || isChatModerator(tx, tx.sender)) && hasSpacetimeAuthAccount(tx) }); }));
@@ -4127,7 +4121,7 @@ export const getLeaderboardWindow = spacetimedb.procedure(
   { stat: t.string() }, t.array(rankedLeaderboardPlayer),
   (ctx, { stat }) => ctx.withTx(tx => readLeaderboardWindow(tx, stat)),
 );
-// The board's ranks with each account's start, and which prestige level Rivals is (0.908.2).
+// The board's ranks with each account's start, and which prestige level Rivals is.
 export const getLeaderboardRanks = spacetimedb.procedure(
   { board: t.string(), startRank: t.u32(), count: t.u32() },
   t.object("LeaderboardRanks", { entries: t.array(t.object("LeaderboardRank", { rank: t.u32(), entry: leaderboardEntry.rowType, joinedAtMicros: t.u64() })),

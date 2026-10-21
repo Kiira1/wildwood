@@ -7,7 +7,7 @@ type ConsentContext = { db: any; sender: any; timestamp: any };
  * enters the world like a player and so meets the same Terms gate a player
  * does. It has no one to accept them, and the developer who owns the run
  * already has, so the bot enters under that consent. Without this every bot
- * has failed at enter_world since the gate shipped in 0.577.
+ * fails at enter_world.
  */
 export function grantVirtualPlayerConsent(ctx: ConsentContext, owner: any) {
   if (ctx.db.playerLegalConsent.identity.find(ctx.sender)) return;

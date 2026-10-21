@@ -1,7 +1,7 @@
 import { table, t } from "spacetimedb/server";
 
-// Legacy champion/build columns remain inert to preserve deployed table rows.
-// Membership and combat no longer read them for eligibility or selection.
+// The champion/build columns stay so stored rows still fit the table.
+// Membership and combat do not read them.
 const guild = table({ name: "guild", public: false }, {
   id: t.u64().primaryKey().autoInc(), directoryId: t.u64().index("btree"), nameKey: t.string().unique(), name: t.string(), leader: t.identity(),
   members: t.u32(), champions: t.u32(), week: t.u32(), score: t.u32(), wins: t.u32(), battles: t.u32(),

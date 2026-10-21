@@ -8,7 +8,7 @@ import { readPlayerProgress } from "./wide-stats";
 /**
  * A player's saved Builds: the gear in each slot and the active cards by type, as they were when saved.
  * Equipping one puts the gear on from the client (the ordinary equip path) and the cards back on here.
- * Builds saved before 0.912 hold cards by item; parseBuildCards reads those by each card's type.
+ * Older builds hold cards by item; parseBuildCards reads those by each card's type.
  */
 export const playerBuild = table({ name: "player_build", public: false }, {
   key: t.string().primaryKey(),

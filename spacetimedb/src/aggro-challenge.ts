@@ -16,7 +16,7 @@ import { effectivePlayerPower } from "../../shared/player-power";
  * waits in the same prestige_challenge_backup row Reflect Only uses, so only
  * one challenge can be under way at a time. Dropping out parks the run, as
  * Reflect Only does, and starting again drops back into it; only a death
- * starts a run over. (It used to end the run: Phoe lost hers, 2026-10-05.)
+ * starts a run over.
  */
 export const playerAggroChallenge = table({ name: "player_aggro_challenge", public: true }, {
   identity: t.identity().primaryKey(), active: t.bool(), completed: t.u32(),
@@ -136,13 +136,12 @@ export function restartAggroRunOnDeath(ctx: any, player: any, startFreshRun: Agg
 }
 
 /**
- * Rebuilds a lost run as a parked one: Phoe dropped out of hers before drop-outs
- * parked (2026-10-05) and it was not kept anywhere. Her bag and cosmetics are
- * her own; the stats are the campaign's expected build for the furthest map
- * whose build her power reached, scaled to that power as the game counts it
+ * Rebuilds a lost run as a parked one for the named player. Their bag and
+ * cosmetics are their own; the stats are the campaign's expected build for the
+ * furthest map whose build their power reached, scaled to that power as the game counts it
  * (gear and research included), with every map before it open and the player
- * at its entrance. Whatever she has now is replaced: a run under
- * way takes the rebuilt stats where she stands, a parked one is swapped for it.
+ * at its entrance. Whatever they have is replaced: a run under
+ * way takes the rebuilt stats where they stand, a parked one is swapped for it.
  * Skips (and logs) unless exactly one player has the name.
  */
 export function rebuildParkedAggroRun(ctx: any, name: string, power: number) {
@@ -171,7 +170,7 @@ export function rebuildParkedAggroRun(ctx: any, name: string, power: number) {
   let low = 0.01, high = 1_000;
   for (let step = 0; step < 80; step += 1) { const mid = Math.sqrt(low * high); if (powerOf(runAt(index, mid)) < power) low = mid; else high = mid; }
   const run = runAt(index, low), map = CAMPAIGN_MAPS[index];
-  // In a run now: its stats become the rebuilt ones where she stands.
+  // In a run: its stats become the rebuilt ones where they stand.
   if (inRun) {
     updateSnapshotRow(ctx, "playerProgress", run);
     console.log(`Aggro run rebuild of "${name}": the run under way set to ${Math.round(powerOf(run))} power.`);

@@ -60,8 +60,8 @@ export function acknowledgeReleaseWindow(ctx: Context, id: string) {
  * Tells every open tab that a new client is live, so tabs that would otherwise wait until their next
  * version check (hidden ones never check) reload onto it. Two steps a few seconds apart, run by
  * `npm run ship` after the deploy: "start" opens a short updating window, "finish" completes it with a
- * reload. Clients before 0.908.2 act on that pair (scheduled-update-controller.ts): they save, check
- * version.json and reload. Later clients skip a window for a version they already run.
+ * reload. Older clients act on that pair (scheduled-update-controller.ts): they save, check
+ * version.json and reload. Newer clients skip a window for a version they already run.
  */
 export function announceClientUpdate(ctx: Context, version: string, step: string) {
   const now = Number(ctx.timestamp.microsSinceUnixEpoch / 1000n);

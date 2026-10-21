@@ -8,9 +8,8 @@ export const proceduralMapTables = {
     { public: false },
     { identity: t.identity().primaryKey() },
   ),
-  // Keep deployed table layouts intact. The boss and contribution tables held
-  // the retired shared Endless fight and are no longer written; permanent
-  // proceduralProgress rows are live.
+  // Keep deployed table layouts intact. The boss and contribution tables are
+  // not written; permanent proceduralProgress rows are live.
   proceduralBoss: table(
     { public: true },
     {

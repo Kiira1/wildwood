@@ -113,8 +113,8 @@ it("covers the tables 0.812 added", () => {
 });
 
 it("reads a unique index (find only, as SpacetimeDB 2.11 has it) instead of crashing on filter", () => {
-  // Every live erase threw "index.filter is not a function" on such an accessor (2026-10-12); the memory
-  // test database gives every index a filter, so only a hand-made one shows the runtime's shape.
+  // The runtime's unique index has no filter; the memory test database gives every index one,
+  // so only a hand-made one shows the runtime's shape.
   const player = Identity.fromString("c2".padEnd(64, "4"));
   const rows = new Map([["k1", { key: "k1", identity: player }]]);
   const ctx = { db: { pausedResearch: {
@@ -128,7 +128,7 @@ it("reads a unique index (find only, as SpacetimeDB 2.11 has it) instead of cras
 });
 
 it("erases the card tables for the account asked for, and only that account", async () => {
-  // player_boss_card_roll, player_card_attack_cap and player_card_drop were missing from the list.
+  // Covers player_boss_card_roll, player_card_attack_cap and player_card_drop.
   const { server } = await import("../../tests/helpers/crystal-hollows-fixture");
   const f = crystalFixture();
   const target = Identity.fromString("c2".padEnd(64, "3"));

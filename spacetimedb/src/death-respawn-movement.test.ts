@@ -15,8 +15,7 @@ it("pulls a position the player could not have walked to back to the edge of wha
   move(f, 4050, 4050, 1);
   move(f, 4060, 4050, 2);
   later(f, 3.85);
-  // Refusing this used to cost honest players their footing after knockback or
-  // a lag spike. It is corrected now, and no error reaches the client.
+  // An impossible move is corrected, and no error reaches the client.
   expect(() => move(f, 600, 600, 3, PLAYER_SPEED)).not.toThrow();
   const moved = f.db.player.identity.find(f.ctx.sender);
   expect(moved.x).toBeLessThan(4060);

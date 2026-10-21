@@ -267,10 +267,8 @@ export function hasSharedMap(ctx: any) {
  * How far past its time a frame loop's row may be before it counts as dead.
  * The loops re-arm every third of a second or every second, so a row this
  * late did not fire and will not: a module publish can leave the row due at
- * that moment behind. On 2026-09-29 the minimap loop's row sat 52 minutes past
- * due from the 00:02 publish, and since the ensures below saw a row they
- * armed nothing: no map frames went out, no client learned where anyone was
- * or asked to follow them, and everyone with the eye on was alone.
+ * that moment behind. The ensures below replace such a row; otherwise, seeing a
+ * row, they would arm nothing and no map frames would go out.
  */
 export const FRAME_SCHEDULE_STALE_MICROS = 5_000_000n;
 
@@ -519,11 +517,7 @@ export function createPresenceRuntime(deps: PresenceRuntimeDeps) {
   }
 
   // update_movement_state is the busiest reducer, and on the host it is paid
-  // per database call, not per line. It used to make 12: the account
-  // restriction twice, the motion row three times, and playerProgress,
-  // playerResearch and an inventory decode on every packet just to learn the
-  // owned speed. Now a heartbeat makes 7 and a start or stop 8, and every
-  // accepted position, velocity, facing and row write is what it was.
+  // per database call, not per line: a heartbeat makes 7 and a start or stop 8.
   // The caller has just made the restriction lookup itself, through
   // blockedSession, to drop a blocked tab's queued packets quietly.
   function applyMovementState(
@@ -572,10 +566,8 @@ export function createPresenceRuntime(deps: PresenceRuntimeDeps) {
     // Movement is not where cheating pays. What a speed hack buys is farming
     // throughput, and that is capped where it is earned: no account can be paid
     // for more kills than the map can respawn (DEFEAT_MIN_RESPAWN_SECONDS).
-    // So an impossible packet is corrected rather than punished. This used to
-    // revoke the session on speed and reject the packet on position, which cost
-    // honest players their footing after boss knockback, a respawn or a lag
-    // spike, and logged a warning for every one of them.
+    // So an impossible packet is corrected rather than punished, which keeps honest
+    // players' footing after boss knockback, a respawn or a lag spike.
     const speedScale = moving && requestedSpeed > compatibilitySpeed + MOVEMENT_SPEED_PACKET_TOLERANCE &&
       requestedSpeed > ownedSpeed() + MOVEMENT_SPEED_PACKET_TOLERANCE
       ? ownedSpeed() / requestedSpeed : 1;

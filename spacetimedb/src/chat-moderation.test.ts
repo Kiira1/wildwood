@@ -214,7 +214,7 @@ describe("public chat moderation", () => {
 
     it("still blocks a name built around the slur with a letter in front", () => {
       // Usernames have no word boundaries, so "Snigger" reads as the slur and
-      // was already rejected before look-alike folding; chat is unaffected.
+      // is rejected even without look-alike folding; chat is unaffected.
       expect(isPublicDisplayNameAllowed("Snigger")).toBe(false);
     });
   });

@@ -1,7 +1,7 @@
 import { SenderError, table, t } from "spacetimedb/server";
 
 /**
- * Research set aside (0.860): the rank it was working toward and the time it
+ * Research set aside: the rank it was working toward and the time it
  * still needed. Starting that research again picks up from here, so a player
  * can pause one, run another, and come back without losing the time spent.
  * One row per research, so several can wait at once; only one ever runs.

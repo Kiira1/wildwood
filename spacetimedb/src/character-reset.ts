@@ -82,10 +82,8 @@ export function resetProgressToDefaults(ctx: any, activePlayer: any, keep: { res
       removePausedResearch(ctx, ctx.sender);
     }
     // A tier belongs to the slot, not to whatever is sitting in it. Prestige
-    // leaves the bench work, the way it leaves research and now the gear;
-    // this line predates slot tiers, when it only destroyed levels that were
-    // attached to items a prestige took anyway. A deliberate account reset
-    // still clears the lot.
+    // leaves the bench work, the way it leaves research and the gear;
+    // a deliberate account reset clears the lot.
     if (keep.slotTiers) removePlayerItemDrops(ctx, ctx.sender, keep.items);
     else removePlayerItemUpgradeData(ctx, ctx.sender, true);
     const lifetime = ensurePlayerLifetime(ctx);
@@ -94,9 +92,8 @@ export function resetProgressToDefaults(ctx: any, activePlayer: any, keep: { res
 }
 
 /**
- * What Reset Save erases besides the run: everything earned across runs. It used to keep prestige, perks,
- * the soul and challenge wins while its warning said "Everything resets", and two players were left at
- * prestige 6 and 21 with an empty save (ZeII, Yumi, 2026-10-11). Gems, purchases, cosmetics and mail stay.
+ * What Reset Save erases besides the run: everything earned across runs, prestige, perks, the soul and
+ * challenge wins included, as its "Everything resets" warning says. Gems, purchases, cosmetics and mail stay.
  */
 const RESET_SAVE_TABLES = [
   "playerPrestige", "playerPrestigePerk", "playerPrestigeExpansionPerk", "playerPrestigeCardPerk", "playerFreeRespec",

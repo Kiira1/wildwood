@@ -27,8 +27,7 @@ describe("simulation clock arithmetic", () => {
   it("pays a first report in full however long the page ran before its first kill", () => {
     // Nine minutes in menus, at Home or dying to a camp before the first kill
     // lands: the page counted all of it, and nothing on the server can say
-    // when that time began. It used to be measured against the bank alone and
-    // clipped by half.
+    // when that time began, so it is not clipped.
     expect(simulationClock(null, at(1_000), 540_000)).toMatchObject({ scale: 1, tokens: SIM_CLOCK_BANK_SECONDS, episodeStarted: false });
     // The row dropped by the six-hour idle sweep is the same case.
     expect(simulationClock(undefined, at(50_000), 3_600_000)).toMatchObject({ scale: 1, tokens: SIM_CLOCK_BANK_SECONDS });

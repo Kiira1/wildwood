@@ -22,7 +22,7 @@ export function advanceOnboarding(ctx: ModuleReducerCtx, step: number, writeProg
   if (step <= state.step) return;
   // A retired step resumes at the lesson after it; recording that lesson or finishing it both count.
   const lesson = onboardingLessonAt(state.step);
-  // Remove in the next client-break release: a 0.916.14 tab still reports the retired portrait lesson (2) after Move.
+  // Remove in the next client-break release: an older tab still reports the retired portrait lesson (2) after Move.
   const oldClientPortrait = step === 2 && state.step === ONBOARDING_STEP.move;
   // The final step can also be reached through Skip tutorial; it pays the lesson rewards not yet paid.
   if (step !== ONBOARDING_STEP.complete && step !== lesson && step !== nextOnboardingStep(lesson) && !oldClientPortrait) {

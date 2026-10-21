@@ -187,7 +187,7 @@ export function inventoryForProgress(progress: any) {
   ];
 }
 
-// The two original forest drops retain their legacy count-field migration above.
+// The starter bow and wooden armor go through the count-field migration above.
 export const OWNED_EQUIPMENT_DROP_IDS = EQUIPMENT_DROP_ITEM_IDS.filter(id => id !== STARTER_BOW && id !== WOODEN_ARMOR);
 
 export function inventoryWithBetaHelmet(progress: any, grant: boolean) {

@@ -2,17 +2,15 @@ import { Range, table, t, type InferSchema, type ReducerCtx } from "spacetimedb/
 import type schema from "./index";
 import { droppableLoot, regularMapLoot, type MapLootDrop } from "../../shared/regular-map-loot";
 
-// One cursor per account/browser stream, rather than one receipt row per kill.
-// Retired in 0.877 for regular_enemy_stream, which records when a stream was
-// last used so idle ones can be dropped; a tab opened before then is still
-// read from here once, and moved across on its next report.
+// Older tabs' cursors, one per account/browser stream. regular_enemy_stream replaces it;
+// a row here is still read once and moved across on that tab's next report.
 export const regularEnemyLootCursor = table({ name: "regular_enemy_loot_cursor" }, {
   key: t.string().primaryKey(), identity: t.identity().index("btree"), sequence: t.u64(),
 });
 /**
  * The last report accepted on each account/browser stream, so a retry is
  * recognised and never paid twice. Every tab, and every discarded batch,
- * starts a new stream, so rows used to pile up for good.
+ * starts a new stream, so idle rows are dropped.
  */
 export const regularEnemyStream = table({ name: "regular_enemy_stream" }, {
   key: t.string().primaryKey(), identity: t.identity().index("btree"), sequence: t.u64(), updatedAtMicros: t.u64().index("btree"),
@@ -24,8 +22,8 @@ export const regularEnemyStream = table({ name: "regular_enemy_stream" }, {
  */
 export const REGULAR_ENEMY_STREAM_IDLE_MICROS = 30n * 86_400_000_000n;
 /**
- * Every live tab has written regular_enemy_stream within a month of 0.877
- * shipping, so the old cursor rows left after this are abandoned ones.
+ * After this, every live tab writes regular_enemy_stream, so the cursor
+ * rows still left are abandoned ones.
  */
 export const LEGACY_LOOT_CURSOR_RETIRED_AT_MICROS = BigInt(Date.UTC(2026, 10, 4)) * 1000n;
 const STREAM_PRUNE_BATCH = 2_000;

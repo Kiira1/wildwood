@@ -9,7 +9,6 @@ import type { Identity } from "spacetimedb";
  * who have not played since the last snapshot, so most pages stay as they are.
  * A player's rank is their page and their place on it: player_leaderboard_standing
  * keeps the page per board, which changes only when they cross a page edge.
- * The per-player rank rows it replaced were rewritten whenever anyone above moved.
  */
 export const leaderboardPageTables = {
   leaderboardRankPage: table({ public: false }, {
@@ -29,7 +28,7 @@ export const leaderboardPageTables = {
   leaderboardPrestigeSize: table({ public: false }, { prestige: t.u32().primaryKey(), total: t.u32() }),
   /** Players to recompute at the next snapshot although they are offline: they left, or something changed them. */
   leaderboardDirty: table({ name: "leaderboard_dirty", public: false }, { identity: t.identity().primaryKey() }),
-  // Retired with the per-prestige-level boards (0.908); emptied by the first full snapshot and dropped in the next
+  // Unused: emptied by the first full snapshot, and dropped in the next
   // release that breaks clients (docs/pending-client-break.md).
   leaderboardPosition: table({ public: false }, {
     identity: t.identity().primaryKey(), ranks: t.array(t.u32()),

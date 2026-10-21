@@ -13,9 +13,8 @@ export const playerMapBalance = table({ name: 'player_map_balance' }, {
 });
 type Context = Pick<GameReducerContext, 'db' | 'sender' | 'timestamp'>;
 
-// A saved revision is never rewritten, so the settings it holds can be read
-// once instead of on every visit. Every map change used to load, parse and
-// revalidate the whole configuration before it could pin a snapshot.
+// A saved revision is never rewritten, so the settings it holds are read
+// once instead of on every visit.
 let parsedSettings: { revision: number; settings: BalanceSettings } | null = null;
 // Keyed by revision and map, the pinned snapshot is identical for every player,
 // so the resolve and the stringify are shared too. Bounded like the generated
@@ -45,9 +44,7 @@ export function forgetBalanceCaches() {
 
 /**
  * Every pinned visit resolved again at its own revision and wire version, for
- * a release that changes what a map holds (0.901.47: new camps, rating rewards).
- * A visit kept its old snapshot would pay attack speed kills as the old
- * attacks a second, and know nothing of the new crit camps.
+ * a release that changes what a map holds, so no visit keeps a stale snapshot.
  */
 export function repinMapBalances(ctx: Pick<Context, 'db'>) {
   for (const row of [...ctx.db.playerMapBalance.iter()] as any[]) {
@@ -66,7 +63,7 @@ export function repinMapBalances(ctx: Pick<Context, 'db'>) {
  */
 export function installBalanceCurve(ctx: Context) {
   const head = ctx.db.mapBalanceHead.id.find(0);
-  // Read raw: the settings before the curve no longer validate.
+  // Read raw: settings from before the curve do not validate.
   const headRow = head && ctx.db.mapBalanceVersion.revision.find(head.revision);
   if (headRow && JSON.parse(headRow.settingsJson).curveVersion === 2) return;
   if (head) {
@@ -110,10 +107,8 @@ export function saveMapBalance(ctx: Context, expectedRevision: number, json: str
   forgetBalanceCaches();
 }
 /**
- * A v2 snapshot resolved before 0.807 carries the respawn scaled from the old
- * 20-second base. Kept for the rest of the visit, it would hold the client and
- * the kill ceiling to the old clock until the player next travelled, so it is
- * re-pinned at the same revision instead.
+ * A v2 snapshot whose respawn base is not the current one is re-pinned at the
+ * same revision, so the client and the kill ceiling use the current clock.
  */
 function respawnBaseIsStale(snapshot: MapBalanceSnapshot | null) {
   return snapshot?.configurationVersion === 2 && snapshot.regularRespawnBaseSeconds !== REGULAR_ENEMY_RESPAWN_SECONDS;
@@ -171,8 +166,8 @@ function resolvedSnapshotJson(mapId: string, head: BalanceEditorState, version: 
 
 /**
  * Parsed snapshots by their JSON. Every player on a map at one revision pins
- * the same text, and each kill report read it, so the parse ran once a report.
- * Frozen, since one object now serves every reader; bounded, since a revision
+ * the same text, so it is parsed once, not on every kill report.
+ * Frozen, since one object serves every reader; bounded, since a revision
  * change leaves the old texts behind.
  */
 const parsedSnapshots = new Map<string, MapBalanceSnapshot>();
@@ -202,8 +197,7 @@ export function pinnedMapBalance(ctx: Pick<Context, 'db'>, identity: Context['se
  * The balance a player would meet on a map right now: their pinned visit when
  * it is that map, otherwise what arriving there would pin (the head revision,
  * the current wire version). Offline farming reads it for maps the player is
- * not standing on, which used to fall back to the pre-resolver curves and pay
- * a sliver of what the same kill pays in play.
+ * not standing on, so a kill there pays what it pays in play.
  */
 /**
  * Any map's balance at the live revision, as the map window's Enemy Index

@@ -43,7 +43,7 @@ const later = (f: Fixture, ms: number) => { f.ctx.timestamp = new Timestamp(f.ct
 const luckyRandom = (f: Fixture, float = .1) => {
   Object.assign(f.ctx, { random: Object.assign(() => float, { integerInRange: (min: number) => min }) });
 };
-/** Rolled drops reaching the bag, as kill loot is awarded. Kills no longer drop gear, so the rolls are given. */
+/** Rolled drops reaching the bag, as kill loot is awarded. Kills do not drop gear, so the rolls are given. */
 const dropRolled = (f: Fixture, itemIds: readonly string[]) =>
   f.transaction(() => awardDrops(f.ctx as any, new Map(itemIds.map(id => [id, 1]))));
 /** A player holding an iron bow with roll A in their hand. */

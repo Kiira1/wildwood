@@ -2,8 +2,8 @@ import { table, t, SenderError } from "spacetimedb/server";
 import { gemKillCredit, settleGemKillCredit } from "../../shared/gem-drops";
 
 /**
- * Each player's kill gems a UTC day: the kills paid, the gems they made, and the first and last report. It
- * replaced a ledger row per payout (one per 1,200 kills, 250,000 rows by 2026-10-15) for the kill-rate audit
+ * Each player's kill gems a UTC day: the kills paid, the gems they made, and the first and last report, for
+ * the kill-rate audit
  * (scripts/audit-kill-rates.ts); the server's own sustained_kill_rate moderation covers the minute-by-minute.
  */
 export const gemKillDaily = table({ name: "gem_kill_daily", public: false,
@@ -28,14 +28,13 @@ export const gemLedgerTrim = table({ name: "gem_ledger_trim", public: false }, {
   endId: t.u64(),
   done: t.bool(),
 });
-/** Ledger ids looked at a minute: the ~460,000 ids live on 2026-10-15 clear in about an hour and a half. */
+/** Ledger ids looked at a minute. */
 const LEDGER_TRIM_BATCH = 5_000n;
 
 // Gems paid for enemy kills. The gem_kill_progress and player_gem_drop tables,
 // the schema registration and the dev_grant_retroactive_kill_gems reducer
 // declaration stay in index.ts; this module owns the bodies they call. The
-// wallet write arrives through deps so the code here reads the same as it did
-// in the entry module.
+// wallet write arrives through deps.
 
 export type KillGemsDeps = {
   creditGemsWithoutLedger: (ctx: any, identity: any, delta: bigint) => unknown;
@@ -103,7 +102,7 @@ export function createKillGems(deps: KillGemsDeps) {
 
   /**
    * The one-time catch-up for kills earned before kill gems existed has run. It counted what each player had
-   * been paid from the per-payout ledger rows, which are no longer kept: run again it would pay everyone twice.
+   * been paid from the per-payout ledger rows, which are gone: run again it would pay everyone twice.
    */
   function grantRetroactiveKillGems(_ctx: any): never {
     throw new SenderError("The retroactive kill-gem grant has already run, and its ledger is gone.");

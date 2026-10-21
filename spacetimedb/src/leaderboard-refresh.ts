@@ -72,7 +72,7 @@ function dropPlayer(ctx: any, identity: any) {
   if (ctx.db.leaderboardStanding.identity.find(identity)) ctx.db.leaderboardStanding.identity.delete(identity);
 }
 
-/** The per-player rank tables of the per-prestige-level boards, emptied once (0.908). */
+/** The retired per-player rank tables of the per-prestige-level boards, emptied once. */
 function clearRetiredTables(ctx: any) {
   for (const table of [ctx.db.leaderboardPosition, ctx.db.leaderboardPrestigePosition]) {
     for (const row of [...table.iter()]) table.identity.delete(row.identity);

@@ -24,9 +24,8 @@ function seedRunningSlotUpgrade(f: ReturnType<typeof crystalFixture>, slot: stri
 }
 
 it("leaves a running slot upgrade alone when the world sweeps", () => {
-  // It used to check the row against isUpgradeableItem, which answers false
-  // for "HAND", so every sweep, sign-in and completion cancelled the upgrade
-  // and a slot never moved past the tier it started the day with.
+  // A slot row is not an item: isUpgradeableItem answers false for "HAND",
+  // so checking the row against it would cancel the upgrade on every sweep.
   const f = crystalFixture();
   seedRunningSlotUpgrade(f, "HAND", 10);
 

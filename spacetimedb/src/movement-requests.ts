@@ -72,7 +72,7 @@ export function setPlayerSpeed(ctx: ModuleReducerCtx, { speed }: { speed: number
   // Bound the maximum rather than demanding one of two exact values. A Move
   // Speed rank that has just finished leaves the client a beat behind: its
   // next packet still carries the previous rank's speed, which is lower than
-  // the server now expects, and every rejection on live was exactly that.
+  // the server expects.
   // Asking to move slower than you are entitled to is not an exploit.
   // Tailwind (mastery-techniques.ts) and Light armor are allowed whenever learned or worn, as Black Boots are.
   const maximumSpeed = Math.max(expectedSpeed, restingSpeed) * (progress ? bonusMoveSpeedFactor(ctx, ctx.sender, progress) : 1);

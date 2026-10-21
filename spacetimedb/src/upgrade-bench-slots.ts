@@ -7,7 +7,7 @@ export const UPGRADE_BENCH_SLOT_ONE = 1;
 export const UPGRADE_BENCH_SLOT_TWO = 2;
 export const UPGRADE_BENCH_SLOT_THREE = 3;
 
-/** Keep the legacy missing-slot value pointed at slot one for old schedules. */
+/** A schedule with no slot is on slot one. */
 export function normalizeUpgradeBenchSlot(slot: unknown) {
   const numericSlot = Number(slot);
   return numericSlot === UPGRADE_BENCH_SLOT_TWO || numericSlot === UPGRADE_BENCH_SLOT_THREE

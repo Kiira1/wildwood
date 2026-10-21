@@ -10,7 +10,7 @@ const vis = identity("a"), moth = identity("b"), friend = identity("c");
 const hex = (who: Identity) => who.toHexString();
 const dmKey = (a: Identity, b: Identity) => `dm:${[hex(a), hex(b)].sort().join(":")}`;
 
-/** Vis with gear, a friend and a DM thread; the empty moth on the login Vis's magic link now opens. */
+/** Vis with gear, a friend and a DM thread; the empty moth on the login Vis's magic link opens. */
 function fixture() {
   const f = crystalFixture();
   f.progress(vis, { damage: 9_999, inventoryJson: JSON.stringify(["IRON_BOW"]) });

@@ -219,9 +219,8 @@ it("ranks armor by the armor, not the active cards: a Reflect build with regen c
 const consent = (f: Fixture) =>
   f.seed("playerLegalConsent", { identity: f.ctx.sender, termsVersion: TERMS_VERSION, ageBand: 2, acceptedAt: f.ctx.timestamp });
 
-// The blank-hand bug: a hand that read as "no weapon" was written back as "",
-// auto equip copied it when another slot changed, and the client took it in.
-// The player could not attack.
+// A hand that reads as "no weapon" is never written back as "": auto equip
+// would copy it when another slot changed, and the player could not attack.
 it("never blanks a hand that held a weapon: world entry, auto equip and dev grants all leave one", () => {
   // World entry keeps an owned bow from any map in hand.
   const entry = crystalFixture();

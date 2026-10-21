@@ -17,7 +17,7 @@ describe("progress reset returns the character to the tutorial", () => {
     for (let visit = 0; visit < 2; visit++) {
       f.run(server.enterWorld, { tabId: "starter-test-tab" });
       const progress = progressOf(f, f.ctx.sender);
-      // Nobody starts shod any more: Trailblazer Boots are gone entirely.
+      // Nobody starts with boots.
       expect(progress.equippedFeet).toBe("");
       expect(progress.speed).toBe(PLAYER_SPEED);
       expect(JSON.parse(progress.inventoryJson)).toEqual([STARTER_STONE]);

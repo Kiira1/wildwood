@@ -3,14 +3,13 @@ import { SenderError, table, t } from "spacetimedb/server";
 /**
  * The account's music and sound-effect volumes.
  *
- * They used to live only in the browser's localStorage, so a player lost them
- * on every new device, between the phone app and the browser, between the two
- * site origins, and whenever Safari cleared storage. This is the account's copy.
+ * The account's copy, so they follow the player to every device, between the phone
+ * app and the browser, across both site origins, and through Safari clearing storage.
  *
  * Its own private table rather than columns on an existing row: adding a
  * column to a table every session reads forces every player to reload on
  * publish. A missing row means the client keeps whatever it has locally and
- * uploads it once, so existing accounts needed no migration.
+ * uploads it once, so accounts need no migration.
  */
 export const playerAudioSetting = table({ name: "player_audio_setting", public: false }, {
   identity: t.identity().primaryKey(),

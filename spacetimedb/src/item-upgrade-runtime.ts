@@ -100,10 +100,8 @@ export function cancelActiveItemUpgrade(ctx: any, active: any, slot: number) {
 }
 
 export function reconcileActiveItemUpgrade(ctx: any, active: any, slot: number) {
-  // itemId holds the slot now. Checking it with isUpgradeableItem answered
-  // false for every running slot upgrade, so the next maintenance sweep,
-  // sign-in or completion threw it away — which is why a slot never moved past
-  // the tier the migration handed it.
+  // itemId holds the slot; an item id is mapped to its slot, so a running
+  // slot upgrade is kept rather than thrown away.
   const upgradeSlot = isUpgradeSlot(active.itemId) ? active.itemId : upgradeSlotForItem(active.itemId);
   if (!upgradeSlot
     || active.currentLevel !== slotUpgradeTierFor(ctx, active.identity, upgradeSlot)
@@ -128,7 +126,7 @@ export const UPGRADE_BENCH_USE_RANGE = 75;
 export function startItemUpgradeFor(ctx: ModuleReducerCtx, { slot: requestedSlot, itemId }: { slot: number; itemId: string }) {
   const slot = requireUpgradeBenchSlot(requestedSlot);
   const playerAtBench = requireControllingPlayer(ctx);
-  // The smithy's bench; the Smith's reach still counts for tabs from before 0.916.20, where Slot Upgrades was his tab.
+  // The smithy's bench; the Smith's reach still counts for older tabs, where Slot Upgrades is his tab.
   const atBench = isTownMap(playerAtBench.mapId) && withinStationReach(ctx, playerAtBench, TOWN_BENCH_POSITION, UPGRADE_BENCH_USE_RANGE);
   if (!atBench && !standsAtTheSmith(ctx, playerAtBench)) {
     throw new SenderError("Go to the Smith or the Slot Upgrades bench first.");
@@ -140,9 +138,8 @@ export function startItemUpgradeFor(ctx: ModuleReducerCtx, { slot: requestedSlot
   if (slot === UPGRADE_BENCH_SLOT_THREE && !thirdUpgradeSlotUnlockedFor(ctx, ctx.sender)) {
     throw new SenderError("Unlock the third queue first.");
   }
-  // `itemId` carries the upgrade slot now: "HAND", "HEAD" or "CHEST". The
-  // parameter keeps its name so the reducer signature is unchanged and no
-  // client is broken by the move from per-item levels to per-slot tiers.
+  // `itemId` carries the upgrade slot: "HAND", "HEAD" or "CHEST". The
+  // parameter keeps its name so the reducer signature stays compatible.
   const upgradeSlot = itemId;
   if (!isUpgradeSlot(upgradeSlot)) throw new SenderError("Choose a weapon, helmet or armor slot.");
 

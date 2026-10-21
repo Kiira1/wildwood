@@ -88,7 +88,7 @@ describe("crafted weapon skills", () => {
     f.reforge("crude_bow", copy.id);
     expect(copies()[0]).toEqual(best);
     expect(() => f.reforge("crude_bow", 999n)).toThrow();
-    // A tab from before 0.916.20 crafting a bow held reforges its first copy.
+    // An older tab crafting a bow held reforges its first copy.
     draws(0);
     f.craft("crude_bow", undefined, "craftGradeGear");
     expect(firstRoll().every(chance => chance > 0)).toBe(true);

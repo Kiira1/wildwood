@@ -16,8 +16,8 @@ export const chatReaction = table({ name: "chat_reaction" }, {
   active: t.bool().default(true), heartCredited: t.bool().default(false),
 });
 // Private, constant-time allowance per giver, shared across public/guild chat.
-// Named for hearts because it began as theirs; it now covers every reaction, so
-// a script cannot sit on thumbs-down forever while hearts stayed rationed.
+// Named for hearts, it covers every reaction, so a script cannot sit on
+// thumbs-down forever while hearts stay rationed.
 export const chatHeartAllowance = table({ name: "chat_heart_allowance" }, {
   identity: t.identity().primaryKey(), windowStart: t.timestamp(), used: t.u32(),
 });

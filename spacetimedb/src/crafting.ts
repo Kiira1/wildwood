@@ -67,7 +67,7 @@ export function addCraftExperience(ctx: Ctx, identity: Identity, skill: CraftSki
   writeCraftLevel(ctx, identity, skill, next);
 }
 
-/** Fletching and Enchanting were crafted at these schools' spots; clients from before the move still craft there. */
+/** Older clients still craft Fletching and Enchanting at these schools' spots, so accept them there. */
 const OLD_CRAFT_SCHOOL: Readonly<Partial<Record<CraftSkill, WeaponSchool>>> = { fletching: "archery", enchanting: "sorcery" };
 
 /** Every craft is done at the Smith; a craft's old school spot still counts until every client has reloaded. */
@@ -172,8 +172,8 @@ export function reforgeWeaponFor(ctx: Ctx, args: CraftArgs & { copyId: bigint },
 }
 
 /**
- * craft_grade_gear, as clients before 0.916.20 call it: a weapon already held is reforged (its first copy), armor
- * already held is refused, anything else is crafted. Kept one release so an open old tab's buttons do what they say.
+ * craft_grade_gear, as older clients call it: a weapon already held is reforged (its first copy), armor
+ * already held is refused, anything else is crafted, so an open old tab's buttons do what they say.
  */
 export function craftGradeGearFor(ctx: Ctx, args: CraftArgs, deps: CraftingDeps) {
   const progress = readPlayerProgress(ctx, ctx.sender);
@@ -217,7 +217,7 @@ export function registerCrafting(spacetimedb: typeof spacetimedbType, deps: Craf
     (ctx: any, args: CraftArgs) => craftGradeItemFor(ctx, args, deps));
   const reforgeWeapon = spacetimedb.reducer({ itemId: t.string(), copyId: t.u64(), expectedMaterials: t.string() },
     (ctx: any, args: CraftArgs & { copyId: bigint }) => reforgeWeaponFor(ctx, args, deps));
-  // Retire after 0.916.20: clients from before it call this.
+  // Older clients call this.
   const craftGradeGear = spacetimedb.reducer({ itemId: t.string(), expectedMaterials: t.string() },
     (ctx: any, args: CraftArgs) => craftGradeGearFor(ctx, args, deps));
   const myCraftSkills = spacetimedb.view({ name: "my_craft_skills", public: true }, t.array(playerCraftSkill.rowType),

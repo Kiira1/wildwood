@@ -239,7 +239,7 @@ it("leaves last week's guildless quests with the solo bonus", () => {
 
 it("pays the full solo week when quests were finished before the solo count began, and keeps it past the new draw", () => {
   const { f, day } = questing(false);
-  // Fifteen done; the solo count only saw thirteen of them (two came before 0.853).
+  // Fifteen done; the solo count only saw thirteen of them (two came before it began).
   f.patch("playerDailyQuest", { questsJson: finishedWeek() });
   f.seed("soloQuestWeek", { identity: f.ctx.sender, week: questWeek(day), points: 13, lastWeek: 0, lastPoints: 0 });
   expect(ensureDailyQuests(f.ctx, f.ctx.sender).guildPoints).toBe(15);

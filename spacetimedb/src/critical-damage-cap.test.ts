@@ -97,11 +97,11 @@ it("migration 54 turns soul attack speed and crit damage into ratings, nobody we
   const mine = f.db.playerSoulStats.identity.find(f.ctx.sender);
   // 53 trimmed it to 100x with research and Keen Edge; 54 keeps 100x: the rating's top.
   expect(mine.critDamage).toBe(RATING_MAX);
-  // 1.05 + 60 was 61.05x, past the curve's 10x top since 0.903.2: the rating is the top.
+  // 1.05 + 60 would be 61.05x, past the curve's 10x top: the rating is the top.
   expect(criticalDamage({ soul: f.db.playerSoulStats.identity.find(other).critDamage }).uncapped).toBeCloseTo(10, 6);
-  // A fresh run with this soul starts at 0.64 + 1 attacks a second, as it did.
+  // A fresh run with this soul starts at 0.64 + 1 attacks a second.
   expect(1 / withSoulStats({ damage: 1, maxHp: 1, armor: 0, regen: 0, attackRate: DEFAULT_ATTACK_INTERVAL }, mine).attackRate).toBeCloseTo(1 / DEFAULT_ATTACK_INTERVAL + 1, 5);
-  // This run at 1.5 a second plus the soul's 1 was 2.5: nobody plays slower than that (since 0.901.55 the soul adds flat on top).
+  // This run at 1.5 a second plus the soul's flat 1 makes 2.5: nobody plays slower than that.
   const progress = progressOf(f, f.ctx.sender);
   expect(1 / withSoulStats(progress, mine).attackRate).toBeGreaterThanOrEqual(2.5 - 1e-6);
   // Running it again changes nothing.

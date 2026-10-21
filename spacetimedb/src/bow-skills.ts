@@ -5,9 +5,9 @@ import { bowSkillsWithCards } from "../../shared/card-bounds";
 import { activeCardTotalsFor } from "./active-cards";
 
 /**
- * Each player's bow skill rolls, one row per bow id obtained since skills were
- * added. A bow held before then has no row and no skills: it counts as having
- * failed all three appearance rolls, and nothing rolls it later.
+ * Each player's bow skill rolls, one row per bow id rolled. A bow with no row
+ * has no skills: it counts as having failed all three appearance rolls, and
+ * nothing rolls it later.
  *
  * Inventory stores item ids, so this row is the roll of the bow's first copy,
  * the one an equipment slot holds; further copies a player kept carry their

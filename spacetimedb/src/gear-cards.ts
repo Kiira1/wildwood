@@ -4,8 +4,8 @@ import type spacetimedbType from "./index";
 import { cardDefinition } from "../../shared/cards";
 
 /**
- * A player's cards: every copy owned, active or not (active-cards.ts). Gear held cards until 0.912; its slot
- * tables stay for clients that still read them, empty since migration 59.
+ * A player's cards: every copy owned, active or not (active-cards.ts). Gear's card slot
+ * tables stay for clients that still read them, emptied by migration 59.
  */
 export const playerCard = table({ name: "player_card", public: false }, {
   key: t.string().primaryKey(),

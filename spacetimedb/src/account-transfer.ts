@@ -9,10 +9,10 @@ import { recordModerationAction } from "./moderation-history";
  * Swapping two characters between logins.
  *
  * SpacetimeAuth can end up with two users for one email address, and each
- * login is its own identity with its own character: Vis's magic link began
- * opening a new, empty character while their real one sat on the old login.
+ * login is its own identity with its own character: a magic link can open a
+ * new, empty character while the real one sits on the other login.
  * Swapping puts each character on the other login, so the player finds their
- * character where their sign-in now lands. Nothing is deleted, and running the
+ * character where their sign-in lands. Nothing is deleted, and running the
  * swap again puts both back.
  *
  * It walks the list account erasure uses (every table with an identity column),

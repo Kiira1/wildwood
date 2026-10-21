@@ -280,7 +280,7 @@ export function createGuildService(deps: { fighterFor(ctx: Ctx, identity: Identi
           }));
         }
       }
-      // Results are no longer posted on their own; a member shares one from the report (shareBattle).
+      // Results are not posted on their own; a member shares one from the report (shareBattle).
     },
     /**
      * Posts a battle to the Guilds chat, once. Any member of either guild can

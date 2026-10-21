@@ -124,7 +124,7 @@ export function mergeWoodcuttingData(ctx: Ctx, guest: Identity, account: Identit
   }
 }
 
-/** The old Smith's hatchet, still called by clients from before every player held one: only starts the row. */
+/** The Smith's hatchet reducer, still called by older clients: only starts the row. */
 export function claimHatchetFor(ctx: Ctx, deps: MiningDeps) {
   deps.requireControllingPlayer(ctx);
   if (ctx.db.playerWoodcutting.identity.find(ctx.sender)) return;
@@ -238,7 +238,7 @@ export function reportChoppingFor(ctx: Ctx, args: { chops: readonly { treeId: nu
 
 const TreeChopEntry = t.object("TreeChopEntry", { treeId: t.u32(), atMs: t.u64() });
 
-/** A fall, a batch of them, the old hatchet claim, and the caller's own Woodcutting and stumps. */
+/** A fall, a batch of them, the hatchet claim, and the caller's own Woodcutting and stumps. */
 export function registerWoodcutting(spacetimedb: typeof spacetimedbType, deps: MiningDeps) {
   const claimHatchet = spacetimedb.reducer({}, (ctx: any) => claimHatchetFor(ctx, deps));
   const chopTree = spacetimedb.reducer({ treeId: t.u32() }, (ctx: any, args: { treeId: number }) => chopTreeFor(ctx, args, deps));

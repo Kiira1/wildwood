@@ -43,7 +43,7 @@ it("accepts the Black Boots bonus while the player row still has the base speed"
   const f = crystalFixture();
   f.patch("playerProgress", { equippedRightHand: "starter_stone", damage: 1e15 });
   f.patch("playerProgress", { inventoryJson: JSON.stringify([BLACK_BOOTS]), equippedFeet: BLACK_BOOTS, infernalUnlocked: true });
-  // A presentation row that lags the progress row previously produced false
+  // A presentation row that lags the progress row must not produce false
   // movement-speed warnings for legitimate Black Boots runners.
   f.patch("player", { speed: 180 });
   expect(() => f.run(server.updateMovementState, {
@@ -71,7 +71,7 @@ it("clamps an impossible movement speed instead of taking the session", () => {
 });
 
 it("accepts the speed of the rank a player has just finished, which their client is still sending", () => {
-  // Every speed rejection on live was this: Move Speed research completes, the
+  // Move Speed research completes, the
   // server's rank moves on, and the client's next packet still carries the
   // previous rank's speed. It is slower than allowed, so it is not an exploit.
   const f = crystalFixture();

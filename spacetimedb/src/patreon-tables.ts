@@ -27,9 +27,8 @@ export const patreonTables = {
     userId: t.string().primaryKey(), identity: t.identity(),
     silverAnnounced: t.bool(), goldAnnounced: t.bool(), messageId: t.u64(), announcedAtMs: t.f64(),
   }),
-  // The receipt above was shaped for two tiers, and its columns are frozen: a
-  // new column would disconnect every client. Diamond's thanks is remembered
-  // here instead, keyed the same way, which is an additive change.
+  // The receipt above holds two tiers and its columns are frozen: a new column
+  // would disconnect every client. Diamond's thanks is kept here, keyed the same way.
   patreonDiamondAnnouncement: table({ name: "patreon_diamond_announcement", public: false }, {
     userId: t.string().primaryKey(), announcedAtMs: t.f64(),
   }),

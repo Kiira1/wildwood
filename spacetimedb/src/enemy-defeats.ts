@@ -35,8 +35,7 @@ export function noteMapDeparture(ctx: Pick<GameReducerContext, "db" | "timestamp
 
 /**
  * The account-wide clocks a kill report spends, one row per player: the report
- * limiter, the simulation clock, the combat clock and the kill-rate watch. They
- * were four rows of enemy_defeat_budget, each found and written on every report.
+ * limiter, the simulation clock, the combat clock and the kill-rate watch.
  * A clock at time 0 has never run, which reads as no row did.
  */
 export const playerDefeatClock = table({ name: "player_defeat_clock", public: false }, {
@@ -63,8 +62,8 @@ function writeDefeatClocks(ctx: DefeatContext, row: DefeatClocks, exists: boolea
 
 /**
  * A budget row nobody has touched for this long is dropped by the maintenance
- * sweep. Rows were only ever added (one per player, map and species, and every
- * Endless level is its own map), so the table grew without end. Dropping one
+ * sweep. Rows are added per player, map and species (every Endless level is
+ * its own map), so without it the table grows without end. Dropping one
  * is never looser: a missing spawn bucket starts at the arrival bank, below a
  * full one; the combat clock is full after 15 idle minutes either way; a boss
  * clock restarts at one reward window; the simulation clock and the report
@@ -88,9 +87,8 @@ export function pruneIdleDefeatBudgets(ctx: Pick<GameReducerContext, "db" | "tim
 }
 
 
-/** Combat time a report may draw on at once. Per-species banks held five
- * minutes each, so a player fighting several species could deliver a longer
- * backlog after a dropped socket; one shared bank needs the longer window. */
+/** Combat time a report may draw on at once: one bank shared by every species,
+ * long enough for a backlog across several species after a dropped socket. */
 export const COMBAT_TIME_BANK_SECONDS = 3 * DEFEAT_BUDGET_WINDOW_SECONDS;
 /** Every arrow landing a maximum critical still leaves this much headroom. */
 export const PLAUSIBLE_KILL_TOLERANCE = 1.25;
@@ -110,11 +108,11 @@ export function plausibleKillsPerSecond(hp: number, dps: number, attackInterval:
 
 /**
  * The maps a report may be for: where the player stands, the map they left in
- * the last two minutes (a portal no longer waits for its reports to land), and,
+ * the last two minutes (a portal does not wait for its reports to land), and,
  * while they stand at Home, the combat map they left to get there. A report is sealed on the
  * map it was earned on; a portal drains it first, but a drain that times out or
  * a tab hidden mid-trip leaves it queued while the player is already Home.
- * Rejecting it there threw those kills away. Every budget below is keyed by
+ * Rejecting it there would throw those kills away. Every budget below is keyed by
  * the report's own map, so honouring the departed map pays no more than
  * staying on it would have.
  */
@@ -129,7 +127,7 @@ export function permittedDefeatMaps(ctx: DefeatContext, player: { mapId: string 
 
 /**
  * The watch's line: paid kills per second that honest play cannot sustain.
- * Every kill-gem payout from 2026-09-20 to 09-27 put each account's best
+ * Measured kill-gem payouts put each account's best
  * fifteen minutes at or under 1.65/s (auto-farm on one 13-site Endless camp,
  * 13 / 7.5 s = 1.73/s at most), and 2.0/s for ten minutes at most, on a
  * two-camp shuttle. The line scales with the map's respawn, so a faster
@@ -154,8 +152,8 @@ export const KILL_RATE_WATCH_EXCESS = 720;
  * than the line allows, kept as credit for a backlog behind it. Ten minutes,
  * the backlog the simulation clock pays. A backlog flushed after a stall
  * arrives as one report carrying the whole stall and the rest a moment apart;
- * without this the stall's drain was thrown away on the first and the rest
- * landed undrained.
+ * without this the stall's drain would be thrown away on the first and the
+ * rest land undrained.
  */
 export const KILL_RATE_WATCH_CREDIT_SECONDS = SIM_CLOCK_BANK_SECONDS;
 /** Added to the stored level while an episode lasts. */
@@ -194,13 +192,11 @@ export function killRateWatch(previous: { tokens: number; updatedAtMicros: bigin
  * least 1 / killRateWatchLine seconds instead of the map's respawn over its
  * population. Paid kills then cannot be sustained above the line honest play
  * never reaches (about 2.2/s; 2.67/s on Endless at a 7.5 s respawn), where
- * the spawn wall let a client edited to claim honest-looking game time reach
+ * the spawn wall alone lets a client edited to claim honest-looking game time reach
  * 3-4/s. The per-species spawn buckets stay: rewards differ by species, and
  * without them a claim could be all of the best-paying one.
  *
- * Off. A shadow clock used to run beside the real one to show what enforcing
- * would cut; it cost reads and writes on every report and was removed in
- * 0.877. Kill-rate watch (below) still names accounts above the line. Before
+ * Off. Kill-rate watch (below) still names accounts above the line. Before
  * enforcing, update the tests that assumed the spawn-wall floor
  * (bow-skills "pays an honest top-rolled bow its full claim" and "still
  * bounds a script", kill-plausibility "charges every kill at least the map's
@@ -433,7 +429,7 @@ export function acceptEnemyDefeats(ctx: DefeatContext, batch: EnemyDefeatBatch, 
   }
   // Scale first, then the bounds below, so the spawn wall and combat clock see
   // only what real time allowed and are not drained by the excess.
-  // throttleKillReports has always written the row by now; a caller without it reads it here.
+  // throttleKillReports has already written the row; a caller without it reads it here.
   const storedClocks = clocksRow ?? ctx.db.playerDefeatClock.identity.find(ctx.sender);
   const simulation = chargeSimulationClock(ctx, storedClocks ?? emptyClocks(ctx.sender), batch.mapId, batch.simulatedMillis);
   let clocks = simulation.clocks;

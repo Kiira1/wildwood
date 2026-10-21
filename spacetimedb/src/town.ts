@@ -37,9 +37,8 @@ export function registerTown(spacetimedb: typeof spacetimedbType, deps: TownDeps
 }
 
 /**
- * Where the Town's portals were before 0.900.2 moved them to the ends of their roads. A tab loaded before then
- * still draws them there and sends its position from there; change_map takes those spots too until such tabs
- * are gone (remove once every client is past 0.900.2).
+ * Where older tabs still draw the Town's portals, away from the ends of their roads, and send positions from.
+ * change_map takes those spots too; remove once no such tab is left.
  */
 const TOWN_PORTALS_BEFORE_0_900_2 = Object.freeze({
   travel: { x: TOWN_CENTER.x - 1_225, y: TOWN_CENTER.y - 1_215, height: TOWN_TRAVEL_PORTAL.height },

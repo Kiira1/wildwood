@@ -3,8 +3,7 @@
 // The moduleMigrationState table, the schema
 // registration and the connect/runMaintenance reducers that invoke these stay
 // in index.ts; this module only owns the bodies. Helpers that still live in
-// index.ts arrive through createModuleMigrations' deps so the moved code reads
-// exactly as it did. The version constant and the order of steps are history:
+// index.ts arrive through createModuleMigrations' deps. The version constant and the order of steps are history:
 // append new steps, never reorder or renumber the old ones.
 import { Identity, ScheduleAt, Timestamp } from "spacetimedb";
 import { SenderError } from "spacetimedb/server";
@@ -49,7 +48,7 @@ import { giveEveryoneStarterWeapons } from "./starter-chest";
 export const MODULE_MIGRATION_VERSION = 67;
 
 /**
- * Migration 50 (0.856): the ranking snapshot moves to leaderboard_entry_v2,
+ * Migration 50: the ranking snapshot moves to leaderboard_entry_v2,
  * whose stat columns are f64, so the board is full the moment the module
  * lands rather than at the next refresh; and the retired duel wire grants are
  * cleared (duel-wire-access.ts). Both old tables are left empty.
@@ -204,8 +203,8 @@ export function createModuleMigrations(deps: ModuleMigrationDeps) {
       }
     }
     if (currentVersion < 9) {
-      // v0.476 briefly supported paused upgrades. Cancellation now forfeits the
-      // unfinished timer, so return any item left in that legacy paused state.
+      // Cancellation forfeits the unfinished timer, so return any item left
+      // in a paused upgrade.
       for (const active of [...ctx.db.activeItemUpgrade.iter()] as any[]) {
         if (active.paused) cancelActiveItemUpgrade(ctx, active, UPGRADE_BENCH_SLOT_ONE);
       }
@@ -215,7 +214,7 @@ export function createModuleMigrations(deps: ModuleMigrationDeps) {
       // historical base values that predate the current 180/+25 equipment rule.
       const legacyDerivedSpeeds = [175, 180, 200, 205];
       for (const progress of iterPlayerProgress(ctx) as Iterable<any>) {
-        // Trailblazer Boots never granted speed, and no longer exist.
+        // Equipment grants no speed: every account starts from the base.
         const equipmentSpeed = playerBaseMovementSpeed(false);
         const storedSpeed = Number(progress.speed);
         const existingOverride = Number(progress.speedOverride ?? 0);
@@ -237,8 +236,8 @@ export function createModuleMigrations(deps: ModuleMigrationDeps) {
       }
     }
     if (currentVersion < 11) {
-      // Public player labels previously used raw save stats while profiles and
-      // rankings applied research, equipment, and item upgrades.
+      // Public player labels show the same power as profiles and rankings:
+      // research, equipment and item upgrades applied.
       for (const progress of iterPlayerProgress(ctx) as Iterable<any>) {
         const active = ctx.db.player.identity.find(progress.identity);
         if (active) updateSnapshotRow(ctx, "player", { ...active, ...powerFieldsForProgress(ctx, progress) });
@@ -285,8 +284,8 @@ export function createModuleMigrations(deps: ModuleMigrationDeps) {
     }
     if (currentVersion < 14) {
       // Backfill the stable map-wide presentation cache from active player rows.
-      // The physical identity table retains legacy zone columns for migration
-      // compatibility, but zone-only movement no longer updates its rows.
+      // The identity table keeps its zone columns for schema compatibility;
+      // zone-only movement does not update its rows.
       for (const active of ctx.db.player.iter() as Iterable<any>) {
         syncPlayerMotionIdentity(ctx, playerWithMotion(ctx, active));
       }
@@ -436,8 +435,7 @@ export function createModuleMigrations(deps: ModuleMigrationDeps) {
       }
     }
     if (currentVersion < 23) {
-      // This step also seeded the shared-boss rows. Bosses are personal now and
-      // nothing reads those rows, so a fresh database no longer creates them.
+      // Bosses are personal, so this step seeds no shared-boss rows.
       ensureWorldStatus(ctx);
       ensureMaintenanceSweepSchedule(ctx);
     }
@@ -497,9 +495,8 @@ export function createModuleMigrations(deps: ModuleMigrationDeps) {
     }
     if (currentVersion < 33) publishRebalanceMail(ctx);
     // 34 seated map-shard members in a route table. Sharding is gone; the number stays spent.
-    // 35: prestige originally cleared research before the keep-research fix
-    // shipped. The rebase archive contains the last complete research row for
-    // those players, so restore it without reducing any progress earned since.
+    // 35: restore research a prestige cleared, from the rebase archive's last
+    // complete row, without reducing any progress earned since.
     if (currentVersion < 35) restorePrestigeResearch(ctx);
     if (currentVersion < 38) convertItemUpgradesToSlotTiers(ctx);
     // 39: a make-good for the slot upgrades a prestige wiped, and for the
@@ -517,46 +514,45 @@ export function createModuleMigrations(deps: ModuleMigrationDeps) {
     if (currentVersion < 42) {
       for (const lifetime of ctx.db.playerLifetime.iter() as Iterable<any>) syncPlayerJoinDate(ctx, lifetime.identity, lifetime.joinedAt);
     }
-    // 47: Phoe was playing a Reflect Only challenge by hand before it existed;
-    // put that run into the challenge where it stands instead of restarting it.
+    // 47: one player's hand-played Reflect Only run joins the challenge where
+    // it stands instead of restarting.
     if (currentVersion < 47) enrollPlayerByName(ctx, REFLECT_CHALLENGE_ENROLLEE);
-    // 36, 37, 43-46, 48 and 49 reshaped the balance before the curve (0.915); every database that ran them is past
+    // 36, 37, 43-46, 48 and 49 reshaped the balance before the curve; every database that ran them is past
     // them, and one with no balance yet has nothing for them to change.
     if (currentVersion < 50) moveToWideTables(ctx);
-    // 51 (0.863): quests count for a guild from the moment of joining, and a
-    // new member's guildless quests from this week move to it. Members who
-    // joined this week before the change get theirs now (Jasmean's ten).
+    // 51: quests count for a guild from the moment of joining; each member's
+    // guildless quests from this week move to it.
     if (currentVersion < 51) for (const member of [...ctx.db.guildMember.iter()] as any[]) moveSoloQuestsToGuild(ctx, member.identity);
-    // 52 (0.894): Phoe's Aggro run was thrown away on drop-out before drop-outs
-    // parked runs. Park one rebuilt at the power she had, about 317k.
+    // 52: one player's Aggro run lost on drop-out is rebuilt and parked at
+    // the power it had, about 317k.
     if (currentVersion < 52) rebuildParkedAggroRun(ctx, "phoe", 317_000);
-    // 53 (0.901.37): critical damage is capped, 100× at the most; soul critical
+    // 53: critical damage is capped, 100× at the most; soul critical
     // damage that put a player's total above 100× is trimmed to it.
     if (currentVersion < 53) trimStoredSoulCritDamage(ctx);
-    // 54 (0.901.47): attack speed and crit damage become ratings; soul stats converted so nobody is weaker (stat-rating-migration.ts).
+    // 54: attack speed and crit damage become ratings; soul stats converted so nobody is weaker (stat-rating-migration.ts).
     if (currentVersion < 54) convertToStatRatings(ctx);
     // 55 and 58 re-pinned visits when swords and staffs joined the loot; 64 re-pins every visit, so they are spent.
-    // 56 (0.906.1): profiles show Mining; player_mining_level copies it from the pickaxes already out.
+    // 56: profiles show Mining; player_mining_level copies it from the pickaxes already out.
     if (currentVersion < 56) backfillMiningLevels(ctx);
-    // 57 (0.907): the crit rating and stats past f32 move onto player_progress (shared/progress-row.ts).
+    // 57: the crit rating and stats past f32 move onto player_progress (shared/progress-row.ts).
     if (currentVersion < 57) moveCombatColumnsOntoProgress(ctx);
-    // 59 (0.912): gear stops holding cards; slotted cards return and the worn ones' best become active (active-cards.ts).
+    // 59: gear stops holding cards; slotted cards return and the worn ones' best become active (active-cards.ts).
     if (currentVersion < 59) activateCardsFromGear(ctx);
-    // 60 (0.915): the balance curve, every factor at 1, as the next revision, with every pinned visit moved onto it.
+    // 60: the balance curve, every factor at 1, as the next revision, with every pinned visit moved onto it.
     if (currentVersion < 60) installBalanceCurve(ctx);
     // 61: profiles show Mastery; player_mastery_level copies it from the points earned since Mastery began.
     if (currentVersion < 61) backfillMasteryLevels(ctx);
-    // 62 (0.916): graded gear replaces map gear; every old piece, wherever it is held, is wiped and paid in gold (old-gear-payout.ts).
+    // 62: graded gear replaces map gear; every old piece, wherever it is held, is wiped and paid in gold (old-gear-payout.ts).
     if (currentVersion < 62) { payOutAllOldGear(ctx); publishGearOverhaulMail(ctx); }
-    // 63 (0.916.1): new players pick a weapon from the Starter Chest; everyone already here gets all three Crude ones (starter-chest.ts).
+    // 63: new players pick a weapon from the Starter Chest; everyone already here gets all three Crude ones (starter-chest.ts).
     if (currentVersion < 63) giveEveryoneStarterWeapons(ctx);
-    // 64 (0.916.2): the curve steps 2.15 a map over a raised floor (curve-steps.ts); every pinned visit moves onto it now, not at travel.
+    // 64: the curve steps 2.15 a map over a raised floor (curve-steps.ts); every pinned visit moves onto it at once, not at travel.
     if (currentVersion < 64) repinMapBalances(ctx);
-    // 65 (0.916.6): the Dragon hits 5x harder (curve-shape.ts); visits already in the Forest move onto it now.
+    // 65: the Dragon hits 5x harder (curve-shape.ts); visits in the Forest move onto it at once.
     if (currentVersion < 65) repinMapBalances(ctx);
-    // 66 (0.916.23): Forest Brambles, King Slimes and Spitters re-tuned (curve-shape.ts); visits in the Forest move onto it now.
+    // 66: Forest Brambles, King Slimes and Spitters re-tuned (curve-shape.ts); visits in the Forest move onto it at once.
     if (currentVersion < 66) repinMapBalances(ctx);
-    // 67 (0.916.25): the HUD shows quests only after a Quest Board visit; everyone who already has quests keeps them.
+    // 67: the HUD shows quests only after a Quest Board visit; everyone who already has quests keeps them.
     if (currentVersion < 67) markQuestHoldersSeenBoard(ctx);
     const next = { id: 0, version: MODULE_MIGRATION_VERSION };
     if (state) ctx.db.moduleMigrationState.id.update(next);
@@ -564,7 +560,7 @@ export function createModuleMigrations(deps: ModuleMigrationDeps) {
   }
 
   /**
-   * Upgrades moved from the item to the slot it goes in.
+   * Moves upgrades from the item onto the slot it goes in.
    *
    * Every account keeps what it earned: each slot starts at the highest level
    * any item in it had reached, so a +10 helmet becomes a HEAD track at tier
@@ -572,7 +568,7 @@ export function createModuleMigrations(deps: ModuleMigrationDeps) {
    * keyed by slot, because a new table would strand the ones already written.
    *
    * A job running when this lands is left alone. Its row names an item rather
-   * than a slot, so it can no longer complete into a tier; cancelling it is
+   * than a slot, so it cannot complete into a tier; cancelling it is
    * the player's to do, and its target was one tier either way.
    */
   function convertItemUpgradesToSlotTiers(ctx: any) {

@@ -83,7 +83,7 @@ it('re-pins a visit whose snapshot was scaled from the old 20-second respawn', (
   const ctx = fixture(); pinMapBalance(ctx, 'tutorial_forest', true, 2);
   const current = pinnedMapBalance(ctx, ctx.sender, 'tutorial_forest')!;
   expect(current).toMatchObject({ regularRespawnSeconds: 10, regularRespawnBaseSeconds: 10 });
-  // What a pre-0.807 server pinned: the same revision, scaled from 20 seconds, with no base recorded.
+  // A snapshot with no base recorded: the same revision, scaled from 20 seconds.
   const { regularRespawnBaseSeconds: _base, ...rest } = current;
   ctx.db.playerMapBalance.identity.update({ identity: ctx.sender, mapId: 'tutorial_forest', snapshotJson: JSON.stringify({ ...rest, regularRespawnSeconds: 20 }) });
   pinMapBalance(ctx, 'tutorial_forest');
@@ -187,7 +187,7 @@ it("migration 60 puts the balance curve on as the next revision and moves every 
   const live = JSON.stringify(revision79);
   f.seed("mapBalanceVersion", { revision: 79, settingsJson: live, editor: f.ctx.sender, createdAt: f.ctx.timestamp });
   f.seed("mapBalanceHead", { id: 0, revision: 79 });
-  // A visit pinned under revision 79, when Ion Patrols had more health.
+  // A visit pinned under revision 79, with Ion Patrols at more health.
   const before = JSON.parse(JSON.stringify(resolveMapBalance("ion_citadel", defaultBalanceSettings(), 79, 2)));
   before.enemies["Ion Patrol"].hp *= 10;
   f.seed("playerMapBalance", { identity: f.ctx.sender, mapId: "ion_citadel", snapshotJson: JSON.stringify(before) });

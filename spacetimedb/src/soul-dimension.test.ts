@@ -54,8 +54,8 @@ it("pays soul stats for the soul enemies a tier has woken, and nothing for the r
 
 it("pays a Reflect build's soul kills, whose enemies are built from its weapon damage alone", () => {
   // High health, armor and Riposte, next to no weapon damage: the client builds each soul enemy
-  // from the weapon (soulEnemyStats), so Reflect kills them almost at once. The bound used to size
-  // them by weapon plus reflect damage, and with the combat bank spent paid 9 of these 100.
+  // from the weapon (soulEnemyStats), so Reflect kills them almost at once. The bound must size
+  // them the same way, or with the combat bank spent it pays only a few of these 100.
   const run = (riposte: number) => {
     const f = soulReady({ kills: 25 });
     f.patch("playerProgress", { damage: 1, maxHp: 1_000_000, armor: 100_000 });
@@ -105,7 +105,7 @@ it("goes in from the Town's bottom road, and back to the Town through the forest
   f.patch("player", back);
   f.run(server.changeMap, { mapId: "town", ...back });
   expect(f.db.player.identity.find(f.ctx.sender)).toMatchObject({ mapId: "town", x: TOWN_ARRIVAL.x, y: TOWN_ARRIVAL.y });
-  // Home is no longer a way in, not even its pad.
+  // Home is not a way in, not even its pad.
   const pad = portalSpot(HOME_TRAVEL_PORTAL);
   f.patch("player", { mapId: "home_exterior", ...pad });
   expect(() => f.run(server.changeMap, { mapId: SOUL_MAP_ID, ...pad })).toThrow(/not connected/);

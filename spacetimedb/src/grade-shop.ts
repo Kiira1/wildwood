@@ -21,7 +21,7 @@ type Ctx = any;
 
 /**
  * Whether the player stands at the seller of this piece: the Weapon Seller's or the Armor Seller's stall. The Smith
- * still counts for one release, for tabs from before the sellers opened (0.916.20).
+ * also counts, for older tabs that do not know the sellers.
  */
 function standsAtSeller(ctx: Ctx, player: Parameters<typeof withinStationReach>[1], itemId: GradeItemId) {
   const at = gearSellerOf(itemId) === "weapons" ? TOWN_WEAPON_SELLER_POSITION : TOWN_ARMOR_SELLER_POSITION;

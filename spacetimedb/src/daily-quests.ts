@@ -55,7 +55,7 @@ export const soloQuestWeek = table({ name: "player_solo_quest_week" }, {
  * Every quest a player finished each week, for a guild or not: this week's
  * count and last week's. A player without a guild bonus this week (no guild,
  * or one joined this week) gets the personal bonus from all of last week's,
- * not only those done without a guild: leaving a guild used to cost both.
+ * not only those done without a guild.
  */
 export const playerQuestWeekTotal = table({ name: "player_quest_week_total" }, {
   identity: t.identity().primaryKey(), week: t.u32(), done: t.u32(), lastWeek: t.u32(), lastDone: t.u32(),
@@ -87,8 +87,7 @@ function guildTally(ctx: Ctx, identity: any, week: number, guildId?: bigint) {
 /**
  * Quests that count toward a week's solo bonus: the count kept as they
  * finished, or, when more, what the week's list shows done that no guild was
- * credited with. The count began in 0.853, so quests finished earlier that
- * week sit in the list but not in it.
+ * credited with.
  */
 function soloQuestsFor(ctx: Ctx, identity: any, week: number, quests?: WeeklyQuest[]) {
   const stored = soloPoints(ctx, identity, week);
@@ -106,8 +105,8 @@ function noteQuestsDone(ctx: Ctx, identity: any, week: number, count: number) {
 }
 
 /**
- * Every quest the player finished in `week`, guild or solo. The count began
- * in 0.899.4; before it, the solo count plus their guild tally stands in.
+ * Every quest the player finished in `week`, guild or solo: the stored count,
+ * or the solo count plus their guild tally when that is more.
  */
 function questsDoneIn(ctx: Ctx, identity: any, week: number) {
   const row = ctx.db.playerQuestWeekTotal.identity.find(identity);
@@ -127,7 +126,7 @@ function settleSoloWeek(ctx: Ctx, identity: any, week: number, points: number) {
 
 /**
  * On joining a guild: this week's quests that counted for no guild (done while
- * guildless, or on a joining day before 0.863) move to it, up to its pool.
+ * guildless) move to it, up to its pool.
  * Quests already counted for another guild stay there.
  */
 export function moveSoloQuestsToGuild(ctx: Ctx, identity: any) {
@@ -237,9 +236,8 @@ export function recordDailyQuestKills(ctx: Ctx, identity: any, mapId: string, ki
   const { quests, completed } = applyQuestKills(parseWeeklyQuests(row.questsJson), mapId, kills);
   if (completed) noteQuestsDone(ctx, identity, questWeek(row.day), completed);
   let guildPoints = row.guildPoints;
-  // A member's quests count for their guild from the moment they join (0.863;
-  // before, from the UTC day after, which cost late-evening joiners most of a
-  // day). Each quest counts once, for the guild they are in when it finishes,
+  // A member's quests count for their guild from the moment they join.
+  // Each quest counts once, for the guild they are in when it finishes,
   // and stays with that guild whatever they join afterwards.
   const member = completed ? guildOf(ctx, identity) : null;
   const guild = member;
@@ -285,8 +283,8 @@ export function memberQuestStanding(ctx: Ctx, identity: any, guildId: bigint) {
   const quests = weeksQuests(ctx, identity);
   const own = quests?.filter(ownQuest);
   const week = questWeek(questDay(ctx.timestamp.microsSinceUnixEpoch));
-  // Never fewer points than the list shows done for this guild: the tally began in 0.852, after some of
-  // this week's quests. A member who joined this week may have done those for another guild, so theirs stand.
+  // Never fewer points than the list shows done for this guild.
+  // A member who joined this week may have done those for another guild, so theirs stand.
   const member = ctx.db.guildMember.identity.find(identity);
   const joinedThisWeek = member?.guildId !== guildId || questWeek(questDay(member.joinedAt)) >= week;
   const done = joinedThisWeek ? null : listDone(ctx, identity, week);
@@ -320,11 +318,8 @@ export const GUILD_POOL_FROM = "your guild";
 
 /**
  * A guild's quest pool for the week: GUILD_WEEK_QUEST_CAP (300) at any size,
- * used up only by quests finished. Nothing on anyone's board holds it: until
- * 0.899.13 every member's own unfinished fifteen and every collected extra
- * did, so a full guild started the week at zero, one member who never played
- * capped it at 285, and an extra collected and left undone blocked everyone
- * else. Points stop at 300 however many quests are finished, so holding
+ * used up only by quests finished. Nothing on anyone's board holds it, so an
+ * unfinished quest never blocks anyone else. Points stop at 300 however many quests are finished, so holding
  * nothing never overpays; whoever finishes first counts.
  */
 export function guildQuestPool(ctx: Ctx, guildId: bigint) {
@@ -359,7 +354,7 @@ export function collectGuildQuests(ctx: Ctx, collector: any) {
   return drawn.length;
 }
 
-/** The 0.852 reducer's entry point: it named a member to take from; now every collect draws from the guild's pool. */
+/** Older clients still name a member to take from here; every collect draws from the guild's pool. */
 export function collectMemberQuests(ctx: Ctx, collector: any, _member?: any) {
   return collectGuildQuests(ctx, collector);
 }

@@ -230,7 +230,7 @@ export function reportMiningFor(ctx: Ctx, args: { breaks: readonly { nodeId: num
     freeSlots: gatherFreeSlots(ctx, ctx.sender, ores, progress, deps.inventoryForProgress),
   });
   logOddGatherRejections("Mining", ctx.sender, rejected);
-  // Grown-back rows go as before; the rocks broken now are written once each, at their last break.
+  // Grown-back rows are deleted; the rocks broken in this batch are written once each, at their last break.
   const last = new Map<number, number>();
   for (const { node, atMs } of accepted) last.set(node.id, atMs);
   for (const row of rows.values()) if (!last.has(row.nodeId) && grownBack(ctx, row, rank)) ctx.db.playerMinedNode.key.delete(row.key);

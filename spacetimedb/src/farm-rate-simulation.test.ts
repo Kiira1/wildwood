@@ -127,11 +127,10 @@ describe("farming rate under the respawn ceiling", () => {
   });
 
   it("uses the same ceiling for a pinned snapshot, and follows a tuned respawn", () => {
-    // The pinned path resolves its own basis. It used to divide the respawn by
-    // six, which left the ceiling applying only to accounts without a snapshot
-    // — and live has thousands with one.
+    // The pinned path resolves its own basis, so the ceiling applies to accounts
+    // with a snapshot too.
     expect(defeatMinRespawnSeconds(REGULAR_ENEMY_RESPAWN_SECONDS)).toBe(DEFEAT_MIN_RESPAWN_SECONDS);
-    // Nothing halves the respawn any more, so neither does the ceiling.
+    // Nothing halves the respawn, so neither does the ceiling.
     expect(defeatMinRespawnSeconds(20)).toBe(20);
     const pinned = player({ lapSeconds: 28 / 5, minutes: 10 });
     const unpinned = player({ lapSeconds: 28 / 5, minutes: 10, pinned: false });
@@ -165,17 +164,16 @@ describe("farming rate under the respawn ceiling", () => {
   });
 
   it("pays a fast player on the 10-second respawn in full", () => {
-    // Clearing as fast as the plain respawn allows is legitimate play, and
-    // since 0.807 that is ten seconds with no ad involved.
+    // Clearing as fast as the plain respawn allows is legitimate play: ten
+    // seconds, with no ad involved.
     expect(DEFEAT_MIN_RESPAWN_SECONDS).toBe(10);
     const run = player({ lapSeconds: DEFEAT_MIN_RESPAWN_SECONDS, minutes: 10 });
     expect(run.paid).toBe(run.claimed);
     expect(run.restricted).toBe(false);
   });
 
-  it("clips the old ad-halved rate of a 10-second respawn", () => {
-    // Half of ten seconds is what the ad used to allow on top of the plain
-    // clock. Nothing grants it now, so the ceiling holds it to the plain rate.
+  it("clips a lap twice as fast as the 10-second respawn", () => {
+    // Nothing grants a halved respawn, so the ceiling holds it to the plain rate.
     const run = player({ lapSeconds: DEFEAT_MIN_RESPAWN_SECONDS / 2, minutes: 10 });
     expect(run.claimedPerSecond).toBeCloseTo(CEILING * 2, 1);
     expect(run.paidPerSecond).toBeLessThanOrEqual(CEILING * 1.05);
@@ -430,10 +428,8 @@ describe("the current client, held to the server's clock", () => {
   }, SIMULATION_TIMEOUT_MS);
 
   it("holds a map-hopping script to one map's wall, far below what the refilled buckets hold", () => {
-    // Every spawn bucket refills while its owner is away, so a script alternating
-    // two maps every five minutes used to arrive to a full bank each time: the
-    // whole bank plus five minutes of respawns per visit. They all draw on one
-    // combat clock now, which refills at real time.
+    // A script alternating two maps every five minutes draws on one combat
+    // clock, which refills at real time, not on a full bank per map.
     const budget = defeatBudget(MAP_POPULATION);
     const refilledBuckets = (budget.capacity + budget.perSecond * 300) / 300;
     const run = currentClient({ lapSeconds: .5, minutes: 60, says: "real", maps: [MAP, "water_reach"], rotateSeconds: 300 });

@@ -106,9 +106,7 @@ export function createCombatReport(deps: CombatReportDeps) {
    * earns move stats, never gear, unlocks, perks, research or the bow's roll.
    * So the rows are read and the inventory parsed once, on first use, and each
    * entry after that is arithmetic on the saved stats plus what it earned.
-   * This used to be rebuilt from scratch per species (nine reads and four
-   * inventory parses each, thirty-one times on an Endless report), which was
-   * most of what the kill reducer cost.
+   * Rebuilding it per species would be most of what the kill reducer costs.
    */
   function combatBoundForReport(ctx: GameReducerContext, worn?: CardTotals) {
     let loaded: ReturnType<typeof load> | undefined;
