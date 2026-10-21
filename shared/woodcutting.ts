@@ -223,9 +223,10 @@ export function woodcuttingSpeed(woodcutting: unknown) {
   return 1 + 2 * value / (value + 500);
 }
 
-/** Seconds to fell a tree at this Woodcutting, faster with the hatchet's upgrades (shared/tools.ts). */
-export function woodcuttingChopSeconds(tree: WoodTree, woodcutting: unknown, hatchetLevel = 0) {
-  return WOODCUTTING_CHOP_SECONDS * WOOD_STANDS[tree.stand].hardness / (woodcuttingSpeed(woodcutting) * toolSpeed(hatchetLevel));
+/** Seconds to fell a tree at this Woodcutting, faster with the hatchet's upgrades (shared/tools.ts) and Chop Speed cards (a fraction). */
+export function woodcuttingChopSeconds(tree: WoodTree, woodcutting: unknown, hatchetLevel = 0, cardSpeed = 0) {
+  return WOODCUTTING_CHOP_SECONDS * WOOD_STANDS[tree.stand].hardness
+    / (woodcuttingSpeed(woodcutting) * (1 + Math.max(0, cardSpeed)) * toolSpeed(hatchetLevel));
 }
 
 /** What felling a tree adds to Woodcutting: its logs, weighted by its stand's hardness, so deeper stands teach faster. */
@@ -233,9 +234,12 @@ export function woodcuttingGain(tree: WoodTree) {
   return WOODCUTTING_LOGS * WOOD_STANDS[tree.stand].hardness;
 }
 
-/** What a felled tree gives: its stand's logs, and one more when the hatchet's `bonus` comes up. */
-export function woodcuttingYield(tree: WoodTree, bonus = 0): Partial<Record<WoodId, number>> {
-  return { [tree.log]: WOODCUTTING_LOGS + bonus };
+/**
+ * What a felled tree gives: its stand's logs, and one more when the hatchet's `bonus` comes up. A Log Find card's
+ * chance (`extraRoll` in [0, 1) against it) adds one more.
+ */
+export function woodcuttingYield(tree: WoodTree, bonus = 0, logFind = 0, extraRoll = 1): Partial<Record<WoodId, number>> {
+  return { [tree.log]: WOODCUTTING_LOGS + bonus + (extraRoll < logFind ? 1 : 0) };
 }
 
 /** Whether this Woodcutting opens a stand. */

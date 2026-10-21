@@ -19,6 +19,9 @@ import { toolBonusYield } from "../../shared/tools";
 import { toolLevelFor } from "./tools";
 import { researchRankFor } from "./research-rank";
 import { gatherRespawnMs } from "../../shared/gather-respawn";
+import { cardStatFactors } from "../../shared/card-effects";
+import { activeCardTotalsFor } from "./active-cards";
+import { awardTreeCardDrops } from "./card-drops";
 import {
   equippedFields, gatherClaims, gatherFreeSlots, gatherReach, judgeGatherBatch, logOddGatherRejections, millisOf, progressOnce,
 } from "./gather-batch";
@@ -157,12 +160,14 @@ export function chopTreeFor(ctx: Ctx, args: { treeId: number }, deps: MiningDeps
   }
   pruneChoppedTrees(ctx, ctx.sender);
   if (treeFelledFor(ctx, ctx.sender, tree.id)) throw new SenderError("That tree is still growing back.");
-  const hatchet = toolLevelFor(ctx, ctx.sender, "hatchet");
-  if (woodcutting && microsSince(ctx, woodcutting.lastChopAt) < woodcuttingChopSeconds(tree, skill, hatchet) * WOODCUTTING_RATE_SLACK * 1_000_000) {
+  // Chop Speed and Log Find cards among the active cards.
+  const hatchet = toolLevelFor(ctx, ctx.sender, "hatchet"), cards = cardStatFactors(activeCardTotalsFor(ctx, ctx.sender));
+  if (woodcutting && microsSince(ctx, woodcutting.lastChopAt) < woodcuttingChopSeconds(tree, skill, hatchet, cards.woodcuttingSpeed) * WOODCUTTING_RATE_SLACK * 1_000_000) {
     throw new SenderError("Still chopping.");
   }
-  const logs = woodcuttingYield(tree, hatchet > 0 ? toolBonusYield(hatchet, ctx.random()) : 0);
+  const logs = woodcuttingYield(tree, hatchet > 0 ? toolBonusYield(hatchet, ctx.random()) : 0, cards.logFind, cards.logFind > 0 ? ctx.random() : 1);
   for (const [logId, count] of Object.entries(logs)) addOres(ctx, ctx.sender, logId as OreId, count ?? 0);
+  awardTreeCardDrops(ctx, ctx.sender, [tree]);
   const row = {
     identity: ctx.sender,
     woodcutting: Math.min(U32_MAX, skill + woodcuttingGain(tree)),
@@ -189,11 +194,11 @@ export function reportChoppingFor(ctx: Ctx, args: { chops: readonly { treeId: nu
   const woodcutting = ctx.db.playerWoodcutting.identity.find(ctx.sender), skill = normalizeWoodcutting(woodcutting?.woodcutting);
   const rows = new Map<number, any>();
   for (const row of ctx.db.playerChoppedTree.identity.filter(ctx.sender) as Iterable<any>) rows.set(row.treeId, row);
-  const hatchet = toolLevelFor(ctx, ctx.sender, "hatchet");
+  const hatchet = toolLevelFor(ctx, ctx.sender, "hatchet"), cards = cardStatFactors(activeCardTotalsFor(ctx, ctx.sender));
   const ores = oreCountsFor(ctx, ctx.sender), progress = progressOnce(ctx, ctx.sender), rank = respawnRankFor(ctx, ctx.sender);
   const { accepted, rejected, skill: reached } = judgeGatherBatch(claims, {
     node: woodTree, canWork: canChopTree, gain: woodcuttingGain, slack: WOODCUTTING_RATE_SLACK, reach: WOODCUTTING_SERVER_REACH,
-    seconds: (tree, at) => woodcuttingChopSeconds(tree, at, hatchet), respawnMs: () => treeRespawnMs(rank), kinds: tree => [tree.log],
+    seconds: (tree, at) => woodcuttingChopSeconds(tree, at, hatchet, cards.woodcuttingSpeed), respawnMs: () => treeRespawnMs(rank), kinds: tree => [tree.log],
   }, {
     nowMs: millisOf(ctx.timestamp), lastAtMs: woodcutting ? millisOf(woodcutting.lastChopAt) : null, skill,
     brokenAtMs: new Map([...rows.values()].map(row => [row.treeId, millisOf(row.choppedAt)])),
@@ -207,10 +212,11 @@ export function reportChoppingFor(ctx: Ctx, args: { chops: readonly { treeId: nu
   if (!accepted.length) return;
   const gained: Partial<Record<OreId, number>> = {};
   for (const { node } of accepted) {
-    const logs = woodcuttingYield(node, hatchet > 0 ? toolBonusYield(hatchet, ctx.random()) : 0);
+    const logs = woodcuttingYield(node, hatchet > 0 ? toolBonusYield(hatchet, ctx.random()) : 0, cards.logFind, cards.logFind > 0 ? ctx.random() : 1);
     for (const [logId, count] of Object.entries(logs)) gained[logId as OreId] = (gained[logId as OreId] ?? 0) + (count ?? 0);
   }
   for (const [logId, count] of Object.entries(gained)) addOres(ctx, ctx.sender, logId as OreId, count ?? 0);
+  awardTreeCardDrops(ctx, ctx.sender, accepted.map(({ node }) => node));
   const final = accepted[accepted.length - 1], at = (ms: number) => new Timestamp(BigInt(Math.round(ms)) * 1_000n);
   const row = {
     identity: ctx.sender,

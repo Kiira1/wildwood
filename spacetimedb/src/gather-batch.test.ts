@@ -3,7 +3,9 @@ import { Timestamp } from "spacetimedb";
 import { crystalFixture, identity, server } from "../../tests/helpers/crystal-hollows-fixture";
 import { TOWN_CENTER, TOWN_FEET_OFFSET } from "../../shared/town";
 import { MINING_NODES, MINING_NODE_KINDS, MINING_RATE_SLACK, miningBreakSeconds, miningGain, type MiningNode } from "../../shared/mining";
-import { WOOD_TREE_NODES, WOODCUTTING_LOGS, WOODCUTTING_RESPAWN_SECONDS, woodcuttingChopSeconds, type WoodTree } from "../../shared/woodcutting";
+import { WOOD_TREE_NODES, WOODCUTTING_LOGS, WOODCUTTING_RATE_SLACK, WOODCUTTING_RESPAWN_SECONDS, woodcuttingChopSeconds, type WoodTree } from "../../shared/woodcutting";
+import { addCard } from "./gear-cards";
+import { setActiveCards } from "../../tests/helpers/active-cards";
 import { GATHER_CLAIM_AHEAD_MS, GATHER_CLAIM_MAX_AGE_MS, GATHER_REPORT_MAX } from "../../shared/gather-batch";
 import { addOres, oreCount } from "./item-refine";
 import { inventorySlotCapacity } from "../../shared/gems";
@@ -230,6 +232,23 @@ describe("a chopping report", () => {
     f.later(WOODCUTTING_RESPAWN_SECONDS);
     f.reportChopping([[pines[0], f.nowS() - 31], [pines[0], f.nowS() - 1]]);
     expect(f.db.playerWoodcutting.identity.find(f.ctx.sender)?.treesChopped).toBe(3);
+  });
+
+  it("times falls by the active Chop Speed card, as the client does, and adds the Log Find card's extra log", () => {
+    const f = gatherer(), t = f.nowS() - 40;
+    f.transaction(() => {
+      for (const cardId of ["oak_tree_card", "elder_tree_card"]) addCard(f.ctx, f.ctx.sender, cardId);
+      setActiveCards(f.ctx, f.ctx.sender, ["oak_tree_card", "elder_tree_card"]);
+    });
+    Object.assign(f.ctx, { random: Object.assign(() => .01, { integerInRange: (min: number) => min }) });
+    // Sooner than a fall without the card could come, even with the slack.
+    const gap = woodcuttingChopSeconds(pines[1], WOODCUTTING_LOGS, 0, .07) * WOODCUTTING_RATE_SLACK * 1.01;
+    expect(gap).toBeLessThan(woodcuttingChopSeconds(pines[1], WOODCUTTING_LOGS) * WOODCUTTING_RATE_SLACK);
+    f.standAt(pines[0]);
+    f.reportChopping([[pines[0], t], [pines[1], t + gap]]);
+    expect(f.db.playerChoppedTree.key.find(choppedTreeKey(f.ctx.sender, pines[1].id))?.choppedAt.microsSinceUnixEpoch)
+      .toBe(BigInt(Math.round((t + gap) * 1_000)) * 1_000n);
+    expect(f.ore("pine_log")).toBe(2 * (WOODCUTTING_LOGS + 1));
   });
 
   it("drops falls of a new kind of log with no bag room", () => {

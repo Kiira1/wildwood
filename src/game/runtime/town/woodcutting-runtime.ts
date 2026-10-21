@@ -18,6 +18,8 @@ export type WoodcuttingSource = {
   localIdentity?: () => string | undefined;
   sessionGeneration?: () => number;
   woodcutting?: () => number;
+  /** What the active cards add to chop speed (card-effects.ts), a fraction. */
+  activeCardStats?: () => { woodcuttingSpeed: number };
   /** A tool's upgrades (shared/tools.ts): the hatchet's speed, which the server's rate check uses too. */
   toolLevel?: (tool: ToolId) => number;
   /** When the tree last fell, here or on the server, while the session has it. */
@@ -185,7 +187,8 @@ export function createWoodcuttingRuntime(deps: {
       if (!room) { stop(); woodcuttingScene.blocked = "bag"; say(bagFullForOres(needed), "#ff9b91", tree.id); return; }
     }
     const hatchet = source.toolLevel?.("hatchet") ?? 0;
-    const seconds = woodcuttingChopSeconds(tree, source.woodcutting?.() ?? 0, hatchet), hits = miningHits(seconds);
+    const seconds = woodcuttingChopSeconds(tree, source.woodcutting?.() ?? 0, hatchet, source.activeCardStats?.().woodcuttingSpeed ?? 0);
+    const hits = miningHits(seconds);
     woodcuttingScene.target = tree.id;
     woodcuttingScene.toolLevel = hatchet;
     woodcuttingScene.hatchetOut = true;
