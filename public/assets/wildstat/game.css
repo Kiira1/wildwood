@@ -1225,6 +1225,7 @@
   .hud-progress-timer[hidden] { display: none; }
   .hud-progress-timer-tech { color: #77caff; }
   .hud-progress-timer-slot { color: #ffd367; }
+  .hud-progress-timer.hud-server-boost { color: #fff; }
   /* Research Ready and Smith upgrades under the timers; away from the Town a tap goes there. */
   .hud-reminder { box-sizing: border-box; width: 100%; min-height: 0; margin: 0; padding: 4px 3px; border: 2px solid var(--hud-frame); border-radius: var(--hud-radius-small); background: var(--hud-surface); box-shadow: var(--ui-shadow); outline: var(--ui-seam); outline-offset: -1px; color: #fff; font: 900 13px/1.2 var(--font-rounded); letter-spacing: .02em; text-align: center; text-shadow: 1px 2px 0 #000; white-space: normal; pointer-events: auto; cursor: pointer; }
   .hud-reminder[hidden], .hud-reminder.is-switched-off { display: none; }
@@ -4744,6 +4745,15 @@
 .shop-dev-note h2 { margin: 0; color: #f0d7e7; font-size: 14px; letter-spacing: .04em; text-transform: uppercase; }
 .shop-dev-note p { margin: 0; color: #e3e6ea; font-size: 14px; font-weight: 700; line-height: 1.45; -webkit-text-stroke: 0; text-shadow: none; }
 .shop-dev-note .shop-dev-sign { color: #f0d7e7; font-weight: 900; }
+/* Server Boost: what it does, the one running, and the supporter's Start button with its wait. */
+.shop-server-boost { display: grid; gap: 8px; margin: 0 0 18px; padding: 14px 16px; border: 1px solid #ffffff1f; border-radius: 12px; background: #000000b3; color: #fff; text-align: left; }
+.shop-server-boost h2 { margin: 0; color: #fff; font-size: 15px; }
+.shop-server-boost p { margin: 0; color: #e3e6ea; font-size: 13px; font-weight: 700; line-height: 1.4; -webkit-text-stroke: 0; text-shadow: none; }
+.shop-server-boost p:empty { display: none; }
+.shop-server-boost .shop-server-boost-live { color: #fff; font-variant-numeric: tabular-nums; }
+.shop-server-boost-start { justify-self: start; min-height: 44px; padding: 8px 16px; border: 1px solid #777; border-radius: 6px; background: #222; color: #fff; box-shadow: none; font-size: 14px; }
+.shop-server-boost-start[hidden] { display: none; }
+.shop-server-boost-start:disabled { opacity: .55; cursor: default; }
 .shop-frame-tiers { display: flex; justify-content: space-around; gap: 10px; margin-top: 8px; }
 .shop-frame-tier { display: grid; justify-items: center; gap: 10px; }
 .shop-frame-portrait { display: block; width: 64px; height: 64px; border-radius: 8px; background-color: #2a2f36; }

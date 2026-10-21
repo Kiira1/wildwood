@@ -1,4 +1,7 @@
 export const RELEASE_NOTES: Record<string, string[]> = {
+  "0.916.28": [
+    "Patreon supporters can start a 15-minute 2x Rewards Server Boost once a day",
+  ],
   "0.916.27": [
     "Sword swings move the hilt along with the blade",
   ],

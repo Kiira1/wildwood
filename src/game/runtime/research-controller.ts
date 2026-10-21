@@ -22,6 +22,8 @@ type ResearchControllerOptions = {
   prestigeLevel?: () => number;
   /** This week's guild quest bonus on stat rewards (weekly quests), as the server pays it. */
   guildQuestBonus?: () => number;
+  /** A running Server Boost's 2x on stat rewards, as the server pays it. */
+  serverBoost?: () => number;
   /** Prestige perk ranks. Keen Edge grants criticals outside the tech tree. */
   prestigePerks?: () => Partial<PrestigePerkRanks> | null | undefined;
   /** What the active cards do to stats (card-effects.ts cardStatFactors); none without. */
@@ -48,7 +50,7 @@ export function createResearchController(options: ResearchControllerOptions) {
     /** Warcraft, and attack cards on top: what weapon damage is multiplied by beyond the gear. */
     damageMultiplier: () => researchStatFactors(ranks()).damage * (cards()?.damage ?? 1),
     rewardMultiplier: () => researchStatRewardMultiplier(ranks()) * prestigeStatMultiplier(options.prestigeLevel?.() ?? 0)
-      * Math.max(1, options.guildQuestBonus?.() ?? 1),
+      * Math.max(1, options.guildQuestBonus?.() ?? 1) * Math.max(1, options.serverBoost?.() ?? 1),
     effectiveArmor: () => options.player.armor * bootArmor() * researchStatFactors(ranks()).armor * (cards()?.armor ?? 1),
     criticalChance: () => critChanceFor(ranks(), options.prestigePerks?.(), cards()?.critChance ?? 0),
     /** Everything critical damage adds up from but the soul's share, and the cap's rank. */

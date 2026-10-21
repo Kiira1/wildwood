@@ -208,6 +208,7 @@ import StartItemUpgradeReducer from "./start_item_upgrade_reducer";
 import StartLoginMoveReducer from "./start_login_move_reducer";
 import StartPrestigeChallengeReducer from "./start_prestige_challenge_reducer";
 import StartResearchReducer from "./start_research_reducer";
+import StartServerBoostReducer from "./start_server_boost_reducer";
 import TakeOverSessionReducer from "./take_over_session_reducer";
 import TeleportToResearchReducer from "./teleport_to_research_reducer";
 import TransferGuildLeadershipReducer from "./transfer_guild_leadership_reducer";
@@ -325,6 +326,7 @@ import MyProceduralBossRow from "./my_procedural_boss_table";
 import MyRefineResultRow from "./my_refine_result_table";
 import MyResearchRanksRow from "./my_research_ranks_table";
 import MyRewardKillsRow from "./my_reward_kills_table";
+import MyServerBoostTriggerRow from "./my_server_boost_trigger_table";
 import MySocialHubRow from "./my_social_hub_table";
 import MySocialMessagesRow from "./my_social_messages_table";
 import MySocialMessagesWithReactionsRow from "./my_social_messages_with_reactions_table";
@@ -389,6 +391,7 @@ import ProceduralBossRow from "./procedural_boss_table";
 import ProceduralProgressRow from "./procedural_progress_table";
 import ProfileSoulStatsRow from "./profile_soul_stats_table";
 import ReleaseNoticeRow from "./release_notice_table";
+import ServerBoostRow from "./server_boost_table";
 import SocialDuelMessageRow from "./social_duel_message_table";
 import SoulDimensionConfigRow from "./soul_dimension_config_table";
 import WorldStatusRow from "./world_status_table";
@@ -1133,6 +1136,17 @@ const tablesSchema = __schema({
       { name: 'release_notice_id_key', constraint: 'unique', columns: ['id'] },
     ],
   }, ReleaseNoticeRow),
+  serverBoost: __table({
+    name: 'server_boost',
+    indexes: [
+      { accessor: 'id', name: 'server_boost_id_idx_btree', algorithm: 'btree', columns: [
+        'id',
+      ] },
+    ],
+    constraints: [
+      { name: 'server_boost_id_key', constraint: 'unique', columns: ['id'] },
+    ],
+  }, ServerBoostRow),
   socialDuelMessage: __table({
     name: 'social_duel_message',
     indexes: [
@@ -1536,6 +1550,13 @@ const tablesSchema = __schema({
     constraints: [
     ],
   }, MyRewardKillsRow),
+  myServerBoostTrigger: __table({
+    name: 'my_server_boost_trigger',
+    indexes: [
+    ],
+    constraints: [
+    ],
+  }, MyServerBoostTriggerRow),
   mySocialHub: __table({
     name: 'my_social_hub',
     indexes: [
@@ -1819,6 +1840,7 @@ const reducersSchema = __reducers(
   __reducerSchema("start_login_move", StartLoginMoveReducer),
   __reducerSchema("start_prestige_challenge", StartPrestigeChallengeReducer),
   __reducerSchema("start_research", StartResearchReducer),
+  __reducerSchema("start_server_boost", StartServerBoostReducer),
   __reducerSchema("take_over_session", TakeOverSessionReducer),
   __reducerSchema("teleport_to_research", TeleportToResearchReducer),
   __reducerSchema("transfer_guild_leadership", TransferGuildLeadershipReducer),

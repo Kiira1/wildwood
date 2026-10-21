@@ -11,6 +11,7 @@ import { createGameMailbox } from "./game-mailbox";
 import { createGameRuntimeHud } from "./game-ui-runtime";
 import { createHudTimerColumn } from "./hud-timer-column";
 import { createItemGiftController } from "./item-gift-controller";
+import { installServerBoostHud } from "./server-boost-hud";
 
 type GameElements = ReturnType<typeof createGameElements>;
 type IdentityRenderer = ReturnType<typeof createPlayerIdentityRenderer>;
@@ -36,7 +37,7 @@ export type HudRuntimeDeps = {
   showMessage: (text: string, color?: string) => void;
 };
 
-/** The play screen's HUD, and the column of research and upgrade timers that also offers the rewarded ad. */
+/** The play screen's HUD, and the column of research and upgrade timers (and the Server Boost's) that also offers the rewarded ad. */
 export function createHudRuntime(deps: HudRuntimeDeps) {
   const { coop, e, appShell } = deps;
   const client = coop.client;
@@ -68,6 +69,7 @@ export function createHudRuntime(deps: HudRuntimeDeps) {
     inTown: deps.inTown,
     goToResearch: deps.goToResearch,
   });
+  installServerBoostHud(() => client?.serverBoost?.()?.remainingMs ?? 0);
 
   return { runtimeHud, rewardedRespawnAd };
 }
