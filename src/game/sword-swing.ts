@@ -1,29 +1,21 @@
 import { WHIRLWIND_SECONDS, WHIRLWIND_TICKS } from "../../shared/sword-skills";
-import { ATTACK_ANIMATION_SECONDS, ATTACK_WINDUP_SECONDS } from "./attack-timeline";
+import { ATTACK_ANIMATION_SECONDS } from "./attack-timeline";
 
 const smooth = (t: number) => t * t * (3 - 2 * t);
-const lerp = (a: number, b: number, t: number) => a + (b - a) * t;
-// The hand swings on an arm from the shoulder; offsets are from the resting grip, facing right.
-const ARM = 30, ARM_REST = 79 * Math.PI / 180;
-const SHOULDER_X = -ARM * Math.cos(ARM_REST), SHOULDER_Y = -ARM * Math.sin(ARM_REST);
-const RAISED = { arm: -145, blade: -145 }, STRIKE = { arm: 35, blade: 40 }, FOLLOW = { arm: 70, blade: 75 };
-const REST = { arm: 79, blade: -28 };
-const BEHIND_UNTIL = .055;
-export type SwordSwingPose = { angle: number; trail: number; gripX?: number; gripY?: number; behind?: boolean };
-/** Shares the normal attack clock: starts raised over the head and chops down to land at the damage release. */
+export type SwordSwingPose = { angle: number; trail: number; gripX?: number; gripY?: number };
+/** Shares the normal attack clock; the blade crosses aim at the damage release and the hilt follows it a little. */
 export function swordSwingPose(throwClock: number): SwordSwingPose {
-  if (throwClock <= 0) return { angle: REST.blade, trail: 0 };
+  if (throwClock <= 0) return { angle: -28, trail: 0 };
   const elapsed = Math.max(0, ATTACK_ANIMATION_SECONDS - throwClock);
-  let from = RAISED, to = STRIKE, t: number;
-  if (elapsed < ATTACK_WINDUP_SECONDS) t = (elapsed / ATTACK_WINDUP_SECONDS) ** 2;
-  else if (elapsed < .19) { from = STRIKE; to = FOLLOW; t = 1 - (1 - (elapsed - ATTACK_WINDUP_SECONDS) / .07) ** 2; }
-  else { from = FOLLOW; to = REST; t = smooth(Math.min(1, (elapsed - .19) / .23)); }
-  const arm = lerp(from.arm, to.arm, t) * Math.PI / 180;
-  const trail = elapsed >= .04 && elapsed < .21 ? Math.sin((elapsed - .04) / .17 * Math.PI) : 0;
-  return {
-    angle: lerp(from.blade, to.blade, t), trail,
-    gripX: SHOULDER_X + ARM * Math.cos(arm), gripY: SHOULDER_Y + ARM * Math.sin(arm), behind: elapsed < BEHIND_UNTIL,
-  };
+  let angle: number;
+  if (elapsed < .075) angle = -28 - 72 * smooth(elapsed / .075);
+  else if (elapsed < .12) angle = -100 + 100 * smooth((elapsed - .075) / .045);
+  else if (elapsed < .19) angle = 100 * smooth((elapsed - .12) / .07);
+  else angle = 100 - 128 * smooth(Math.min(1, (elapsed - .19) / .23));
+  const trail = elapsed >= .09 && elapsed < .27 ? Math.sin((elapsed - .09) / .18 * Math.PI) : 0;
+  // Up and back on the lift, forward and down on the strike.
+  const turn = angle + 28;
+  return { angle, trail, gripX: turn * .035, gripY: turn * (turn < 0 ? .07 : .025) };
 }
 
 export function drawSwordTrail(ctx: CanvasRenderingContext2D, x: number, y: number, radius: number, angle: number, opacity: number) {

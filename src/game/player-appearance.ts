@@ -598,7 +598,7 @@ export function drawStartingPlayer(
   // Another kind's art swung as the sword is, or lifted and leaned as the staff is, around its own grip.
   const swing = swings ? spin ?? swordSwingPose(options.throwClock ?? 0) : undefined;
   const swingTurn = swing && !swordHeld ? (swing.angle + 28) * DEGREES_TO_RADIANS : 0;
-  // The chop carries the hand along its arc, not only the blade around the grip.
+  // The hilt moves a little with the swing.
   const gripX = swing?.gripX ?? 0, gripY = swing?.gripY ?? 0;
   const cast = casts && !staffHeld ? staffCastPose(options.throwClock ?? 0) : undefined;
   const drawHeldItem = () => {
@@ -667,9 +667,6 @@ export function drawStartingPlayer(
     if (bodyCanvas) ctx.drawImage(bodyCanvas, 0, 0, PLAYER_BODY_WIDTH, PLAYER_BODY_HEIGHT);
     else draw(ctx);
   };
-  // Raised over the head at the start of a chop, the weapon is behind the head.
-  const heldBehind = swing?.behind === true;
-  if (heldBehind) drawHeldItem();
   const liveChest = chestSpriteDrawn && itemHasGalaxyFinish(options.chestItem);
   const liveHead = itemHasGalaxyFinish(headItem);
   if (!bodyAssetsReady) drawBody(ctx);
@@ -692,6 +689,6 @@ export function drawStartingPlayer(
     ctx.save(); ctx.globalAlpha = 0; drawBody(ctx, true); ctx.restore();
   }
   // Keep weapons readable above armor from every facing and hand position.
-  if (!heldBehind) drawHeldItem();
+  drawHeldItem();
   ctx.restore();
 }
