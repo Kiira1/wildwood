@@ -31,6 +31,7 @@
     "map:editor": "node scripts/map-editor-server.mjs",
     "test:unit": "vitest run --exclude src/balance/simulator.test.ts",
     "sim:autofarm": "AUTOFARM_SIM=1 vitest run src/game/runtime/auto-farm/autofarm-sim/autofarm-sim.test.ts --silent=false",
+    "test:weights": "node scripts/test-shard-weights.mjs",
     "test:unit:watch": "vitest --exclude src/balance/simulator.test.ts",
     "test:balance": "BALANCE_SIM=1 vitest run src/balance/simulator.test.ts",
     "report:farm-rate": "FARM_RATE_REPORT=1 vitest run spacetimedb/src/farm-rate-simulation.test.ts -t \"reports what each profile\" --silent=false --reporter=verbose",

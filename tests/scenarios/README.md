@@ -21,7 +21,11 @@ Rules:
 | `sim.ts` `simPlayer(profile)` | The game's frame step headless (virtual-player.ts): combat, enemy AI, bosses, travel, autofarm, seeded clocks. `sim.play(seconds, { autofarm })`, `sim.walk(x, y, seconds)`, `sim.parts` (player, enemies, autoFarm, …). | Long fights and farming, fast |
 | `browser.ts` | Images that load at their real size and `fetch` for the site's own files. | Used by `game.ts` |
 
-A booted game costs a few seconds; keep each file to the boots it needs.
+A file's first boot costs a second or two (loading the client); each boot
+after it about 0.2 s. Played time is what costs: a minute of `tab.play` takes
+one to two seconds. Keep a file under ~10 s on its own so the parallel run
+stays even, and run `npm run test:weights` after adding or splitting a slow
+file (CI splits its four parts by those times).
 
 ## Visual checks
 

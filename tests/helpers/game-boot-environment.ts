@@ -81,6 +81,7 @@ const DOM_CLASSES = [
 export function stubGameBootEnvironment() {
   const { window, document } = parseHTML(entryHtml);
   installGameShell(document);
+  indexIds(document);
   const frames: FrameRequestCallback[] = [];
   const view = window as unknown as Record<string, unknown>;
   const canvasPrototype = (window as unknown as { HTMLCanvasElement: { prototype: Record<string, unknown> } }).HTMLCanvasElement.prototype;
@@ -121,6 +122,23 @@ export function stubGameBootEnvironment() {
     }
   }
   return { window, document, runFrames };
+}
+
+/**
+ * getElementById at a browser's speed: linkedom walks the whole page for every
+ * lookup. The element last found for an id is kept while it is still in the
+ * page under that id; anything else is looked up afresh.
+ */
+function indexIds(document: Document) {
+  const walk = document.getElementById.bind(document);
+  const found = new Map<string, HTMLElement>();
+  document.getElementById = (id: string) => {
+    const kept = found.get(id);
+    if (kept && kept.id === id && kept.isConnected) return kept;
+    const element = walk(id);
+    if (element) found.set(id, element); else found.delete(id);
+    return element;
+  };
 }
 
 /**
