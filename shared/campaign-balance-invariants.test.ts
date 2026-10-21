@@ -90,9 +90,9 @@ it("makes each map take longer than the last", () => {
 });
 
 describe("authored enemy table", () => {
-  it("is the runtime enemy table, untouched until a map snapshot installs", () => {
-    expect(ENEMY_TYPES).toEqual(ENEMY_BASE_VALUES);
-    expect(ENEMY_TYPES).not.toBe(ENEMY_BASE_VALUES);
+  it("starts each campaign enemy at what the curve gives it on its map", () => {
+    for (const map of maps) for (const [kind, enemy] of Object.entries(map.enemies)) expect(ENEMY_TYPES[kind as keyof typeof ENEMY_TYPES], kind).toEqual(enemy);
+    for (const [kind, base] of Object.entries(ENEMY_BASE_VALUES)) expect(ENEMY_TYPES[kind as keyof typeof ENEMY_TYPES], kind).toMatchObject(base);
   });
 
   it("keeps every enemy finite, positive and inside the chase-speed range", () => {
@@ -103,13 +103,6 @@ describe("authored enemy table", () => {
       }
       expect(enemy.speed, kind).toBeGreaterThanOrEqual(campaignMeleeChaseSpeed(0));
       expect(enemy.speed, kind).toBeLessThanOrEqual(rules.ENEMY_TOP_CHASE_SPEED);
-    }
-  });
-
-  it("the Forest's rows in enemy-base-values.ts are what the curve gives", () => {
-    for (const [kind, enemy] of Object.entries(maps[0].enemies)) {
-      const file = ENEMY_BASE_VALUES[kind as keyof typeof ENEMY_BASE_VALUES];
-      expect([enemy.hp, enemy.damage, enemy.reward.amount, enemy.speed], kind).toEqual([file.hp, file.damage, file.reward.amount, file.speed]);
     }
   });
 });

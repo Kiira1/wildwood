@@ -1,5 +1,5 @@
 // Pre-bake reward anchors for the established Endless formula and cosmetic art rows.
-// Campaign rewards live in enemy-base-values; never apply this reference to campaign rewards.
+// Campaign rewards come from the balance curve (map-balance.ts); never apply this reference to campaign rewards.
 export const LEGACY_ENEMY_REWARDS: Readonly<Record<string, number>> = {
   "Bramble": 42,
   "Needle": 0.05,
@@ -93,4 +93,38 @@ export const LEGACY_ENEMY_REWARDS: Readonly<Record<string, number>> = {
   "Signal Oracle": 137767.29984467998,
   "Crypt Oracle": 369242.375282352,
   "Reactor Warden": 1042506.1779255361
+};
+
+/**
+ * The health and hit an Endless map's art row carries (map-balance.ts): the drawn enemy's pre-curve numbers, kept
+ * so Endless snapshots stay unchanged. No camp fights with them; every camp takes its lane's numbers at spawn.
+ * Endless-only art carries 1 for both.
+ */
+export const LEGACY_ENDLESS_ART_COMBAT: Readonly<Record<string, { readonly hp: number; readonly damage: number }>> = {
+  "Dune Raider": { hp: 3120.0000000000005, damage: 499.8697007283747 },
+  "Dune Archer": { hp: 4368.000000000001, damage: 374.90227554628103 },
+  "Frost Raider": { hp: 24336, damage: 1566.560046862593 },
+  "Glacier Archer": { hp: 34070.4, damage: 1174.9200351469447 },
+  "Depth Raider": { hp: 842400.0000000001, damage: 21130.62397968097 },
+  "Abyss Archer": { hp: 1179360.0000000002, damage: 15847.967984760728 },
+  "Tide Raider": { hp: 2527200.0000000005, damage: 70779.82962927784 },
+  "Reef Archer": { hp: 3538080.0000000005, damage: 53084.87222195838 },
+  "Sakura Ronin": { hp: 3790800.0000000005, damage: 237086.4337544865 },
+  "Petal Archer": { hp: 5307120.000000001, damage: 177814.82531586487 },
+  "Gale Prowler": { hp: 22744800, damage: 794152.4776879296 },
+  "Nimbus Archer": { hp: 31842720, damage: 595614.3582659473 },
+  "Fen Prowler": { hp: 68234400.00000001, damage: 2660119.129679823 },
+  "Glowcap Archer": { hp: 95528160.00000001, damage: 1995089.347259867 },
+  "Shard Hopper": { hp: 204703200, damage: 8910422.095124677 },
+  "Crystal Spitter": { hp: 286584480, damage: 6682816.571343509 },
+  "Gear Prowler": { hp: 614109600.0000001, damage: 29846641.463325106 },
+  "Rivet Spitter": { hp: 859753440.0000001, damage: 22384981.09749383 },
+  "Gourd Prowler": { hp: 1842328800.0000002, damage: 99975287.04366192 },
+  "Seed Spitter": { hp: 2579260320.0000005, damage: 74981465.28274643 },
+  "Circuit Prowler": { hp: 3868890479.9999995, damage: 334880493.3963609 },
+  "Pulse Spitter": { hp: 5416446672, damage: 251160370.04727063 },
+  "Mossbound Stalker": { hp: 16580959200.000002, damage: 1121726660.393717 },
+  "Spore Slinger": { hp: 23213342880.000004, damage: 841294995.2952878 },
+  "Ion Patrol": { hp: 49742877600, damage: 3757372332.6690316 },
+  "Capacitor Gunner": { hp: 69640028640, damage: 2818029249.501774 },
 };

@@ -1,6 +1,6 @@
 import { CURVE_BOSS_ATTACKS, CURVE_BOSS_HEALTH, CURVE_FOREST, CURVE_FOREST_ENEMIES, CURVE_ROLES } from './curve-shape';
 import { CURVE_FLOOR, CURVE_HIT_LEVEL, CURVE_STEPS } from './curve-steps';
-import { LEGACY_ENEMY_REWARDS } from "./legacy-enemy-rewards";
+import { LEGACY_ENDLESS_ART_COMBAT, LEGACY_ENEMY_REWARDS } from "./legacy-enemy-rewards";
 import { CAMPAIGN_MAPS, CAMPAIGN_ENDPOINT } from "./campaign-registry";
 import { regularMapLoot } from './regular-map-loot';
 import { bossRegenFractionFor } from './boss-regeneration';
@@ -8,7 +8,8 @@ import { REGULAR_ENEMY_RESPAWN_SECONDS } from './rules';
 import { generatedEnemyArt } from "./procedural-enemy-art";
 import * as rules from './rules';
 import { AUTHORED_BOSS_RULES } from './rules';
-import { ENEMY_TYPES, type EnemyKind } from './enemy-definitions';
+import type { EnemyBase, EnemyKind } from './enemy-definitions';
+import { ENEMY_BASE_VALUES } from './enemy-base-values';
 import { campaignBossDefinition, campaignPopulation, combatMap } from './campaign-combat';
 import { generateMap, isProceduralMap, PROCEDURAL_BOSS_RESPAWN_SECONDS } from './procedural-map-core';
 import { DEFAULT_BALANCE_FACTORS, type BalanceFactors, type BalanceSettings, type MapBalanceSnapshot } from './map-balance-types';
@@ -23,7 +24,7 @@ const combatRole = (row: { elite?: boolean; reward: { type: string } }) =>
   `${row.elite ? 'elite' : 'regular'}:${paysRating(row.reward.type) ? 'damage' : row.reward.type}`;
 /** The curve's output step: every campaign number to 6 significant digits, so a share lands on its whole target. */
 const curveValue = (n: number) => Number(n.toPrecision(6));
-const AUTHORED_ENEMIES: typeof ENEMY_TYPES = JSON.parse(JSON.stringify(ENEMY_TYPES));
+const AUTHORED_ENEMIES: Readonly<Record<EnemyKind, EnemyBase>> = ENEMY_BASE_VALUES;
 export const BALANCE_MAPS: readonly (readonly [string, string, string])[] = [
   ...CAMPAIGN_MAPS.map((map, index) => [map.id, `${index + 1} · ${map.name}`, map.bossArt] as const),
   ['endless', 'Endless', ''],
@@ -102,8 +103,9 @@ export function resolveMapBalance(mapId: string, settings: BalanceSettings, revi
     }
     // Generated camps reuse art, but receive these resolved combat values at spawn.
     const art = generatedEnemyArt(mapId);
-    result.enemies[art] = { ...AUTHORED_ENEMIES[art],
-      reward: { ...AUTHORED_ENEMIES[art].reward, amount: LEGACY_ENEMY_REWARDS[art] ?? AUTHORED_ENEMIES[art].reward.amount },
+    const { reward: artReward, ...artShape } = AUTHORED_ENEMIES[art], artCombat = LEGACY_ENDLESS_ART_COMBAT[art] ?? { hp: 1, damage: 1 };
+    result.enemies[art] = { ...artShape, hp: artCombat.hp, damage: artCombat.damage,
+      reward: { ...artReward, amount: LEGACY_ENEMY_REWARDS[art] ?? 1 },
       speed: 275 * factors.enemySpeed };
     const heaviest = Math.max(...Object.values(last.boss!.attacks), last.boss!.damage);
     result.boss = { kind: definition.kind,
@@ -115,12 +117,12 @@ export function resolveMapBalance(mapId: string, settings: BalanceSettings, revi
     // Every enemy is its role's multiple of the map's damage camp on the curve; a few Forest enemies have their own
     // (CURVE_FOREST_ENEMIES): a fresh Reflect Only run must be able to kill a Bramble on 100 health.
     const index = CAMPAIGN_MAPS.findIndex(map => map.id === mapId), camp = curveCamp(index);
-    for (const kind of Object.keys(ENEMY_TYPES) as EnemyKind[]) {
+    for (const kind of Object.keys(AUTHORED_ENEMIES) as EnemyKind[]) {
       if (!campaignPopulation(mapId)?.get(kind)) continue;
-      const row = AUTHORED_ENEMIES[kind];
+      const row = AUTHORED_ENEMIES[kind], { reward, ...base } = row;
       const shape = { ...CURVE_ROLES[combatRole(row)], ...(index === 0 ? CURVE_FOREST_ENEMIES[kind] : undefined) };
-      result.enemies[kind] = { ...row, hp: curveValue(camp.hp * shape.hp * factors.enemyHealth), damage: curveValue(camp.damage * shape.damage * factors.enemyDamage),
-        speed: row.speed * factors.enemySpeed, reward: { ...row.reward, amount: curveValue(camp.reward * shape.reward * factors.enemyRewards) } };
+      result.enemies[kind] = { ...base, hp: curveValue(camp.hp * shape.hp * factors.enemyHealth), damage: curveValue(camp.damage * shape.damage * factors.enemyDamage),
+        speed: row.speed * factors.enemySpeed, reward: { ...reward, amount: curveValue(camp.reward * shape.reward * factors.enemyRewards) } };
     }
     const mapNumber = index + 1;
     for (const enemy of Object.values(result.enemies)) {
