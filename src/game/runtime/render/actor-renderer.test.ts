@@ -66,11 +66,12 @@ describe("enemy weapon aiming", () => {
     }
   });
 
-  it("calibrates every loose enemy bow to the same source-down firing axis", () => {
+  // Each bow art fires along its own source axis, so each carries its own offset.
+  it("gives every loose enemy bow a grip pivot and a firing-axis offset", () => {
     for (const sprite of Object.values(ENEMY_SPRITE_LAYOUTS)) {
       for (const layer of sprite.layers.filter((part) => part.src.endsWith("/bow.webp"))) {
         expect(layer.aimPivot).toBeDefined();
-        expect(layer.aimOffsetRadians).toBe(ENEMY_BOW_AIM_OFFSET_RADIANS);
+        expect(Number.isFinite(layer.aimOffsetRadians)).toBe(true);
       }
     }
   });

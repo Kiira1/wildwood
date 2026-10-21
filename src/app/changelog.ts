@@ -2,6 +2,7 @@ export const RELEASE_NOTES: Record<string, string[]> = {
   "0.916.28": [
     "The Smith and the Sellers show your items as a grid, with the picked item and its button always on top",
     "Craft and the Sellers always list all gear",
+    "Skeleton archers and reapers hold their bows properly",
   ],
   "0.916.27": [
     "Sword swings move the hilt along with the blade",
