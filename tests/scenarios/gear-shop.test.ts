@@ -271,7 +271,7 @@ describe("the gear sellers and the Smith", () => {
     expect(tab.element("itemInspectionContent").textContent).toContain(refineStars(safe));
   }, 60_000);
 
-  it("GEAR-08 Upgrade All spends the gold it shows and puts every piece on, and the HUD points at the gear left to buy", async () => {
+  it("GEAR-08 the HUD points at gear in Town while the gold buys an upgrade, and not once it is all bought", async () => {
     const world = gameWorld();
     const ann = world.join("Ann");
     standAt(world, ann, TOWN_SPOTS.armorSeller);
@@ -279,23 +279,17 @@ describe("the gear sellers and the Smith", () => {
     setMastery(world, ann, "archery", 1);
     ann.disconnect();
     const tab = await playAs(world, "Ann");
-    await playUntil(tab, () => Boolean(armorSeller(tab)), "the Armor Seller opens");
-    // The big button on the Buy tab: its total, and the pieces it lists.
-    const upgrade = () => armorSeller(tab)!.querySelector<HTMLButtonElement>("[data-view=buy] [aria-label='Upgrade All'] button")!;
-    const total = shownNumber(upgrade().querySelector("span")!.textContent);
-    expect(total).toBeGreaterThan(0);
-    // The HUD says there are upgrades in Town while there are.
+    await playUntil(tab, () => Boolean(offer(tab, "common_light_helmet")), "the Armor Seller opens on Buy");
     expect(tab.shown("smithBuyNotice")).toBe(true);
-    press(tab, upgrade());
-    await playUntil(tab, () => goldOf(world, ann) === BigInt(1_000 - total), "Upgrade All is paid");
-    const worn = () => { const progress = ann.progress(); return [progress.equippedHead, progress.equippedChest, progress.equippedFeet]; };
-    await playUntil(tab, () => worn().every(itemId => itemId.startsWith("common_")), "every piece goes on", 10_000);
-    expect(worn()).toEqual(["common_light_helmet", "common_light_armor", "common_ranger_boots"]);
-    // Nothing more here at this Mastery: the button waits, and the HUD still points at the bow at the Weapon Seller.
-    await playUntil(tab, () => upgrade().disabled, "Upgrade All waits");
+    // Each armor piece bought from its own Buy.
+    for (const itemId of ["common_light_helmet", "common_light_armor", "common_ranger_boots"]) {
+      await playUntil(tab, () => action(offer(tab, itemId))?.disabled === false, `${itemId} can be bought`);
+      press(tab, action(offer(tab, itemId)));
+      await playUntil(tab, () => serverBag(ann).includes(itemId), `${itemId} is bought`);
+    }
+    // Nothing more here at this Mastery, but the bow at the Weapon Seller still beats the one in hand.
     expect(tab.shown("smithBuyNotice")).toBe(true);
     press(tab, armorSeller(tab)!.querySelector("footer button"));
-    expect(wornItems(tab)).toMatchObject({ head: "common_light_helmet", chest: "common_light_armor", feet: "common_ranger_boots" });
     standAt(world, ann, TOWN_SPOTS.weaponSeller);
     expect((await tab.coop.buyGradeGear("common_bow", gradeShopPrice("common_bow")!)).ok).toBe(true);
     await playUntil(tab, () => !tab.shown("smithBuyNotice"), "nothing left to buy");

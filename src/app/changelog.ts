@@ -5,6 +5,7 @@ export const RELEASE_NOTES: Record<string, string[]> = {
     "Skeleton archers and reapers hold their bows properly",
     "The Shop shows the Diamond Galaxy set under the Diamond frame",
     "Patreon supporters can start a 15-minute 2x Rewards Server Boost once a day",
+    "Removed the Upgrade All button from the Weapon and Armor Sellers",
   ],
   "0.916.27": [
     "Sword swings move the hilt along with the blade",

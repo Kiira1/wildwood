@@ -913,16 +913,6 @@
 .smith-sheet .slot-upgrades-picker-heading { font-size: 15px; letter-spacing: 0; }
 .smith-sheet .slot-upgrades-picker-item { height: auto; min-height: 72px; border-color: rgba(255,255,255,.12); background: #141414; }
 /* A section's heading in a view: its name, and a count on the right. */
-/* Upgrade All: the Buy tab's one big button, and what it buys as pills under it. */
-.smith-sheet .smith-upgrade-all { display: grid; gap: 8px; }
-.smith-sheet .smith-upgrade-all[hidden], .smith-sheet .smith-upgrade-all-picks[hidden], .smith-sheet .smith-upgrade-all-sub[hidden] { display: none; }
-.smith-sheet .farm-start.smith-upgrade-all-button { display: grid; justify-items: center; align-content: center; gap: 3px; width: 100%; height: auto; min-height: 56px; margin: 0; padding: 8px 14px 10px; border-color: #5a3c00; border-radius: 12px; background: linear-gradient(#ffe07a, #e2a628); box-shadow: 0 3px 0 #5a3c00; font-size: 17px; line-height: 1.15; text-transform: none; }
-.smith-sheet .farm-start.smith-upgrade-all-button:active:not(:disabled) { box-shadow: 0 1px 0 #5a3c00; }
-.smith-sheet .farm-start.smith-upgrade-all-button:disabled { opacity: 1; border: 1px dashed rgba(255,255,255,.2); background: transparent; box-shadow: none; color: #fff; }
-.smith-sheet .smith-upgrade-all-sub { color: #fff; font-size: 13px; font-weight: 800; }
-.smith-sheet .smith-upgrade-all-button:disabled .smith-upgrade-all-sub { color: #c7c7c7; -webkit-text-stroke: 0; text-shadow: none; }
-.smith-sheet .smith-upgrade-all-picks { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; margin: 0; padding: 0; list-style: none; }
-.smith-sheet .smith-upgrade-all-picks li { padding: 4px 10px; border: 1px solid rgba(255,255,255,.18); border-radius: 999px; background: #1d1d1d; color: #fff; font: 800 13px/16px var(--font-rounded); }
 .smith-sheet .smith-focus { border: 1px solid rgba(255,255,255,.12); background: #141414; }
 /* A station (the Smith and the gear sellers): the tabs and the picked piece stay put; only the grid under them scrolls. */
 .farm-sheet.quest-sheet.station-sheet { height: min(640px, calc(100dvh - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px) - 32px)); }

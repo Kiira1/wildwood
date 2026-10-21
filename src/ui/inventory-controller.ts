@@ -616,11 +616,5 @@ export function createInventoryController(dependencies: InventoryDependencies) {
       clearInventorySelection(dependencies.inventory);
     },
     mode: () => mode,
-    /** Puts an owned item on as the bag's Equip does, whichever view the bag shows (the Smith's Upgrade All). */
-    equip: (itemId: string, destination: EquipmentSlot) => {
-      if (!dependencies.move(itemId, destination)) return false;
-      render();
-      return true;
-    },
   };
 }

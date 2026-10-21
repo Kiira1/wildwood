@@ -1,7 +1,7 @@
 import { renderBooleanSetting } from "./settings";
 
 export type HudReminderKind = "research" | "smith";
-/** The chips: the Tech Tree shows Research Ready, the gear sellers show when an Upgrade All has gear to buy. */
+/** The chips: the Tech Tree shows Research Ready, the gear sellers show when the gold buys an upgrade. */
 export const HUD_REMINDERS: readonly { kind: HudReminderKind; id: string; text: string; label: string; key: string }[] = [
   { kind: "research", id: "researchReadyHint", text: "Research Ready", label: "Research Ready Hint", key: "wildstat-hud-research-ready-visible" },
   { kind: "smith", id: "smithBuyNotice", text: "Gear Upgrades In Town", label: "Gear Upgrades Hint", key: "wildstat-hud-smith-upgrades-visible" },

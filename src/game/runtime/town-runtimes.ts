@@ -4,7 +4,6 @@ import {
 } from "../../ui/game-ui-runtime";
 import type { createGameElements } from "../../ui/game-elements";
 import { bindTownTeleportButton } from "../../ui/town-teleport-button";
-import type { createInventoryController } from "../../ui/inventory-controller";
 import { createOxShopRuntime } from "../../ui/ox-shop-controller";
 import { createSlotUpgradesController } from "../../ui/slot-upgrades-controller";
 import { closeStationsOutOfReach } from "../../ui/station-reach";
@@ -30,7 +29,6 @@ export type TownRuntimeDeps = {
   teleportToMap: MapController["teleportToMap"];
   clearInput: () => void;
   renderInventory: () => void;
-  equip: ReturnType<typeof createInventoryController>["equip"];
   showMessage: (text: string, color?: string) => void;
   techTree: { open: () => void; close: () => void };
   quests: { board: { open: () => void; close: () => void }; refreshAtHome: () => void };
@@ -69,7 +67,7 @@ export function createTownRuntimes(deps: TownRuntimeDeps) {
 
   const oxShop = createOxShopRuntime({ coop: client, inventory, renderInventory: deps.renderInventory, showMessage, clearInput, inTown });
   const smith = createSmithRuntime({ coop: client, inventory, showMessage, clearInput, inTown });
-  const gearSellers = createGearSellerRuntime({ coop: client, inventory, showMessage, clearInput, inTown, equip: deps.equip });
+  const gearSellers = createGearSellerRuntime({ coop: client, inventory, showMessage, clearInput, inTown });
   const cardSeller = createCardSellerRuntime({ coop: client, showMessage, clearInput, inTown });
   const schools = createSchoolWindowRuntime({ coop: client, clearInput, inTown });
   const starterChest = createStarterChestRuntime({

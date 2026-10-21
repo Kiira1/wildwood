@@ -664,7 +664,7 @@ import { MAX_PLAYER_STAT, PLAYER_SPAWN } from "../shared/rules";
     coop: coopAccess, e: gameElements, player, inventory, currentMapId: () => currentMapId, inTutorial,
     isMapTransitioning: () => mapController.isMapTransitioning(), teleportHome: () => mapController.teleportHome(),
     teleportToMap: mapController.teleportToMap,
-    clearInput: playerInput.clear, renderInventory, equip: inventoryController.equip, showMessage, techTree, quests,
+    clearInput: playerInput.clear, renderInventory, showMessage, techTree, quests,
     beforeUpgradesOpen: () => panels.closeAllExcept("slotUpgrades"), onUpgradeFinished: progressNotices.onUpgradeFinished,
     applyEquipmentStats, saveProgress,
   });
