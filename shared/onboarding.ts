@@ -24,3 +24,8 @@ export function nextOnboardingStep(step: number): number {
 export function onboardingLessonAt(step: number): number {
   return (ONBOARDING_LESSONS as readonly number[]).includes(step) || step >= ONBOARDING_STEP.complete ? step : nextOnboardingStep(step);
 }
+/** What moving from saved step `from` to `to` pays: each lesson's reward once, and a skip pays the ones not yet paid. */
+export function onboardingRewardsBetween(from: number, to: number) {
+  const crosses = (step: number) => from < step && step <= to;
+  return { damage: crosses(ONBOARDING_STEP.regen) ? ONBOARDING_DAMAGE_REWARD : 0, regen: crosses(ONBOARDING_STEP.death) ? ONBOARDING_REGEN_REWARD : 0 };
+}

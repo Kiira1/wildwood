@@ -14,7 +14,7 @@ import { withRequestDeadline } from "./request-deadline";
 import type { EnemyLootRequest } from "./regular-enemy-loot-queue";
 import { createRegularEnemyLootQueue, ENEMY_DEFEAT_ACK_TIMEOUT_MS } from "./regular-enemy-loot-queue";
 import { REGULAR_ENEMY_LOOT_DELAY_MS } from "../../../shared/regular-map-loot";
-import { ONBOARDING_DAMAGE_REWARD, ONBOARDING_REGEN_REWARD, ONBOARDING_STEP } from "../../../shared/onboarding";
+import { onboardingRewardsBetween } from "../../../shared/onboarding";
 import { withoutDestroyedEquipment } from "./destroyed-equipment";
 import { refusedLoadout, serverLoadoutChanges, withServerLoadout, type ServerLoadoutChange } from "./server-loadout";
 import { cosmeticUnlocks } from "../../../shared/cosmetic-conversion";
@@ -1444,10 +1444,12 @@ export function createProgressionService(dependencies: ProgressionServiceDepende
         const result = await reducerResult("tutorial", connection => connection.reducers.completeOnboardingStep({ step }))();
         if (result.ok && identity === dependencies.localIdentity()) {
           onboardingStep = Math.max(onboardingStep, step);
-          if (before && localProgress && previousStep < step) {
+          // A character with no lesson row (step 0) replays for nothing, as on the server.
+          if (before && localProgress && previousStep > 0 && previousStep < step) {
+            const reward = onboardingRewardsBetween(previousStep, step);
             localProgress = { ...localProgress,
-              damage: Math.max(localProgress.damage, before.damage + (step === ONBOARDING_STEP.regen ? ONBOARDING_DAMAGE_REWARD : 0)),
-              regen: Math.max(localProgress.regen, before.regen + (step === ONBOARDING_STEP.death ? ONBOARDING_REGEN_REWARD : 0)),
+              damage: Math.max(localProgress.damage, before.damage + reward.damage),
+              regen: Math.max(localProgress.regen, before.regen + reward.regen),
             };
             progressByIdentity.set(identity, localProgress);
           }

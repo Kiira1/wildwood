@@ -1,7 +1,7 @@
 import { table, t, SenderError } from "spacetimedb/server";
 import type { Identity } from "spacetimedb";
 import type { ModuleReducerCtx } from "./index";
-import { ONBOARDING_DAMAGE_REWARD, ONBOARDING_REGEN_REWARD, ONBOARDING_STEP, nextOnboardingStep, onboardingLessonAt, onboardingPending } from "../../shared/onboarding";
+import { ONBOARDING_STEP, nextOnboardingStep, onboardingLessonAt, onboardingPending, onboardingRewardsBetween } from "../../shared/onboarding";
 import { readPlayerProgress } from "./wide-stats";
 
 export const playerOnboarding = table({ name: "player_onboarding", public: false }, {
@@ -24,15 +24,16 @@ export function advanceOnboarding(ctx: ModuleReducerCtx, step: number, writeProg
   const lesson = onboardingLessonAt(state.step);
   // Remove in the next client-break release: a 0.916.14 tab still reports the retired portrait lesson (2) after Move.
   const oldClientPortrait = step === 2 && state.step === ONBOARDING_STEP.move;
-  // The final step can also be reached through Skip tutorial. It grants no unearned rewards.
+  // The final step can also be reached through Skip tutorial; it pays the lesson rewards not yet paid.
   if (step !== ONBOARDING_STEP.complete && step !== lesson && step !== nextOnboardingStep(lesson) && !oldClientPortrait) {
     throw new SenderError("Finish the current tutorial step first.");
   }
   const progress = readPlayerProgress(ctx, ctx.sender);
   if (!progress) throw new SenderError("Character unavailable.");
+  const reward = onboardingRewardsBetween(state.step, step);
   writeProgress({ ...progress,
-    damage: progress.damage + (step === ONBOARDING_STEP.regen ? ONBOARDING_DAMAGE_REWARD : 0),
-    regen: progress.regen + (step === ONBOARDING_STEP.death ? ONBOARDING_REGEN_REWARD : 0),
+    damage: progress.damage + reward.damage,
+    regen: progress.regen + reward.regen,
     introComplete: step === ONBOARDING_STEP.complete || progress.introComplete,
   });
   ctx.db.playerOnboarding.identity.update({ ...state, step });

@@ -60,15 +60,16 @@ describe("Lessons on the server (TUT-02, TUT-03, TUT-05)", () => {
     expect(ann.row("player").isVisible).toBe(true);
   });
 
-  it("a skip from any lesson keeps what was earned and adds nothing", () => {
+  it("a skip from any lesson ends on the same stats as finishing, paying each lesson once", () => {
     for (const lesson of [1, 3, 4, 5]) {
       const world = scenarioWorld();
       const ann = world.join("Ann", { tutorial: true });
+      const start = ann.progress()!;
       for (let next = 3; next <= lesson; next++) ann.call("completeOnboardingStep", { step: next });
-      const earned = ann.progress()!;
       ann.call("completeOnboardingStep", { step: 6 });
       ann.call("completeOnboardingStep", { step: 6 });
-      expect(ann.progress()).toMatchObject({ damage: earned.damage, regen: earned.regen, introComplete: true });
+      expect(ann.progress()).toMatchObject({ damage: start.damage + 1, introComplete: true });
+      expect(ann.progress()!.regen).toBeCloseTo(start.regen + .2);
       expect(ann.row("playerOnboarding")).toMatchObject({ step: 6 });
     }
   });
