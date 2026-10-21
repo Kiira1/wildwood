@@ -23,6 +23,7 @@
     "dev:live": "node scripts/live-dev.mjs",
     "balance:lab": "vite --config config/vite.balance.config.ts --host 127.0.0.1 --open /balance-lab.html",
     "balance:stat-graph": "vite --config config/vite.stat-graph.config.ts --host 127.0.0.1 --open /balance-stat-graph.html",
+    "generate:mining-layout": "tsx scripts/generate-mining-layout.ts",
     "balance:sync": "tsx scripts/sync-balance-lab.ts",
     "balance:adopt": "tsx scripts/balance-adopt.ts",
     "balance:simulate": "tsx scripts/balance-report.ts",
