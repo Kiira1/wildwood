@@ -115,6 +115,16 @@ describe("Auto Farm, the boss and the next map (FARM-03)", () => {
     // The Dragon is already down: no fight, straight through its portal.
     expect(report.bossAttempts).toEqual([]);
     expect(report.travels[0]).toMatchObject({ from: "tutorial_forest", to: "beginner_desert", direction: "forward" });
+    ready.dispose();
+
+    // The server refuses the crossing: it farms on and tries again a minute later, not every few seconds.
+    let tries = 0;
+    const refused = simPlayer({ advance: true, readiness: true, bossBeaten: true, base: savedBuild(500, 50_000) }, { changeMap: () => { tries++; return false; } });
+    report = await refused.play(90, { autofarm: true });
+    expect(report.endMap).toBe("tutorial_forest");
+    expect(tries).toBeGreaterThanOrEqual(1);
+    expect(tries).toBeLessThanOrEqual(2);
+    expect(report.kills).toBeGreaterThan(0);
   });
 });
 

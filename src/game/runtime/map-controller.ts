@@ -93,6 +93,8 @@ export function createMapController(options: {
   onTravelStarted?: () => void;
   /** Whether Auto Farm is taking the player through a portal to this map: the arrival guard does not hold it back. */
   travelWanted?: (destination: string) => boolean;
+  /** The server refused a crossing to this map. */
+  onTravelRefused?: (destination: string) => void;
   mapConfig: MapConfig;
   tutorialMapId: MapId;
   desertMapId: MapId;
@@ -388,6 +390,7 @@ export function createMapController(options: {
         mapTransitioning = false;
         guardPortal(portal);
         portalCooldown = 1;
+        crossingRefused(destination);
         return;
       }
       const arrival = arrivalFrom(destination, departure, from);
@@ -405,7 +408,17 @@ export function createMapController(options: {
       mapTransitioning = false;
       guardPortal(portal);
       portalCooldown = 1;
+      crossingRefused(destination);
     });
+  }
+
+  /**
+   * A refusal means the server sees the player somewhere else. Auto Farm stops walking straight back in (a client
+   * retried one every six seconds for ten minutes), and a map the server already has them on is followed now.
+   */
+  function crossingRefused(destination: MapId) {
+    options.onTravelRefused?.(destination);
+    reconcileMapFromServer();
   }
 
   /**
@@ -435,6 +448,7 @@ export function createMapController(options: {
       syncStoppedPosition();
       if (portal) guardPortal(portal);
       portalCooldown = 1;
+      crossingRefused(destination);
       return false;
     };
     return withMapDeadline(move).then((changed) => {

@@ -5,6 +5,8 @@ export const RELEASE_NOTES: Record<string, string[]> = {
     "Profiles show the player's guild",
     "Report and Block moved into the ⋯ menu on other players' profiles",
     "The Smith's and the sellers' windows close when you walk away from them",
+    "Kills made just before a prestige are paid instead of lost",
+    "Auto Farm no longer keeps walking into a portal that will not let it through",
   ],
   "0.916.21": [
     "The game loads a little faster",
