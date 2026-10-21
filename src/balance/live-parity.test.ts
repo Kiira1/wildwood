@@ -33,8 +33,8 @@ describe("Balance Lab uses the game's resolved balance contract", () => {
       bossDamage: 2, enemyRespawn: 2, bossRespawn: 3, bossRegen: 4, enemyDrops: 2 });
     const base = createMapDefinitions()[0];
     const tuned = createMapDefinitions(0, settings)[0];
-    expect(tuned.boss!.hp).toBe(base.boss!.hp * 4);
-    expect(tuned.boss!.strongestHit).toBe(base.boss!.strongestHit! * 2);
+    expect(tuned.boss!.hp).toBeCloseTo(base.boss!.hp * 4, 0);
+    expect(tuned.boss!.strongestHit).toBeCloseTo(base.boss!.strongestHit! * 2, 0);
     expect(tuned.boss!.rewards).toEqual([]);
     expect(tuned.balance!.regularRespawnSeconds).toBe(20);
     expect(tuned.balance!.boss!.respawnSeconds).toBe(base.balance!.boss!.respawnSeconds * 3);

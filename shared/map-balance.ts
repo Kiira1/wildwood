@@ -1,4 +1,4 @@
-import { CURVE_BOSS_ATTACKS, CURVE_BOSS_HEALTH, CURVE_FOREST, CURVE_ROLES } from './curve-shape';
+import { CURVE_BOSS_ATTACKS, CURVE_BOSS_HEALTH, CURVE_FOREST, CURVE_FOREST_ENEMIES, CURVE_ROLES } from './curve-shape';
 import { CURVE_FLOOR, CURVE_HIT_LEVEL, CURVE_STEPS } from './curve-steps';
 import { LEGACY_ENEMY_REWARDS } from "./legacy-enemy-rewards";
 import { CAMPAIGN_MAPS, CAMPAIGN_ENDPOINT } from "./campaign-registry";
@@ -21,10 +21,8 @@ import { ratingRewardPerKill } from './stat-rating';
 const paysRating = (type: string) => type === 'speed' || type === 'crit';
 const combatRole = (row: { elite?: boolean; reward: { type: string } }) =>
   `${row.elite ? 'elite' : 'regular'}:${paysRating(row.reward.type) ? 'damage' : row.reward.type}`;
-/** Forest enemies kept at their authored numbers (enemy-base-values.ts). */
-const OFF_CURVE = new Set<string>(['Spitter', 'Bramble']);
-/** Forest enemies that fight on the curve but pay their authored reward (0.916.23: King Slime pays 50 health). */
-const AUTHORED_REWARD = new Set<string>(['King Slime']);
+/** The curve's output step: every campaign number to 6 significant digits, so a share lands on its whole target. */
+const curveValue = (n: number) => Number(n.toPrecision(6));
 const AUTHORED_ENEMIES: typeof ENEMY_TYPES = JSON.parse(JSON.stringify(ENEMY_TYPES));
 export const BALANCE_MAPS: readonly (readonly [string, string, string])[] = [
   ...CAMPAIGN_MAPS.map((map, index) => [map.id, `${index + 1} · ${map.name}`, map.bossArt] as const),
@@ -114,17 +112,15 @@ export function resolveMapBalance(mapId: string, settings: BalanceSettings, revi
       respawnSeconds: definition.respawnSeconds, attacks: {},
       rewards: {} };
   } else {
-    // Every enemy is its role's multiple of the map's damage camp on the curve. The Forest's Spitter and Bramble are as
-    // authored: a fresh Reflect Only run must be able to kill a Bramble on 100 health.
+    // Every enemy is its role's multiple of the map's damage camp on the curve; a few Forest enemies have their own
+    // (CURVE_FOREST_ENEMIES): a fresh Reflect Only run must be able to kill a Bramble on 100 health.
     const index = CAMPAIGN_MAPS.findIndex(map => map.id === mapId), camp = curveCamp(index);
     for (const kind of Object.keys(ENEMY_TYPES) as EnemyKind[]) {
       if (!campaignPopulation(mapId)?.get(kind)) continue;
       const row = AUTHORED_ENEMIES[kind];
-      const shape = CURVE_ROLES[combatRole(row)], authored = OFF_CURVE.has(kind);
-      const hp = authored ? row.hp : camp.hp * shape.hp, damage = authored ? row.damage : camp.damage * shape.damage;
-      const reward = authored || AUTHORED_REWARD.has(kind) ? row.reward.amount : camp.reward * shape.reward;
-      result.enemies[kind] = { ...row, hp: hp * factors.enemyHealth, damage: damage * factors.enemyDamage,
-        speed: row.speed * factors.enemySpeed, reward: { ...row.reward, amount: reward * factors.enemyRewards } };
+      const shape = { ...CURVE_ROLES[combatRole(row)], ...(index === 0 ? CURVE_FOREST_ENEMIES[kind] : undefined) };
+      result.enemies[kind] = { ...row, hp: curveValue(camp.hp * shape.hp * factors.enemyHealth), damage: curveValue(camp.damage * shape.damage * factors.enemyDamage),
+        speed: row.speed * factors.enemySpeed, reward: { ...row.reward, amount: curveValue(camp.reward * shape.reward * factors.enemyRewards) } };
     }
     const mapNumber = index + 1;
     for (const enemy of Object.values(result.enemies)) {
@@ -134,7 +130,7 @@ export function resolveMapBalance(mapId: string, settings: BalanceSettings, revi
     const rewardValues: Record<string, number> = {};
     // Sorted, as the module namespace this once read was, so a snapshot's keys keep their order.
     for (const key of Object.keys(AUTHORED_BOSS_RULES).sort()) {
-      if (key === `${prefix}_MAX_HP`) result.rules[key] = camp.hp * CURVE_BOSS_HEALTH * factors.bossHealth;
+      if (key === `${prefix}_MAX_HP`) result.rules[key] = curveValue(camp.hp * CURVE_BOSS_HEALTH * factors.bossHealth);
       // Bosses pay nothing: beating one opens the next map.
       if (key.startsWith(`${prefix}_REWARD_`)) {
         result.rules[key] = 0;
@@ -145,8 +141,8 @@ export function resolveMapBalance(mapId: string, settings: BalanceSettings, revi
     if (!Object.keys(rewardValues).length) {
       for (const stat of ['damage', 'health', 'armor', 'regen'] as const) rewardValues[stat] = 0;
     }
-    result.boss = { ...definition, hp: camp.hp * CURVE_BOSS_HEALTH * factors.bossHealth, damage: 0,
-      attacks: Object.fromEntries(Object.entries(attacks).map(([key, value]) => [key, value * factors.bossDamage])), rewards: rewardValues };
+    result.boss = { ...definition, hp: curveValue(camp.hp * CURVE_BOSS_HEALTH * factors.bossHealth), damage: 0,
+      attacks: Object.fromEntries(Object.entries(attacks).map(([key, value]) => [key, curveValue(value * factors.bossDamage)])), rewards: rewardValues };
   }
   if (configurationVersion === 2) {
     result.configurationVersion = 2;

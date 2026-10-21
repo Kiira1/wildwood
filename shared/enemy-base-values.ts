@@ -1,5 +1,5 @@
-// Baked from live balance revision 73 (2026-09-25). Values already include campaign tuning
-// and reward boosts. Do not multiply them by the old progression reward scales again.
+// Campaign hp, damage and reward amounts are set by the balance curve (curve-shape.ts, map-balance.ts), not read
+// from here. The Tutorial Forest rows hold what the curve gives; the other maps' are from revision 73 (2026-09-25).
 import type { EnemyDefinition } from "./enemy-definitions";
 import { ENDLESS_ENEMY_BASE_VALUES } from "./endless-enemies";
 import { ratingRewardPerKill } from "./stat-rating";
@@ -8,13 +8,13 @@ import { ENEMY_HIT_RADIUS } from "./enemy-hitbox";
 export const ENEMY_BASE_VALUES = {
   ...ENDLESS_ENEMY_BASE_VALUES,
   "Bramble": {"speed": 205, "attackSpeed": 1, "r": ENEMY_HIT_RADIUS, "color": "#d95738", "outline": "#5c1b13", "hp": 42, "damage": 14, "reward": {"type": "health", "amount": 11}},
-  "Needle": {"speed": 205, "attackSpeed": 1, "r": ENEMY_HIT_RADIUS, "color": "#ffd34d", "outline": "#6f4a12", "hp": 90, "damage": 24, "reward": {"type": "speed", "amount": ratingRewardPerKill(1)}},
-  "Mossback": {"speed": 205, "attackSpeed": 1, "r": ENEMY_HIT_RADIUS, "color": "#768d51", "outline": "#2c3b20", "hp": 180, "damage": 29, "reward": {"type": "armor", "amount": 9}},
-  "Spitter": {"speed": 205, "attackSpeed": 1, "r": ENEMY_HIT_RADIUS, "color": "#b16ac8", "outline": "#4b235d", "hp": 18, "damage": 20, "reward": {"type": "damage", "amount": 1}},
-  "Brood": {"speed": 205, "attackSpeed": 0.69, "r": ENEMY_HIT_RADIUS, "color": "#45b6c2", "outline": "#174a54", "ranged": true, "hp": 220, "damage": 56, "reward": {"type": "regen", "amount": 2}},
-  "Cindermaw": {"speed": 205, "attackSpeed": 1, "r": ENEMY_HIT_RADIUS, "color": "#d95738", "outline": "#5c1b13", "hp": 360, "damage": 86, "reward": {"type": "damage", "amount": 3}},
-  "King Slime": {"speed": 205, "attackSpeed": 1, "r": ENEMY_HIT_RADIUS, "color": "#70a94f", "outline": "#2d5127", "elite": true, "aggro": 300, "hp": 500, "damage": 143, "reward": {"type": "health", "amount": 50}},
-  "Dread Warden": {"speed": 205, "attackSpeed": 1, "r": ENEMY_HIT_RADIUS, "color": "#a52e3a", "outline": "#47101a", "elite": true, "aggro": 340, "hp": 500, "damage": 275, "reward": {"type": "damage", "amount": 7}},
+  "Needle": {"speed": 205, "attackSpeed": 1, "r": ENEMY_HIT_RADIUS, "color": "#ffd34d", "outline": "#6f4a12", "hp": 95.6522, "damage": 28.5217, "reward": {"type": "speed", "amount": ratingRewardPerKill(1)}},
+  "Mossback": {"speed": 205, "attackSpeed": 1, "r": ENEMY_HIT_RADIUS, "color": "#768d51", "outline": "#2c3b20", "hp": 178.036, "damage": 23.7527, "reward": {"type": "armor", "amount": 16.1959}},
+  "Spitter": {"speed": 205, "attackSpeed": 1, "r": ENEMY_HIT_RADIUS, "color": "#b16ac8", "outline": "#4b235d", "hp": 18, "damage": 12, "reward": {"type": "damage", "amount": 1}},
+  "Brood": {"speed": 205, "attackSpeed": 0.69, "r": ENEMY_HIT_RADIUS, "color": "#45b6c2", "outline": "#174a54", "ranged": true, "hp": 220, "damage": 55.9998, "reward": {"type": "regen", "amount": 3.00001}},
+  "Cindermaw": {"speed": 205, "attackSpeed": 1, "r": ENEMY_HIT_RADIUS, "color": "#d95738", "outline": "#5c1b13", "hp": 95.6522, "damage": 28.5217, "reward": {"type": "damage", "amount": 1.92857}},
+  "King Slime": {"speed": 205, "attackSpeed": 1, "r": ENEMY_HIT_RADIUS, "color": "#70a94f", "outline": "#2d5127", "elite": true, "aggro": 300, "hp": 401.346, "damage": 60.2527, "reward": {"type": "health", "amount": 50}},
+  "Dread Warden": {"speed": 205, "attackSpeed": 1, "r": ENEMY_HIT_RADIUS, "color": "#a52e3a", "outline": "#47101a", "elite": true, "aggro": 340, "hp": 240.74, "damage": 46.6444, "reward": {"type": "damage", "amount": 6.78454}},
   "Dune Raider": {"speed": 205, "attackSpeed": 0.65, "r": ENEMY_HIT_RADIUS, "color": "#d6a13a", "outline": "#5f3c18", "hp": 3120.0000000000005, "damage": 499.8697007283747, "reward": {"type": "damage", "amount": 6}},
   "Dune Archer": {"speed": 205, "attackSpeed": 0.55, "r": ENEMY_HIT_RADIUS, "color": "#d5b04d", "outline": "#61481d", "ranged": true, "hp": 4368.000000000001, "damage": 374.90227554628103, "reward": {"type": "health", "amount": 108}},
   "Dune Regent": {"speed": 205, "attackSpeed": 0.65, "r": ENEMY_HIT_RADIUS, "color": "#e3c568", "outline": "#61481d", "elite": true, "aggro": 310, "hp": 8736.000000000002, "damage": 687.3208385015153, "reward": {"type": "health", "amount": 216}},
@@ -101,7 +101,7 @@ export const ENEMY_BASE_VALUES = {
   "Reactor Warden": {"attackSpeed": 0.65, "speed": 305, "r": ENEMY_HIT_RADIUS, "color": "#69ffb1", "outline": "#172d3a", "elite": true, "aggro": 340, "hp": 89537179680, "damage": 3757372332.6690316, "reward": {"type": "regen", "amount": 4170024.7117021442}},
   // Attack speed and crit damage camps (0.901.47): regulars with their map's damage camp's strength (map-balance.ts
   // resolves them as that role), paying rating points (stat-rating.ts).
-  "Striker": {"speed": 205, "attackSpeed": 1, "r": ENEMY_HIT_RADIUS, "color": "#ff8fd0", "outline": "#6a1f4d", "hp": 90, "damage": 24, "reward": {"type": "crit", "amount": ratingRewardPerKill(1)}},
+  "Striker": {"speed": 205, "attackSpeed": 1, "r": ENEMY_HIT_RADIUS, "color": "#ff8fd0", "outline": "#6a1f4d", "hp": 95.6522, "damage": 28.5217, "reward": {"type": "crit", "amount": ratingRewardPerKill(1)}},
   "Dune Needle": {"speed": 205, "attackSpeed": 0.65, "r": ENEMY_HIT_RADIUS, "color": "#ffd34d", "outline": "#5f3c18", "hp": 3120.0000000000005, "damage": 499.8697007283747, "reward": {"type": "speed", "amount": ratingRewardPerKill(2)}},
   "Dune Striker": {"speed": 205, "attackSpeed": 0.65, "r": ENEMY_HIT_RADIUS, "color": "#ff8fd0", "outline": "#5f3c18", "hp": 3120.0000000000005, "damage": 499.8697007283747, "reward": {"type": "crit", "amount": ratingRewardPerKill(2)}},
   "Frost Needle": {"speed": 230, "attackSpeed": 0.65, "r": ENEMY_HIT_RADIUS, "color": "#ffd34d", "outline": "#315778", "hp": 24336, "damage": 1566.560046862593, "reward": {"type": "speed", "amount": ratingRewardPerKill(3)}},

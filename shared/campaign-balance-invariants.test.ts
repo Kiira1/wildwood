@@ -106,9 +106,10 @@ describe("authored enemy table", () => {
     }
   });
 
-  it("keeps the Forest's Spitter exactly as authored; the rest of the Forest is on the curve like every map", () => {
-    const spitter = maps[0].enemies.Spitter, authored = ENEMY_BASE_VALUES.Spitter;
-    expect([spitter.hp, spitter.damage, spitter.reward.amount]).toEqual([authored.hp, authored.damage, authored.reward.amount]);
-    for (const enemy of Object.values(maps[0].enemies)) expect(enemy.speed).toBe(ENEMY_BASE_VALUES[enemy.type as keyof typeof ENEMY_BASE_VALUES]?.speed ?? enemy.speed);
+  it("the Forest's rows in enemy-base-values.ts are what the curve gives", () => {
+    for (const [kind, enemy] of Object.entries(maps[0].enemies)) {
+      const file = ENEMY_BASE_VALUES[kind as keyof typeof ENEMY_BASE_VALUES];
+      expect([enemy.hp, enemy.damage, enemy.reward.amount, enemy.speed], kind).toEqual([file.hp, file.damage, file.reward.amount, file.speed]);
+    }
   });
 });

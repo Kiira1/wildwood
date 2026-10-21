@@ -19,7 +19,7 @@ it('pins a visit across changes/reconnects, refreshes on travel, preserves previ
   pinMapBalance(ctx, 'tutorial_forest');
   expect(pinnedMapBalance(ctx, ctx.sender, 'tutorial_forest')!.boss!.hp).toBe(initial.boss!.hp);
   pinMapBalance(ctx, 'home_exterior'); pinMapBalance(ctx, 'tutorial_forest');
-  expect(pinnedMapBalance(ctx, ctx.sender, 'tutorial_forest')!.boss!.hp).toBe(initial.boss!.hp * 2);
+  expect(pinnedMapBalance(ctx, ctx.sender, 'tutorial_forest')!.boss!.hp).toBeCloseTo(initial.boss!.hp * 2, 0);
   expect(ctx.db.mapBalanceVersion.revision.find(0)).toBeDefined();
   expect(() => saveMapBalance(ctx, 0, JSON.stringify(edited.settings))).toThrow('another editor');
 });
@@ -107,7 +107,7 @@ it('reuses a revision across players without serving it past the next save', () 
   pinMapBalance(ctx, 'home_exterior'); pinMapBalance(ctx, 'tutorial_forest');
   const after = pinnedMapBalance(ctx, ctx.sender, 'tutorial_forest')!;
   expect(after.revision).toBe(1);
-  expect(after.boss!.hp).toBe(before.boss!.hp * 5);
+  expect(after.boss!.hp).toBeCloseTo(before.boss!.hp * 5, 0);
 
   // A second player arriving at the same revision is served the same snapshot.
   const other = { ...ctx, sender: { toHexString: () => 'other' } };

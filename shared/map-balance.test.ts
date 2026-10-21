@@ -1,7 +1,7 @@
 import { describe, it, expect, afterEach } from 'vitest';
 import { defaultBalanceSettings, resolveMapBalance, validateBalanceSettings, BALANCE_MAPS } from './map-balance';
 import { CAMPAIGN_MAPS } from './campaign-registry';
-import { CURVE_BOSS_HEALTH, CURVE_ROLES } from './curve-shape';
+import { CURVE_BOSS_HEALTH, CURVE_FOREST_ENEMIES, CURVE_ROLES } from './curve-shape';
 import { CURVE_FLOOR, CURVE_HIT_LEVEL, CURVE_STEPS } from './curve-steps';
 import { bossRegenFractionFor } from './boss-regeneration';
 import { enemyDefeatDefinition } from './enemy-defeats';
@@ -17,7 +17,7 @@ describe('server map balance snapshots', () => {
     for (const { id } of CAMPAIGN_MAPS) {
       const snapshot = resolveMapBalance(id, defaultBalanceSettings(), 0);
       const camp = damageCamp(snapshot);
-      expect(snapshot.boss!.hp / camp.hp, id).toBeCloseTo(CURVE_BOSS_HEALTH, 9);
+      expect(snapshot.boss!.hp / camp.hp / CURVE_BOSS_HEALTH, id).toBeCloseTo(1, 4);
       expect(personalBossDefinition(id, true)!.hp, id).toBeGreaterThan(0);
     }
   });
@@ -80,11 +80,11 @@ it('carries the final campaign tuning into Endless while earlier map tuning stay
   settings.maps[last].bossHealth = 5;
   settings.maps[last].bossDamage = 6;
   const changed = resolveMapBalance('endless_1', settings, 1);
-  expect(changed.lanes.Cindermaw.hp).toBeCloseTo(baseline.lanes.Cindermaw.hp * 2, -1);
-  expect(changed.lanes.Cindermaw.damage).toBeCloseTo(baseline.lanes.Cindermaw.damage * 3, -1);
-  expect(changed.lanes.Cindermaw.reward.amount).toBeCloseTo(baseline.lanes.Cindermaw.reward.amount * 4, -1);
-  expect(changed.boss!.hp).toBeCloseTo(baseline.boss!.hp * 5, -1);
-  expect(changed.boss!.damage).toBeCloseTo(baseline.boss!.damage * 6, -1);
+  expect(changed.lanes.Cindermaw.hp).toBeCloseTo(baseline.lanes.Cindermaw.hp * 2, -2);
+  expect(changed.lanes.Cindermaw.damage).toBeCloseTo(baseline.lanes.Cindermaw.damage * 3, -2);
+  expect(changed.lanes.Cindermaw.reward.amount).toBeCloseTo(baseline.lanes.Cindermaw.reward.amount * 4, -2);
+  expect(changed.boss!.hp).toBeCloseTo(baseline.boss!.hp * 5, -2);
+  expect(changed.boss!.damage).toBeCloseTo(baseline.boss!.damage * 6, -3);
   expect(changed.boss!.rewards).toEqual({});
   settings.maps.tutorial_forest.bossHealth = 9;
   expect(resolveMapBalance('endless_1', settings, 1).boss!.hp).toBe(changed.boss!.hp);
@@ -96,20 +96,20 @@ describe('Endless carries on from map 15', () => {
     const map15 = damageCamp(resolveMapBalance('ion_citadel', settings, 0));
     for (const depth of [1, 2, 3, 10]) {
       const lane = resolveMapBalance(`endless_${depth}`, settings, 0).lanes.Cindermaw;
-      expect(lane.hp / map15.hp / CURVE_STEPS.health ** depth).toBeCloseTo(1, 9);
-      expect(lane.damage / map15.damage / CURVE_STEPS.damage ** depth).toBeCloseTo(1, 9);
-      expect(lane.reward.amount / map15.reward.amount / CURVE_STEPS.reward ** depth).toBeCloseTo(1, 9);
+      expect(lane.hp / map15.hp / CURVE_STEPS.health ** depth).toBeCloseTo(1, 4);
+      expect(lane.damage / map15.damage / CURVE_STEPS.damage ** depth).toBeCloseTo(1, 4);
+      expect(lane.reward.amount / map15.reward.amount / CURVE_STEPS.reward ** depth).toBeCloseTo(1, 4);
     }
     // Elites grow at the same step as their regulars, so their share of a hit stays put.
     const e1 = resolveMapBalance('endless_1', settings, 0).lanes, e5 = resolveMapBalance('endless_5', settings, 0).lanes;
-    expect(e5['Dread Warden'].damage / e5.Cindermaw.damage).toBeCloseTo(e1['Dread Warden'].damage / e1.Cindermaw.damage, 9);
+    expect(e5['Dread Warden'].damage / e5.Cindermaw.damage).toBeCloseTo(e1['Dread Warden'].damage / e1.Cindermaw.damage, 4);
   });
   it('carries map 15 tuning into Endless once, without compounding it', () => {
     const plain = defaultBalanceSettings(), tuned = defaultBalanceSettings();
     tuned.maps.ion_citadel.enemyHealth = 2;
     for (const depth of [1, 5, 20]) {
       const ratio = resolveMapBalance(`endless_${depth}`, tuned, 0).lanes.Cindermaw.hp / resolveMapBalance(`endless_${depth}`, plain, 0).lanes.Cindermaw.hp;
-      expect(ratio).toBeCloseTo(2, 9);
+      expect(ratio).toBeCloseTo(2, 4);
     }
   });
   it("keeps every Endless lane its own stat, including map 15's elite-only regen camp", () => {
@@ -119,9 +119,10 @@ describe('Endless carries on from map 15', () => {
   });
 });
 
-it("holds the baseline: map 1's Spitters have 18 health and pay 1 damage a kill", () => {
+it("holds the baseline: map 1's Spitters have 18 health, hit 12 and pay 1 damage a kill", () => {
   const spitter = resolveMapBalance('tutorial_forest', defaultBalanceSettings(), 0).enemies.Spitter;
   expect(spitter.hp).toBe(18);
+  expect(spitter.damage).toBe(12);
   expect(spitter.reward).toEqual({ type: 'damage', amount: 1 });
 });
 
@@ -130,26 +131,26 @@ it("keeps map 1's Brambles at 42 health so a fresh Reflect Only run can kill one
   expect(bramble).toMatchObject({ hp: 42, damage: 14, reward: { type: 'health', amount: 11 } });
 });
 
+// The curve rounds its numbers to 6 significant digits, so its ratios hold to 4 places.
 it('grows every map by the curve steps, each role a fixed multiple of its damage camp', () => {
   const camps = CAMPAIGN_MAPS.map(({ id }) => damageCamp(resolveMapBalance(id, defaultBalanceSettings(), 0)));
   for (let i = 2; i < camps.length; i++) {
-    expect(camps[i].hp / camps[i - 1].hp).toBeCloseTo(CURVE_STEPS.health, 9);
-    expect(camps[i].damage / camps[i - 1].damage).toBeCloseTo(CURVE_STEPS.damage, 9);
-    expect(camps[i].reward.amount / camps[i - 1].reward.amount).toBeCloseTo(CURVE_STEPS.reward, 9);
+    expect(camps[i].hp / camps[i - 1].hp).toBeCloseTo(CURVE_STEPS.health, 4);
+    expect(camps[i].damage / camps[i - 1].damage).toBeCloseTo(CURVE_STEPS.damage, 4);
+    expect(camps[i].reward.amount / camps[i - 1].reward.amount).toBeCloseTo(CURVE_STEPS.reward, 4);
   }
   // From map 2 on, on top of the map's step: hits CURVE_HIT_LEVEL up, and the floor raises health and hits and lowers pay.
-  expect(camps[1].hp / camps[0].hp).toBeCloseTo(CURVE_STEPS.health * CURVE_FLOOR.health, 9);
-  expect(camps[1].damage / camps[0].damage).toBeCloseTo(CURVE_STEPS.damage * CURVE_HIT_LEVEL * CURVE_FLOOR.health, 9);
-  expect(camps[1].reward.amount / camps[0].reward.amount).toBeCloseTo(CURVE_STEPS.reward / CURVE_FLOOR.pay, 9);
+  expect(camps[1].hp / camps[0].hp).toBeCloseTo(CURVE_STEPS.health * CURVE_FLOOR.health, 4);
+  expect(camps[1].damage / camps[0].damage).toBeCloseTo(CURVE_STEPS.damage * CURVE_HIT_LEVEL * CURVE_FLOOR.health, 4);
+  expect(camps[1].reward.amount / camps[0].reward.amount).toBeCloseTo(CURVE_STEPS.reward / CURVE_FLOOR.pay, 4);
   for (const { id } of CAMPAIGN_MAPS) {
     const snapshot = resolveMapBalance(id, defaultBalanceSettings(), 0), camp = damageCamp(snapshot);
     for (const [kind, enemy] of Object.entries(snapshot.enemies)) {
-      if (kind === 'Spitter' || kind === 'Bramble' || enemy.reward.type === 'speed' || enemy.reward.type === 'crit') continue;
+      if (id === 'tutorial_forest' && CURVE_FOREST_ENEMIES[kind] || enemy.reward.type === 'speed' || enemy.reward.type === 'crit') continue;
       const role = CURVE_ROLES[`${enemy.elite ? 'elite' : 'regular'}:${enemy.reward.type}`];
-      expect(enemy.hp / camp.hp, `${id} ${kind}`).toBeCloseTo(role.hp, 9);
-      expect(enemy.damage / camp.damage, `${id} ${kind}`).toBeCloseTo(role.damage, 9);
-      // The Forest's King Slime pays its authored 50 health.
-      if (kind !== 'King Slime') expect(enemy.reward.amount / camp.reward.amount, `${id} ${kind}`).toBeCloseTo(role.reward, 9);
+      expect(enemy.hp / camp.hp / role.hp, `${id} ${kind}`).toBeCloseTo(1, 4);
+      expect(enemy.damage / camp.damage / role.damage, `${id} ${kind}`).toBeCloseTo(1, 4);
+      expect(enemy.reward.amount / camp.reward.amount / role.reward, `${id} ${kind}`).toBeCloseTo(1, 4);
     }
   }
 });

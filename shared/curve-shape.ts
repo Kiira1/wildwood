@@ -6,7 +6,8 @@
  *   maps 2-15 (the Forest's regular regen camp, a role no other map has, its own).
  * - CURVE_BOSS_HEALTH: every boss against its damage camp's health.
  * - CURVE_BOSS_ATTACKS: each boss's attacks against its damage camp's hit.
- * The Forest's Spitter keeps its authored numbers.
+ * - CURVE_FOREST_ENEMIES: Tutorial Forest enemies shaped apart from their role, against the same damage camp.
+ * The curve's numbers are rounded to 6 significant digits (map-balance.ts), so these shares land on whole targets.
  */
 export type CurveStats = { readonly hp: number; readonly damage: number; readonly reward: number };
 
@@ -19,6 +20,12 @@ export const CURVE_ROLES: Readonly<Record<string, CurveStats>> = Object.freeze({
   "elite:damage": { hp: 2.51683, damage: 1.6354, reward: 3.51791 },
   "elite:regen": { hp: 1.70195, damage: 0.978002, reward: 4.30226 },
   "regular:regen": { hp: 2.3, damage: 1.96341, reward: 1.55556 },
+});
+/** Forest enemies' own shares of its damage camp, over their role's (0.916.23: Spitter 18 health, 12 hit, 1 damage; Bramble 42/14/11; King Slime pays 50). */
+export const CURVE_FOREST_ENEMIES: Readonly<Record<string, Partial<CurveStats>>> = Object.freeze({
+  Spitter: { hp: 0.188182, damage: 0.420732, reward: 0.518519 },
+  Bramble: { hp: 0.439091, damage: 0.490854, reward: 5.70371 },
+  "King Slime": { reward: 25.92594 },
 });
 export const CURVE_BOSS_HEALTH = 73.713;
 export const CURVE_BOSS_ATTACKS: Readonly<Record<string, Readonly<Record<string, number>>>> = Object.freeze({
