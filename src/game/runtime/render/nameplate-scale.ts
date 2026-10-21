@@ -18,15 +18,17 @@ export function plateFont(px: number) {
   return `900 ${+plateSize(px).toFixed(2)}px ${PLATE_FONT_FAMILY}`;
 }
 
-/** Outlines under this would stop reading as an outline: a 2px stroke shows 1px outside the glyph. */
-export const PLATE_MIN_STROKE = 2;
+/** Outlines under this would stop reading as an outline: a 2.4px stroke shows 1.2px outside the glyph. */
+export const PLATE_MIN_STROKE = 2.4;
+/** Strokes under this are hairlines on purpose (the health bar's numbers) and keep their width. */
+const PLATE_HAIRLINE_STROKE = 2;
 
 /**
  * A plate text outline: the scaled stroke, its visible outline one pixel
  * thinner (canvas strokes half outside the glyph, so 2 off the width), never
- * thinner than PLATE_MIN_STROKE; one already under that keeps its width.
+ * thinner than PLATE_MIN_STROKE; a hairline keeps its width.
  */
 export function plateStroke(px: number) {
   const scaled = plateSize(px);
-  return scaled <= PLATE_MIN_STROKE ? scaled : Math.max(PLATE_MIN_STROKE, scaled - 2);
+  return scaled < PLATE_HAIRLINE_STROKE ? scaled : Math.max(PLATE_MIN_STROKE, scaled - 2);
 }

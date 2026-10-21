@@ -1,5 +1,5 @@
 import { replaceChildrenIfChanged } from "../../../ui/replace-children-if-changed";
-import { drawPlayerPowerLabel, playerPowerIconBox } from "../player-power-label";
+import { drawPlayerPowerLabel } from "../player-power-label";
 import { residentImage } from "./resident-image";
 import { applyProfileIcon, createProfileIconCanvasPainter } from "../../../app/profile-icons";
 import { setProfileSnapshotSource } from "../../../app/profile-snapshot-portraits";
@@ -27,7 +27,7 @@ import { healthBarTextY } from "./health-bar-layout";
 import { drawScreenSpaceAt } from "./render-space";
 import { OVERHEAD_IDENTITY_LIFT, OVERHEAD_PLATE_GAP, headArtTopOffsetY } from "./overhead-plate";
 import { NAMEPLATE_SCALE, plateFont, platePixels, plateSize, plateStroke } from "./nameplate-scale";
-import { iconInk, stackPlateLines, textInk, unionInk, type LineInk } from "./plate-stack";
+import { plateIconBox, stackPlateLines, textInk, type LineInk } from "./plate-stack";
 import type { PlayerState } from "../types";
 
 type OutlinedText = (text: string, x: number, y: number, color: string, strokeWidth?: number) => void;
@@ -48,16 +48,16 @@ const SPEECH_BUBBLE_LIFT = plateSize(76);
 const BARE_HEAD_TOP = headArtTopOffsetY(undefined, undefined);
 /** The size chat, the HUD and the profile give it, at plate scale. */
 const OVERHEAD_PRESTIGE_BADGE_SIZE = plateSize(PRESTIGE_BADGE_PX);
-const OVERHEAD_PRESTIGE_DIGIT_FONT = plateFont(Math.round(PRESTIGE_BADGE_PX * .64));
+/** The badge digit's size against the badge. */
+const PRESTIGE_DIGIT_SHARE = .7;
 /** Tucked back towards the name, which reads tighter than a full gap. */
 const OVERHEAD_GENDER_ICON_OFFSET_X = plateSize(-1);
-const OVERHEAD_GENDER_ICON_HEIGHT = plateSize(15);
 const OVERHEAD_GENDER_ICON_GAP = plateSize(3);
 const OVERHEAD_BADGE_GAP = plateSize(1);
-/** Icons on the name line, relative to its baseline: the gender icon stands on it, the badge a pixel below. */
-const GENDER_ICON_BOX = { top: -OVERHEAD_GENDER_ICON_HEIGHT, bottom: 0 };
-const PRESTIGE_BADGE_BOX = { top: plateSize(1) - OVERHEAD_PRESTIGE_BADGE_SIZE, bottom: plateSize(1) };
-const POWER_ICON_BOX = playerPowerIconBox(NAMEPLATE_SCALE);
+/** Where each icon's artwork sits down its box, so the ink rather than the box is centred. */
+const GENDER_ART = { inkTop: .016, inkBottom: .979 };
+const PRESTIGE_BADGE_ART = { inkTop: .028, inkBottom: .904 };
+const POWER_ART = { inkTop: .027, inkBottom: .953 };
 /** Names, power and the health bar's numbers share one size (10px before plate scale). */
 const PLATE_TEXT_PX = plateSize(10);
 const PLATE_TEXT_FONT = plateFont(10);
@@ -93,33 +93,19 @@ export function plateTextInk(metrics: TextMetrics | { width: number; actualBound
 /**
  * Where each line of a player's plate goes: bar, power, name, "(guest)", then
  * "Invisible", stacked from `floor` (the bar's frame top) with the same space
- * between each line's ink. A line's ink is its outlined text and its icons
- * together, so a badge or a descender no longer crowds the line above it.
+ * between each line's outlined text. Icons do not count, so every plate is spaced alike.
  */
 export function layoutPlayerPlate(plate: {
   floor: number;
   power: PlateTextMetrics | null;
-  powerIcon: boolean;
   name: PlateTextMetrics | null;
-  badge: boolean;
-  genderIcon: boolean;
   guest: PlateTextMetrics | null;
   invisible: PlateTextMetrics | null;
 }) {
   const lines: LineInk[] = [];
   const slots: Array<"power" | "name" | "guest" | "invisible"> = [];
-  if (plate.power) {
-    const text = textInk(plate.power, NAME_STROKE);
-    lines.push(plate.powerIcon ? unionInk(text, iconInk(POWER_ICON_BOX.top, POWER_ICON_BOX.bottom)) : text);
-    slots.push("power");
-  }
-  if (plate.name) {
-    const inks = [textInk(plate.name, NAME_STROKE)];
-    if (plate.badge) inks.push(iconInk(PRESTIGE_BADGE_BOX.top, PRESTIGE_BADGE_BOX.bottom));
-    if (plate.genderIcon) inks.push(iconInk(GENDER_ICON_BOX.top, GENDER_ICON_BOX.bottom));
-    lines.push(unionInk(inks[0], ...inks.slice(1)));
-    slots.push("name");
-  }
+  if (plate.power) { lines.push(textInk(plate.power, NAME_STROKE)); slots.push("power"); }
+  if (plate.name) { lines.push(textInk(plate.name, NAME_STROKE)); slots.push("name"); }
   if (plate.guest) { lines.push(textInk(plate.guest, SUBLINE_STROKE)); slots.push("guest"); }
   if (plate.invisible) { lines.push(textInk(plate.invisible, NAME_STROKE)); slots.push("invisible"); }
   const stack = stackPlateLines(lines, plate.floor, PLATE_LINE_GAP);
@@ -130,6 +116,24 @@ export function layoutPlayerPlate(plate: {
     top: stack.top,
     /** Each line's ink from top to bottom, bottom line first. */
     boxes: lines.map((line, index) => ({ top: stack.baselines[index] - line.above, bottom: stack.baselines[index] + line.below })),
+  };
+}
+
+/** Icons are drawn as tall as their line's outlined capitals, so they read as part of it. */
+const PLATE_ICON_INK = (capHeight: number) => capHeight + NAME_STROKE;
+/** The badge a pixel over that, room for its digit; still inside the gaps. */
+const PLATE_BADGE_EXTRA = 1;
+
+/** The power, badge and gender icons' boxes, relative to their line's baseline, for the plate font's cap height. */
+export function plateIcons(capHeight: number) {
+  const badge = plateIconBox(capHeight, PLATE_ICON_INK(capHeight) + PLATE_BADGE_EXTRA, PRESTIGE_BADGE_ART);
+  return {
+    power: plateIconBox(capHeight, PLATE_ICON_INK(capHeight), POWER_ART),
+    gender: plateIconBox(capHeight, PLATE_ICON_INK(capHeight), GENDER_ART),
+    badge,
+    // The digit fills more of a badge this small, its outline shrunk with it, so it stays readable.
+    badgeDigitFont: plateFont(badge.size * PRESTIGE_DIGIT_SHARE / NAMEPLATE_SCALE),
+    badgeDigitStroke: SUBLINE_STROKE * badge.size / OVERHEAD_PRESTIGE_BADGE_SIZE,
   };
 }
 
@@ -414,6 +418,15 @@ export function createPlayerIdentityRenderer(options: {
     return metrics;
   }
 
+  let icons: ReturnType<typeof plateIcons> | null = null;
+  let iconsCapHeight = 0;
+  /** The icons for the current font, sized once (the font's cap height is measured, not guessed). */
+  function currentPlateIcons() {
+    const capHeight = measurePlateText("H", PLATE_TEXT_PX).ascent;
+    if (!icons || capHeight !== iconsCapHeight) { icons = plateIcons(capHeight); iconsCapHeight = capHeight; }
+    return icons;
+  }
+
   /** Lift from the anchor to the top of each player's plate this frame, for the speech bubble drawn after it. */
   const plateTops = new Map<string, number>();
 
@@ -428,6 +441,7 @@ export function createPlayerIdentityRenderer(options: {
     const nameMetrics = displayName ? measurePlateText(displayName, PLATE_TEXT_PX) : null;
     const powerMetrics = powerValue ? measurePlateText(powerValue, PLATE_TEXT_PX) : null;
     const guestMetrics = guest ? measurePlateText(GUEST_LABEL, PLATE_TEXT_PX) : null;
+    const iconBoxes = currentPlateIcons();
     const gender = explicitGender ?? options.playerGender(identity);
     const genderIcon = nameMetrics && (gender === PLAYER_GENDER_MALE || gender === PLAYER_GENDER_FEMALE)
       ? residentGender[gender]()
@@ -446,10 +460,7 @@ export function createPlayerIdentityRenderer(options: {
     const layout = layoutPlayerPlate({
       floor,
       power: powerMetrics,
-      powerIcon: Boolean(powerIcon),
       name: nameMetrics,
-      badge: Boolean(badge),
-      genderIcon: Boolean(genderIcon),
       guest: guestMetrics,
       invisible: invisibleMetrics,
     });
@@ -457,9 +468,10 @@ export function createPlayerIdentityRenderer(options: {
     ctx.textBaseline = "alphabetic";
     if (nameMetrics && layout.name !== null) {
       const baseline = layout.name;
-      const genderIconWidth = genderIcon ? OVERHEAD_GENDER_ICON_HEIGHT * genderIcon.width / genderIcon.height : 0;
+      const genderIconHeight = iconBoxes.gender.size;
+      const genderIconWidth = genderIcon ? genderIconHeight * genderIcon.width / genderIcon.height : 0;
       const genderIconGap = genderIcon ? OVERHEAD_GENDER_ICON_GAP : 0;
-      const badgeSize = badge ? OVERHEAD_PRESTIGE_BADGE_SIZE : 0;
+      const badgeSize = badge ? iconBoxes.badge.size : 0;
       const badgeGap = badge ? OVERHEAD_BADGE_GAP : 0;
       const nameWidth = nameMetrics.width;
       const labelWidth = nameWidth + badgeGap + badgeSize + genderIconGap + genderIconWidth;
@@ -475,16 +487,16 @@ export function createPlayerIdentityRenderer(options: {
       }
       if (badge) {
         ctx.imageSmoothingEnabled = true;
-        const badgeTop = baseline + PRESTIGE_BADGE_BOX.top;
+        const badgeTop = baseline + iconBoxes.badge.top;
         ctx.drawImage(badge, badgeLeft, badgeTop, badgeSize, badgeSize);
         // White with the same outline every other overhead label carries. The
         // digit is drawn at .515 rather than the middle because "middle" centres
         // the font's em box, not the ink, and the shield's own centre is above
         // the middle of its square; measured, the two land together there.
-        ctx.font = OVERHEAD_PRESTIGE_DIGIT_FONT;
+        ctx.font = iconBoxes.badgeDigitFont;
         ctx.textAlign = "center";
         ctx.textBaseline = "middle";
-        options.outlinedText(String(prestige), badgeLeft + badgeSize / 2, badgeTop + badgeSize * .515, "#ffffff", SUBLINE_STROKE);
+        options.outlinedText(String(prestige), badgeLeft + badgeSize / 2, badgeTop + badgeSize * .515, "#ffffff", iconBoxes.badgeDigitStroke);
         ctx.textBaseline = "alphabetic";
         ctx.font = PLATE_TEXT_FONT;
       }
@@ -493,9 +505,9 @@ export function createPlayerIdentityRenderer(options: {
         ctx.drawImage(
           genderIcon,
           textLeft + nameWidth + badgeGap + badgeSize + genderIconGap + OVERHEAD_GENDER_ICON_OFFSET_X,
-          baseline + GENDER_ICON_BOX.top,
+          baseline + iconBoxes.gender.top,
           Math.round(genderIconWidth),
-          OVERHEAD_GENDER_ICON_HEIGHT,
+          genderIconHeight,
         );
       }
     }
@@ -504,7 +516,7 @@ export function createPlayerIdentityRenderer(options: {
       options.outlinedText(GUEST_LABEL, centerX, layout.guest, "#a9b1ad", SUBLINE_STROKE);
     }
     if (powerValue && layout.power !== null) {
-      drawPlayerPowerLabel(ctx, options.outlinedText, powerIcon, powerValue, centerX, layout.power, { scale: NAMEPLATE_SCALE, strokeWidth: NAME_STROKE, baseline: "alphabetic" });
+      drawPlayerPowerLabel(ctx, options.outlinedText, powerIcon, powerValue, centerX, layout.power, { scale: NAMEPLATE_SCALE, strokeWidth: NAME_STROKE, baseline: "alphabetic", iconBox: iconBoxes.power });
     }
     if (invisibleMetrics && layout.invisible !== null) {
       ctx.font = INVISIBLE_FONT;

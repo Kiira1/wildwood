@@ -28,6 +28,8 @@ export type PlayerPowerLabelStyle = {
   strokeWidth?: number;
   /** "bottom" puts `y` at the digits' bottom; "alphabetic" at their baseline. */
   baseline?: "bottom" | "alphabetic";
+  /** The icon's square relative to `y`, when the caller sizes it to its line. */
+  iconBox?: { top: number; size: number };
 };
 
 /** One rendering path for overhead power in the world and character previews. */
@@ -46,7 +48,7 @@ export function drawPlayerPowerLabel(
   ctx.font = playerPowerFont(scale);
   ctx.textBaseline = style.baseline ?? "bottom";
   ctx.textAlign = "left";
-  const iconBox = icon ? playerPowerIconBox(scale) : null;
+  const iconBox = icon ? style.iconBox ?? playerPowerIconBox(scale) : null;
   const iconGap = icon ? 3 * scale : 0;
   const textWidth = ctx.measureText(value).width;
   const left = centerX - (textWidth + (iconBox?.size ?? 0) + iconGap) / 2;

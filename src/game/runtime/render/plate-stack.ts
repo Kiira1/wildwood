@@ -6,21 +6,6 @@ export function textInk(metrics: { ascent: number; descent: number }, stroke: nu
   return { above: metrics.ascent + stroke / 2, below: metrics.descent + stroke / 2 };
 }
 
-/** An icon drawn from `top` to `bottom`, relative to the baseline (up is negative). */
-export function iconInk(top: number, bottom: number): LineInk {
-  return { above: -top, below: bottom };
-}
-
-/** A line's text and icons together. */
-export function unionInk(first: LineInk, ...rest: LineInk[]): LineInk {
-  let above = first.above, below = first.below;
-  for (const ink of rest) {
-    above = Math.max(above, ink.above);
-    below = Math.max(below, ink.below);
-  }
-  return { above, below };
-}
-
 /**
  * Stacks lines upwards from `floor`, `gap` between one line's ink and the next,
  * so the spaces look even whatever each line holds. Baselines come back
@@ -35,4 +20,14 @@ export function stackPlateLines(lines: readonly LineInk[], floor: number, gap: n
     edge = baseline - line.above;
   }
   return { baselines, top: edge };
+}
+
+/** Where an icon's artwork starts and ends down its box, 0 to 1. */
+export type IconArt = { inkTop: number; inkBottom: number };
+
+/** An icon's box on a line of text, its ink `inkHeight` tall and centred on the capitals. Relative to the baseline. */
+export function plateIconBox(capHeight: number, inkHeight: number, art: IconArt) {
+  const size = inkHeight / (art.inkBottom - art.inkTop);
+  const top = -capHeight / 2 - size * (art.inkTop + art.inkBottom) / 2;
+  return { top, size, inkTop: top + size * art.inkTop, inkBottom: top + size * art.inkBottom };
 }

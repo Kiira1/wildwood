@@ -5,10 +5,9 @@ import {
   activeSpeechBubbleMessages,
   displayedPlayerPowerProgress,
   layoutPlayerPlate,
+  plateIcons,
   plateTextInk,
 } from "./player-identity-renderer";
-import { PRESTIGE_BADGE_PX } from "../../../../shared/prestige";
-import { plateSize } from "./nameplate-scale";
 
 function message(sender: string, text: string, sentAtMs: number, senderName = sender, replayId = 0n) {
   return { id: BigInt(sentAtMs), sender, senderName, message: text, replayId, sentAtMs };
@@ -74,18 +73,24 @@ describe("player identity renderer", () => {
       return result;
     }
 
-    it("leaves the same space under the power line, the name and \"(guest)\" for a guest with a prestige badge", () => {
-      const plate = layoutPlayerPlate({ floor, power: digits, powerIcon: true, name: plainName, badge: true, genderIcon: true, guest: guestLine, invisible: null });
+    it("leaves the same space under the power line, the name and \"(guest)\", and keeps icons clear of the next line's text", () => {
+      const plate = layoutPlayerPlate({ floor, power: digits, name: plainName, guest: guestLine, invisible: null });
       expect(plate.boxes).toHaveLength(3);
       for (const gap of gaps(plate.boxes)) expect(gap).toBeCloseTo(PLATE_LINE_GAP);
-      // The badge, not the text, sets the name line's height.
-      expect(plate.boxes[1].bottom - plate.boxes[1].top).toBeGreaterThanOrEqual(plateSize(PRESTIGE_BADGE_PX));
       expect(plate.top).toBe(plate.boxes[2].top);
+      // Icons are centred on the capitals and stay clear of the lines above and below.
+      const icons = plateIcons(digits.ascent);
+      expect(plate.power! + icons.power.inkTop).toBeGreaterThanOrEqual(plate.boxes[1].bottom - 1e-9);
+      expect(plate.power! + icons.power.inkBottom).toBeLessThanOrEqual(floor + 1e-9);
+      for (const icon of [icons.badge, icons.gender]) {
+        expect(plate.name! + icon.inkTop).toBeGreaterThanOrEqual(plate.boxes[2].bottom - 1e-9);
+        expect(plate.name! + icon.inkBottom).toBeLessThanOrEqual(plate.boxes[0].top + 1e-9);
+      }
     });
 
     it("keeps the spaces even when a name hangs below its baseline", () => {
-      const plain = layoutPlayerPlate({ floor, power: digits, powerIcon: true, name: plainName, badge: false, genderIcon: true, guest: guestLine, invisible: null });
-      const hanging = layoutPlayerPlate({ floor, power: digits, powerIcon: true, name: hangingName, badge: false, genderIcon: true, guest: guestLine, invisible: null });
+      const plain = layoutPlayerPlate({ floor, power: digits, name: plainName, guest: guestLine, invisible: null });
+      const hanging = layoutPlayerPlate({ floor, power: digits, name: hangingName, guest: guestLine, invisible: null });
       for (const gap of gaps(hanging.boxes)) expect(gap).toBeCloseTo(PLATE_LINE_GAP);
       // The name rises by exactly its descender, and "(guest)" with it.
       expect(plain.name! - hanging.name!).toBeCloseTo(1.7);
@@ -93,7 +98,7 @@ describe("player identity renderer", () => {
     });
 
     it("puts \"Invisible\" an even space over the rest", () => {
-      const plate = layoutPlayerPlate({ floor, power: null, powerIcon: false, name: plainName, badge: false, genderIcon: false, guest: null, invisible: guestLine });
+      const plate = layoutPlayerPlate({ floor, power: null, name: plainName, guest: null, invisible: guestLine });
       for (const gap of gaps(plate.boxes)) expect(gap).toBeCloseTo(PLATE_LINE_GAP);
       expect(plate.invisible).not.toBeNull();
     });

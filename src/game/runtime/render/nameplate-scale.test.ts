@@ -18,12 +18,12 @@ describe("overhead plate scale", () => {
     expect(OVERHEAD_PLATE_GAP).toBeCloseTo(3 * NAMEPLATE_SCALE);
   });
 
-  it("draws plate outlines a pixel thinner, but never thinner than a 1px outline", () => {
+  it("draws plate outlines a pixel thinner, but never thinner than a 1.2px outline", () => {
     // Canvas strokes half outside the glyph: a pixel off the outline is two off the width.
     expect(plateStroke(4)).toBe(PLATE_MIN_STROKE);
     expect(plateStroke(3)).toBe(PLATE_MIN_STROKE);
     expect(plateStroke(6)).toBeCloseTo(6 * NAMEPLATE_SCALE - 2);
-    // Already under a 1px outline: kept, not thickened.
+    // A hairline (the health numbers): kept, not thickened.
     expect(plateStroke(2)).toBeCloseTo(2 * NAMEPLATE_SCALE);
   });
 });
