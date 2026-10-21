@@ -3,6 +3,7 @@ export const RELEASE_NOTES: Record<string, string[]> = {
     "Small balancing",
     "Skipping the tutorial gives the same starting stats as finishing it",
     "Tutorial Forest grass is tidier and the white specks are gone",
+    "Softer outlines and matching shadows across the interface",
   ],
   "0.916.22": [
     "While You Were Away shows the gold you earned",
