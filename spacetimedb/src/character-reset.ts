@@ -11,6 +11,7 @@ import { reflectRewardsInPlay } from "./prestige-challenge";
 import { savedAttackRange, effectiveMovementSpeedForProgress } from "./player-speed";
 import { autoEquip, ensurePlayerLifetime, powerFieldsForProgress } from "./player-power";
 import { SUPERIOR_GOLDEN_HELMET } from "../../shared/items";
+import { QUEST_BOARD_SEEN_BIT } from "../../shared/portal-cutscenes";
 import { updateSnapshotRow, insertSnapshotRow, deleteSnapshotRow } from "./snapshot-row-writes";
 import { removeResearchCompletionSchedules } from "./research-runtime";
 import { removePausedResearch } from "./research-pause";
@@ -62,7 +63,7 @@ export function resetProgressToDefaults(ctx: any, activePlayer: any, keep: { res
     if (current) next.cosmeticItemsJson = current.cosmeticItemsJson;
     if (keep.research) next.attackRange = savedAttackRange(ctx, ctx.sender);
     const history = ctx.db.playerCutsceneHistory.identity.find(ctx.sender);
-    if (history) ctx.db.playerCutsceneHistory.identity.update({ ...history, seenMask: 0, generation: history.generation + 1 });
+    if (history) ctx.db.playerCutsceneHistory.identity.update({ ...history, seenMask: history.seenMask & QUEST_BOARD_SEEN_BIT, generation: history.generation + 1 });
     else ctx.db.playerCutsceneHistory.insert({ identity: ctx.sender, seenMask: 0, generation: 0 });
     if (current && keep.items) Object.assign(next, autoEquip.keepBagThroughPrestige(ctx, next, current));
     if (current && inventoryForProgress(current).includes(SUPERIOR_GOLDEN_HELMET)) {

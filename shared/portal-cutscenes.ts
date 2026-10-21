@@ -8,6 +8,9 @@ export const PORTAL_CUTSCENES = [
   { id: "wildwood-samurai-portal-cutscene-v1", unlock: "samuraiUnlocked" },
 ] as const;
 
+/** Not a cutscene: set once the player opens the Quest Board, after which the HUD shows quests. Survives resets. */
+export const QUEST_BOARD_SEEN_BIT = 1 << 16;
+
 export type PortalUnlockProgress = Partial<Record<(typeof PORTAL_CUTSCENES)[number]["unlock"] | "cloudspireUnlocked" | "moonfenUnlocked" | "crystalHollowsUnlocked" | "clockworkRuinsUnlocked" | "duskfallOrchardUnlocked" | "neonBastionUnlocked" | "verdantCatacombsUnlocked" | "ionCitadelUnlocked", boolean>>;
 export function portalCutsceneBit(id: string) {
   const index = PORTAL_CUTSCENES.findIndex((scene) => scene.id === id);

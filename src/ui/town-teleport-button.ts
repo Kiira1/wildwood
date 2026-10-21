@@ -70,7 +70,8 @@ export function bindTownTeleportButton(
     update();
   }
 
-  button.addEventListener("click", async () => {
+  /** One teleport through the button: the chat hold, closing windows, the failure line and the cooldown. */
+  async function go(teleport = options.teleport) {
     if (button.disabled) return;
     const held = heldUntil - performance.now();
     if (held > 0) {
@@ -81,7 +82,7 @@ export function bindTownTeleportButton(
     let changed = false;
     try {
       options.beforeTeleport();
-      changed = await options.teleport();
+      changed = await teleport();
       if (!changed) options.showFailure(false);
     } catch {
       options.showFailure(true);
@@ -92,5 +93,8 @@ export function bindTownTeleportButton(
         button.disabled = false;
       }
     }
-  });
+  }
+  button.addEventListener("click", () => { void go(); });
+  /** Can a teleport start now (not cooling down), and the same teleport to another landing. */
+  return { ready: () => !button.disabled, go };
 }

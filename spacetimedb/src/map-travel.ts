@@ -8,6 +8,7 @@ import { isProceduralMap, PROCEDURAL_ENTRY_BOSS, generateMap, PROCEDURAL_ENTRY_M
 import { isSoulMap, soulReturnOpenFor, worldBoundsFor, requireSoulDimensionOpen, SOUL_TOWN_PORTAL, SOUL_ARRIVAL } from "./soul-dimension";
 import { isGuildHallMap, guildHallMember, enterGuildHall } from "./guild-hall";
 import { isTownMap, TOWN_MAP_ID, TOWN_ARRIVAL, townPortalUsePoints } from "./town";
+import { TOWN_DOORS, TOWN_RESEARCH_POSITION } from "../../shared/town";
 import { CAMPAIGN_GATEWAYS, portalUsePoint, campaignLanding, endlessEntryPortal, exitPortalFor, portalArrival } from "../../shared/map-gateways";
 import { requireControllingPlayer, isDeveloperIdentity } from "./session-guards";
 import { activeDuelFor } from "./duel-runtime";
@@ -65,13 +66,7 @@ export function changePlayerMap(ctx: ModuleReducerCtx, { mapId, x, y }: { mapId:
         && [saved.x, saved.y, saved.facing].every(Number.isFinite)
         ? saved : { mapId: TUTORIAL_FOREST_MAP_ID, ...PLAYER_SPAWN, facing: 0 };
       transitionPlayerMap(ctx, current, destination.mapId, destination, destination.facing);
-    } else {
-      if (![x, y].every(Number.isFinite) || x < PLAYER_RADIUS || y < PLAYER_RADIUS || x > worldBoundsFor(current.mapId).width - PLAYER_RADIUS || y > worldBoundsFor(current.mapId).height - PLAYER_RADIUS) throw new SenderError("Invalid teleport position.");
-      const saved = { identity: ctx.sender, mapId: current.mapId, x, y, facing: current.facing };
-      if (isGuildHallMap(current.mapId) || current.mapId === HOME_EXTERIOR_MAP_ID) { /* "Fight" from the Town still goes back to where the fighting was */ } else if (ctx.db.homeReturnLocation.identity.find(ctx.sender)) ctx.db.homeReturnLocation.identity.update(saved);
-      else ctx.db.homeReturnLocation.insert(saved);
-      transitionPlayerMap(ctx, current, TOWN_MAP_ID, TOWN_ARRIVAL);
-    }
+    } else enterTown(ctx, current, x, y, TOWN_ARRIVAL);
     persistWorldLocation(ctx, ctx.db.player.identity.find(ctx.sender));
     return;
   }
@@ -104,6 +99,29 @@ export function changePlayerMap(ctx: ModuleReducerCtx, { mapId, x, y }: { mapId:
   if (portalDistance > MAP_PORTAL_USE_RANGE) throw new SenderError("Move closer to the portal.");
 
   transitionPlayerMap(ctx, current, mapId, arrivalFor(mapId, current.mapId, { x, y }));
+}
+
+/** The Town teleport from another map: remembers where Fight goes back to, then lands at `arrival`. */
+function enterTown(ctx: ModuleReducerCtx, current: any, x: number, y: number, arrival: { x: number; y: number }) {
+  if (![x, y].every(Number.isFinite) || x < PLAYER_RADIUS || y < PLAYER_RADIUS || x > worldBoundsFor(current.mapId).width - PLAYER_RADIUS || y > worldBoundsFor(current.mapId).height - PLAYER_RADIUS) throw new SenderError("Invalid teleport position.");
+  const saved = { identity: ctx.sender, mapId: current.mapId, x, y, facing: current.facing };
+  if (isGuildHallMap(current.mapId) || current.mapId === HOME_EXTERIOR_MAP_ID) { /* "Fight" from the Town still goes back to where the fighting was */ } else if (ctx.db.homeReturnLocation.identity.find(ctx.sender)) ctx.db.homeReturnLocation.identity.update(saved);
+  else ctx.db.homeReturnLocation.insert(saved);
+  transitionPlayerMap(ctx, current, TOWN_MAP_ID, arrival);
+}
+
+/**
+ * The Research Ready hint's tap: the Town teleport, with its checks, landing inside the Research building
+ * instead of on the square. In the Town it only ever moves a player into that room.
+ */
+export function teleportToResearchRoom(ctx: ModuleReducerCtx, { x, y }: { x: number; y: number }) {
+  const current = requireControllingPlayer(ctx);
+  if (activeDuelFor(ctx, ctx.sender)) throw new SenderError("Finish the duel before using a portal.");
+  if (current.hp <= 0) throw new SenderError("Respawn before teleporting to the Town.");
+  const inside = TOWN_DOORS[TOWN_RESEARCH_POSITION.door].inside;
+  if (isTownMap(current.mapId)) transitionPlayerMap(ctx, current, TOWN_MAP_ID, inside);
+  else enterTown(ctx, current, x, y, inside);
+  persistWorldLocation(ctx, ctx.db.player.identity.find(ctx.sender));
 }
 
 /** Why a campaign or Endless map is still shut to the caller, or null when it is open. */

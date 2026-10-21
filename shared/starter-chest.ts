@@ -1,5 +1,4 @@
-import { SWORD_DAMAGE_FACTOR } from "./campaign-equipment";
-import { GRADE_WEAPON_KINDS, gradeItemId, type GradeWeaponKind, type GradeWeaponId } from "./grade-equipment";
+import { GRADE_ITEM_DEFINITIONS, GRADE_WEAPON_KINDS, gradeItemId, type GradeWeaponKind, type GradeWeaponId } from "./grade-equipment";
 import { PLAYER_SPAWN, TUTORIAL_FOREST_MAP_ID } from "./rules";
 import type { WeaponSchool } from "./weapon-mastery";
 
@@ -22,9 +21,12 @@ export const isStarterWeaponKind = (kind: unknown): kind is StarterWeaponKind =>
 /** The Crude piece of a kind. */
 export const starterWeaponId = (kind: StarterWeaponKind): GradeWeaponId => gradeItemId(kind, "crude");
 
+/** The Crude Sword's own damage bonus in percent, read from the item so the chest never says more than it gives. */
+const crudeSwordBonusPercent = () => Math.round((GRADE_ITEM_DEFINITIONS[gradeItemId("sword", "crude")].weapon?.damageMultiplierBonus ?? 0) * 10_000) / 100;
+
 /** The three picks as the window shows them, in this order. */
 export const STARTER_WEAPON_CHOICES: readonly { kind: StarterWeaponKind; name: string; school: WeaponSchool; text: string }[] = [
   { kind: "bow", name: "Crude Bow", school: "archery", text: "Shoots from range" },
-  { kind: "sword", name: "Crude Sword", school: "swordplay", text: `Fights up close, ${SWORD_DAMAGE_FACTOR}x damage` },
+  { kind: "sword", name: "Crude Sword", school: "swordplay", text: `Fights up close · Damage +${crudeSwordBonusPercent()}%` },
   { kind: "staff", name: "Crude Staff", school: "sorcery", text: "Bursting bolts" },
 ];

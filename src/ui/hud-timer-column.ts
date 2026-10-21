@@ -21,6 +21,7 @@ type Dependencies = {
   research: () => ActiveResearch | null;
   upgrades: () => ActiveItemUpgrade[];
   inTown: () => boolean;
+  goToResearch?: () => boolean;
 };
 
 /** The countdowns and reward entry share one column below the minimap. */
@@ -49,7 +50,8 @@ export function createHudTimerColumn(elements: Elements, dependencies: Dependenc
   try { storage = window.localStorage; } catch { /* Continue with session choices. */ }
   // Installed before the ad button, which reads its timer setting on its first render.
   const settings = installHudProgressSettings(elements.settingsPanel, () => { timers.tick(); rewardedGemAd.sync(); }, storage);
-  const reminders = installHudReminders({ column, before: elements.enemyRespawnAdBtn, townButton: elements.townButton, settingsPanel: elements.settingsPanel, inTown: dependencies.inTown, storage });
+  const reminders = installHudReminders({ column, before: elements.enemyRespawnAdBtn, townButton: elements.townButton, settingsPanel: elements.settingsPanel, inTown: dependencies.inTown,
+    goToResearch: dependencies.goToResearch, storage });
   const rewardedGemAd = createRewardedGemAdController({
     button: elements.enemyRespawnAdBtn,
     status: elements.enemyRespawnAdStatus,

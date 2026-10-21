@@ -4,9 +4,10 @@ import { crystalFixture } from "../../tests/helpers/crystal-hollows-fixture";
 import { fillDefeatBudget, reportKills } from "../../tests/helpers/enemy-defeat";
 import { STARTER_BOW } from "../../shared/items";
 import { WEEKLY_QUEST_COUNT, questDay, questWeek } from "../../shared/weekly-quests";
-import { GUILD_POOL_FROM, collectGuildQuests, collectMemberQuests, ensureDailyQuests, guildQuestBonusFor, memberQuestStanding, moveSoloQuestsToGuild, pruneOldGuildQuestWeeks, questCollectStanding, refreshQuestBonus } from "./daily-quests";
+import { GUILD_POOL_FROM, collectGuildQuests, collectMemberQuests, ensureDailyQuests, markQuestHoldersSeenBoard, guildQuestBonusFor, memberQuestStanding, moveSoloQuestsToGuild, pruneOldGuildQuestWeeks, questCollectStanding, refreshQuestBonus } from "./daily-quests";
 import { Identity } from "spacetimedb";
 import { statRewardMultiplier } from "./prestige";
+import { QUEST_BOARD_SEEN_BIT } from "../../shared/portal-cutscenes";
 vi.mock("spacetimedb/server", () => import("../../tests/helpers/spacetime-module"));
 const DAY = 86_400_000_000n;
 
@@ -295,4 +296,15 @@ it("pays a player without a guild bonus 1% for every quest they finished last we
   f.db.guildMember.identity.delete(f.ctx.sender);
   expect(questWeek(questDay(f.ctx.timestamp.microsSinceUnixEpoch))).toBe(questWeek(day) + 1);
   expect(guildQuestBonusFor(f.ctx, f.ctx.sender)).toBeCloseTo(1.01);
+});
+
+it("migration 67 counts everyone who already has quests as having seen the board, keeping their cutscenes", () => {
+  const { f } = questing(false);
+  f.seed("playerCutsceneHistory", { identity: f.ctx.sender, seenMask: 3, generation: 2 });
+  markQuestHoldersSeenBoard(f.ctx);
+  expect(f.db.playerCutsceneHistory.identity.find(f.ctx.sender)).toMatchObject({ seenMask: 3 | QUEST_BOARD_SEEN_BIT, generation: 2 });
+  // Without a history row yet, one is made with the bit.
+  f.db.playerCutsceneHistory.identity.delete(f.ctx.sender);
+  markQuestHoldersSeenBoard(f.ctx);
+  expect(f.db.playerCutsceneHistory.identity.find(f.ctx.sender).seenMask & QUEST_BOARD_SEEN_BIT).toBe(QUEST_BOARD_SEEN_BIT);
 });

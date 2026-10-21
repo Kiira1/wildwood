@@ -28,7 +28,7 @@ import { migrateGuildTags } from "./player-name-tags";
 import { compressLegacyMapPower } from "../../shared/map-power-rescale";
 import { rescaleEndgameProgress, rescaleRankingConflict, rescaleRankingStats } from "../../shared/endgame-power-rescale";
 import { rebaseProgressByEffort } from "../../shared/progression-rebase";
-import { unlockedPortalCutsceneMask } from "../../shared/portal-cutscenes";
+import { QUEST_BOARD_SEEN_BIT, unlockedPortalCutsceneMask } from "../../shared/portal-cutscenes";
 import { HOME_EXTERIOR_MAP_ID } from "../../shared/home";
 import { isTownMap, TOWN_ARRIVAL, TOWN_MAP_ID } from "../../shared/town";
 import { generateMap, isProceduralMap, proceduralMapId, proceduralMapNumber } from "../../shared/procedural-maps";
@@ -36,7 +36,7 @@ import { GEM_KILL_CREDIT_PER_GEM } from "../../shared/gem-drops";
 import { syncPlayerJoinDate } from "./player-join-date";
 import { enrollInPrestigeChallenge } from "./prestige-challenge";
 import { readPlayerProgress, iterPlayerProgress, moveCombatColumnsOntoProgress } from "./wide-stats";
-import { moveSoloQuestsToGuild } from "./daily-quests";
+import { markQuestHoldersSeenBoard, moveSoloQuestsToGuild } from "./daily-quests";
 import { rebuildParkedAggroRun } from "./aggro-challenge";
 import { backfillMiningLevels } from "./mining";
 import { backfillMasteryLevels } from "./weapon-mastery";
@@ -46,7 +46,7 @@ import { activateCardsFromGear } from "./active-cards";
 import { payOutAllOldGear } from "./old-gear-payout";
 import { giveEveryoneStarterWeapons } from "./starter-chest";
 
-export const MODULE_MIGRATION_VERSION = 66;
+export const MODULE_MIGRATION_VERSION = 67;
 
 /**
  * Migration 50 (0.856): the ranking snapshot moves to leaderboard_entry_v2,
@@ -556,6 +556,8 @@ export function createModuleMigrations(deps: ModuleMigrationDeps) {
     if (currentVersion < 65) repinMapBalances(ctx);
     // 66 (0.916.23): Forest Brambles, King Slimes and Spitters re-tuned (curve-shape.ts); visits in the Forest move onto it now.
     if (currentVersion < 66) repinMapBalances(ctx);
+    // 67 (0.916.25): the HUD shows quests only after a Quest Board visit; everyone who already has quests keeps them.
+    if (currentVersion < 67) markQuestHoldersSeenBoard(ctx);
     const next = { id: 0, version: MODULE_MIGRATION_VERSION };
     if (state) ctx.db.moduleMigrationState.id.update(next);
     else ctx.db.moduleMigrationState.insert(next);
@@ -751,7 +753,7 @@ export function createModuleMigrations(deps: ModuleMigrationDeps) {
     if (!samePlayerProgressValues(progress, next)) updateSnapshotRow(ctx, "playerProgress", next);
     if (procedural && procedural.completed !== result.completedEndless) ctx.db.proceduralProgress.identity.update({ ...procedural, completed: result.completedEndless });
     const history = ctx.db.playerCutsceneHistory.identity.find(progress.identity);
-    if (history) ctx.db.playerCutsceneHistory.identity.update({ ...history, seenMask: history.seenMask & unlockedPortalCutsceneMask(next), generation: history.generation + 1 });
+    if (history) ctx.db.playerCutsceneHistory.identity.update({ ...history, seenMask: history.seenMask & (unlockedPortalCutsceneMask(next) | QUEST_BOARD_SEEN_BIT), generation: history.generation + 1 });
     const allowed = (mapId: string) => mapId === HOME_EXTERIOR_MAP_ID || isTownMap(mapId) || mapId === "first_steps"
       || (isProceduralMap(mapId) ? result.mapIndex === 15 && proceduralMapNumber(mapId)! <= result.completedEndless + 1
         : MAP_IDS.indexOf(mapId) >= 0 && MAP_IDS.indexOf(mapId) <= result.mapIndex);

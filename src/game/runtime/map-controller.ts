@@ -247,7 +247,7 @@ export function createMapController(options: {
         } else loadMap(latest.mapId as MapId, latest.x, latest.y, latest.facing);
         snapCameraToPlayer(camera, player, viewport()); resetPresentationState();
         beginTownTeleport(true);
-        if (!destination && !returning) homeDeparture = departure;
+        if ((!destination || destination === "town") && !returning) homeDeparture = departure;
         return true;
       };
       return await withMapDeadline(travel());

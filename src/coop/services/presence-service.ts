@@ -1138,6 +1138,25 @@ export function createPresenceService(dependencies: PresenceServiceDependencies)
    * sends where they stand once the server agrees.
    */
   let movementHeldForMapChange = false;
+  /** Sends a map change, movement held until the server answers. */
+  async function sendMapChange(mapId: string, send: () => unknown) {
+    movementHeldForMapChange = true;
+    try {
+      // Kills still queued go out first but are not waited for: the server takes the map just left's for a while.
+      // Waiting held the trip up to fifteen seconds on a slow reply, then refused it.
+      dependencies.beforeMapChange?.();
+      void dependencies.drainEnemyLoot?.().catch(() => false);
+      await dependencies.reducers.runWorldReducer(send);
+      recordConnectionDiagnostic("portal-complete", { detail: `destination:${mapId}` });
+      return true;
+    } catch (error) {
+      recordConnectionDiagnostic("portal-failed", { detail: `destination:${mapId}; ${error instanceof Error ? error.message : "map-change-failed"}` });
+      dependencies.reducers.handleFailure("map change", error);
+      return false;
+    } finally {
+      movementHeldForMapChange = false;
+    }
+  }
   function syncMovementState(
     x: number,
     y: number,
@@ -1281,22 +1300,13 @@ export function createPresenceService(dependencies: PresenceServiceDependencies)
           !Number.isFinite(y) ||
           !isProceduralMap(mapId) && !isSoulMap(mapId) && !isGuildHallMap(mapId) && !["home_exterior", "town", TUTORIAL_FOREST_MAP_ID, BEGINNER_DESERT_MAP_ID, INTERMEDIATE_SNOWLANDS_MAP_ID, ADVANCED_LAVA_WASTES_MAP_ID, INFERNAL_DEPTHS_MAP_ID, WATER_REACH_MAP_ID, SAMURAI_GARDEN_MAP_ID, CLOUDSPIRE_MAP_ID, MOONFEN_MAP_ID, CRYSTAL_HOLLOWS_MAP_ID, CLOCKWORK_RUINS_MAP_ID, DUSKFALL_ORCHARD_MAP_ID, NEON_BASTION_MAP_ID, VERDANT_CATACOMBS_MAP_ID, ION_CITADEL_MAP_ID].includes(mapId)
         ) return false;
-        movementHeldForMapChange = true;
-        try {
-          // Kills still queued go out first but are not waited for: the server takes the map just left's for a while.
-          // Waiting held the trip up to fifteen seconds on a slow reply, then refused it.
-          dependencies.beforeMapChange?.();
-          void dependencies.drainEnemyLoot?.().catch(() => false);
-          await dependencies.reducers.runWorldReducer(() => connection.reducers.changeMap({ mapId, x, y }));
-          recordConnectionDiagnostic("portal-complete", { detail: `destination:${mapId}` });
-          return true;
-        } catch (error) {
-          recordConnectionDiagnostic("portal-failed", { detail: `destination:${mapId}; ${error instanceof Error ? error.message : "map-change-failed"}` });
-          dependencies.reducers.handleFailure("map change", error);
-          return false;
-        } finally {
-          movementHeldForMapChange = false;
-        }
+        return sendMapChange(mapId, () => connection.reducers.changeMap({ mapId, x, y }));
+      },
+      /** Research Ready's tap: the Town teleport, landing inside the Research building. */
+      async teleportToResearch(x: number, y: number) {
+        const connection = dependencies.reducers.connection();
+        if (dependencies.reducers.protocolBlocked() || dependencies.reducers.worldEntryBlocked() || !connection || !Number.isFinite(x) || !Number.isFinite(y)) return false;
+        return sendMapChange("town", () => connection.reducers.teleportToResearch({ x, y }));
       },
       remotePlayers() {
         const result = remotePlayerRenderBuffer;

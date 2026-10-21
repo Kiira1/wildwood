@@ -10,6 +10,9 @@ export type QuestBoardSource = {
   weeklyQuests?: () => QuestState | null;
   guildQuestRanking?: (week: number) => RankingRow[];
   refreshWeeklyQuests?: () => Promise<unknown>;
+  /** Whether this account has opened the board (null while unknown), and the call that records it. */
+  questBoardSeen?: () => boolean | null;
+  markQuestBoardSeen?: () => void;
   isConnected?: () => boolean;
   serverNowMs?: () => number;
 } | null | undefined;
@@ -185,6 +188,8 @@ export function createQuestBoardController(deps: {
     if (!deps.atHome() || dialog.open) return;
     // Draws today's quests on the server the first time anyone looks.
     void deps.source()?.refreshWeeklyQuests?.()?.catch?.(() => {});
+    // From the first visit on, the HUD tracker shows the quests.
+    deps.source()?.markQuestBoardSeen?.();
     render(); paintTracker();
     deps.clearInput?.();
     deps.pause(true);
@@ -245,6 +250,8 @@ export function createQuestBoardRuntime(deps: Parameters<typeof createQuestBoard
      * pop-ups have shown, so the two never disagree.
      */
     trackerView(mapId: string) {
+      // Nothing on the HUD until the player has found the board in Town.
+      if (deps.source()?.questBoardSeen?.() !== true) return null;
       const state = deps.source()?.weeklyQuests?.() ?? null;
       if (state && state.day !== shownDay) { shown.clear(); shownDay = state.day; }
       return questTrackerView(state, mapId, deps.mapName, (key) => shown.get(key));

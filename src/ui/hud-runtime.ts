@@ -31,6 +31,8 @@ export type HudRuntimeDeps = {
   mapMusic: ReturnType<typeof createMapMusicController>;
   setGameplayPause: (reason: string, active: boolean) => void;
   inTown: () => boolean;
+  /** Research Ready's tap (town-runtimes.ts). */
+  goToResearch?: () => boolean;
   showMessage: (text: string, color?: string) => void;
 };
 
@@ -64,6 +66,7 @@ export function createHudRuntime(deps: HudRuntimeDeps) {
     research: () => client?.activeResearch?.() ?? null,
     upgrades: () => client?.activeItemUpgrades?.() ?? [],
     inTown: deps.inTown,
+    goToResearch: deps.goToResearch,
   });
 
   return { runtimeHud, rewardedRespawnAd };

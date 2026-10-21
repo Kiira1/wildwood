@@ -94,7 +94,7 @@ import { Identity, ScheduleAt, Timestamp } from "spacetimedb";
 import { accountEmail, otherCharacterForLogin, recordAccountEmail } from "./account-email";
 import { beginLoginMove, claimLoginMove, loginMove, swapCharacterLogins } from "./account-transfer";
 import { devReviewTables, findDevPlayers, liftPlayerSuspension, readDevReviewQueue, recordBugDeletion, restoreMessageFromChat, reviewBug, reviewReport } from "./dev-review";
-import { portalCutsceneBit, unlockedPortalCutsceneMask } from "../../shared/portal-cutscenes";
+import { QUEST_BOARD_SEEN_BIT, portalCutsceneBit, unlockedPortalCutsceneMask } from "../../shared/portal-cutscenes";
 import { playerBlockKey, playerReportValidationError } from "../../shared/player-safety";
 import {
   isResearchId,
@@ -187,7 +187,7 @@ import { MAINTENANCE_INTERVAL_MICROS, VIRTUAL_PLAYER_RUN_LIFETIME_MICROS, adjust
 import { autoEquip } from "./player-power";
 import { publishPlayerDeathFrame, resetProgressToDefaults, resetWholeSave, startFreshRun, respawnWithProgress, transitionPlayerMap } from "./character-reset";
 import { saveSubmittedProgress } from "./progress-save";
-import { WORLD, VALID_MAP_IDS, canonicalMapId, MAP_ARRIVALS, changePlayerMap, hasEndlessTravelAccess, travelOnward } from "./map-travel";
+import { WORLD, VALID_MAP_IDS, canonicalMapId, MAP_ARRIVALS, changePlayerMap, hasEndlessTravelAccess, teleportToResearchRoom, travelOnward } from "./map-travel";
 import { startItemUpgradeFor } from "./item-upgrade-runtime";
 import { devResetDailyBonus, devCopyCombatStats, devUpdateSave } from "./dev-save-tools";
 import { setMotionInterest, setPlayerSpeed } from "./movement-requests";
@@ -1713,6 +1713,14 @@ export const markPortalCutsceneSeen = spacetimedb.reducer({ cutscene: t.string()
   ctx.db.playerCutsceneHistory.identity.update({ ...history, seenMask: history.seenMask | bit });
 });
 
+/** The player opened the Quest Board: their HUD shows quests from now on, on every device. */
+export const markQuestBoardSeen = spacetimedb.reducer({}, (ctx) => {
+  requireControllingPlayer(ctx);
+  const history = ensureCutsceneHistory(ctx, ctx.sender);
+  if (history.seenMask & QUEST_BOARD_SEEN_BIT) return;
+  ctx.db.playerCutsceneHistory.identity.update({ ...history, seenMask: history.seenMask | QUEST_BOARD_SEEN_BIT });
+});
+
 // Targeted moderation for existing/offline accounts. Never edit combat stats
 // just to repair a name, and refuse a stale request if the owner renamed first.
 export const devRepairDisplayName = spacetimedb.reducer(
@@ -2836,7 +2844,7 @@ export const devRollbackPlayerProgression = spacetimedb.reducer(
       if (procedural) ctx.db.proceduralProgress.identity.update({ ...procedural, completed: 0 });
       const history = ctx.db.playerCutsceneHistory.identity.find(args.identity);
       if (history) ctx.db.playerCutsceneHistory.identity.update({ ...history,
-        seenMask: history.seenMask & unlockedPortalCutsceneMask(progress), generation: history.generation + 1 });
+        seenMask: history.seenMask & (unlockedPortalCutsceneMask(progress) | QUEST_BOARD_SEEN_BIT), generation: history.generation + 1 });
       const mapId = MAP_IDS[mapIndex];
       const arrival = mapIndex === 0 ? PLAYER_SPAWN : MAP_ARRIVALS[mapId as keyof typeof MAP_ARRIVALS];
       const returnLocation = { identity: args.identity, mapId, ...arrival, facing: 0 };
@@ -3662,6 +3670,8 @@ export const changeMap = spacetimedb.reducer(
   { mapId: t.string(), x: t.f64(), y: t.f64() },
   (ctx, args) => changePlayerMap(ctx, args),
 );
+/** Research Ready's tap: the Town teleport into the Research building (map-travel.ts). */
+export const teleportToResearch = spacetimedb.reducer({ x: t.f64(), y: t.f64() }, (ctx, args) => teleportToResearchRoom(ctx, args));
 
 export const setSpeed = spacetimedb.reducer(
   { speed: t.f32() },

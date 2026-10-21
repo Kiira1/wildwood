@@ -3,6 +3,7 @@ import { parseHTML } from "linkedom";
 import { createStarterChestRuntime, createStarterChestWindow } from "./starter-chest-window";
 import { STARTER_CHEST_POSITION, type StarterWeaponKind } from "../../shared/starter-chest";
 import { TUTORIAL_FOREST_MAP_ID } from "../../shared/rules";
+import { GRADE_ITEM_DEFINITIONS } from "../../shared/grade-equipment";
 import { createStarterChestRenderer, starterChestScene, withStarterChest } from "../game/runtime/render/starter-chest-renderer";
 afterEach(() => { vi.unstubAllGlobals(); starterChestScene.waiting = false; });
 
@@ -27,12 +28,12 @@ it("shows three cards, a Crude Bow, Sword and Staff, each with art, school and w
   chest.open();
   expect(dialog.open).toBe(true);
   expect(dialog.querySelector(".window-banner")!.textContent).toBe("Choose Your Weapon");
-  expect(cards(dialog).map(card => [card.querySelector("strong")!.textContent, card.querySelector(".smith-shop-grade")!.textContent,
-    card.querySelector(".smith-shop-stat")!.textContent])).toEqual([
-    ["Crude Bow", "Archery", "Shoots from range"],
-    ["Crude Sword", "Swordplay", "Fights up close, 1.5x damage"],
-    ["Crude Staff", "Sorcery", "Bursting bolts"],
+  expect(cards(dialog).map(card => [card.querySelector("strong")!.textContent, card.querySelector(".smith-shop-grade")!.textContent])).toEqual([
+    ["Crude Bow", "Archery"], ["Crude Sword", "Swordplay"], ["Crude Staff", "Sorcery"],
   ]);
+  // The sword's card gives the bonus the Crude Sword really has, not its 1.5x over the bow.
+  const swordBonus = Math.round(GRADE_ITEM_DEFINITIONS.crude_sword.weapon!.damageMultiplierBonus! * 10_000) / 100;
+  expect(cards(dialog)[1].querySelector(".smith-shop-stat")!.textContent).toContain(`+${swordBonus}%`);
   for (const card of cards(dialog)) expect(card.querySelector(".smith-shop-art .inventory-item-art"), card.dataset.kind).toBeTruthy();
 });
 

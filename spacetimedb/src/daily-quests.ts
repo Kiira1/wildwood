@@ -1,6 +1,7 @@
 import { Range, table, t, SenderError } from "spacetimedb/server";
 import { WEEKLY_QUEST_COUNT, GUILD_QUEST_COLLECT_LIMIT, GUILD_WEEK_QUEST_CAP, applyQuestKills, weeklyQuestsFor, guildQuestBonus, ownQuest, parseWeeklyQuests, questDay, questDone, questOpen, questWeek, soloQuestBonus, type WeeklyQuest } from "../../shared/weekly-quests";
 import { readPlayerProgress } from "./wide-stats";
+import { QUEST_BOARD_SEEN_BIT, unlockedPortalCutsceneMask } from "../../shared/portal-cutscenes";
 import { creditGuildHall } from "./guild-hall";
 
 /**
@@ -361,4 +362,14 @@ export function collectGuildQuests(ctx: Ctx, collector: any) {
 /** The 0.852 reducer's entry point: it named a member to take from; now every collect draws from the guild's pool. */
 export function collectMemberQuests(ctx: Ctx, collector: any, _member?: any) {
   return collectGuildQuests(ctx, collector);
+}
+
+/** Migration 67: everyone who already has quests counts as having seen the Quest Board, so their HUD keeps showing them. */
+export function markQuestHoldersSeenBoard(ctx: Ctx) {
+  for (const row of [...ctx.db.playerDailyQuest.iter()]) {
+    const history = ctx.db.playerCutsceneHistory.identity.find(row.identity);
+    if (history) ctx.db.playerCutsceneHistory.identity.update({ ...history, seenMask: history.seenMask | QUEST_BOARD_SEEN_BIT });
+    else ctx.db.playerCutsceneHistory.insert({ identity: row.identity,
+      seenMask: unlockedPortalCutsceneMask(readPlayerProgress(ctx, row.identity)) | QUEST_BOARD_SEEN_BIT, generation: 0 });
+  }
 }

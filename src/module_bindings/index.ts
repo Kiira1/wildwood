@@ -128,6 +128,7 @@ import JoinVirtualPlayerLoadTestReducer from "./join_virtual_player_load_test_re
 import KickGuildMemberReducer from "./kick_guild_member_reducer";
 import LeaveGuildReducer from "./leave_guild_reducer";
 import MarkPortalCutsceneSeenReducer from "./mark_portal_cutscene_seen_reducer";
+import MarkQuestBoardSeenReducer from "./mark_quest_board_seen_reducer";
 import MineNodeReducer from "./mine_node_reducer";
 import PauseResearchReducer from "./pause_research_reducer";
 import PrepareWorldActionPositionReducer from "./prepare_world_action_position_reducer";
@@ -208,6 +209,7 @@ import StartLoginMoveReducer from "./start_login_move_reducer";
 import StartPrestigeChallengeReducer from "./start_prestige_challenge_reducer";
 import StartResearchReducer from "./start_research_reducer";
 import TakeOverSessionReducer from "./take_over_session_reducer";
+import TeleportToResearchReducer from "./teleport_to_research_reducer";
 import TransferGuildLeadershipReducer from "./transfer_guild_leadership_reducer";
 import UnlockInventorySlotReducer from "./unlock_inventory_slot_reducer";
 import UnlockSecondUpgradeSlotReducer from "./unlock_second_upgrade_slot_reducer";
@@ -1737,6 +1739,7 @@ const reducersSchema = __reducers(
   __reducerSchema("kick_guild_member", KickGuildMemberReducer),
   __reducerSchema("leave_guild", LeaveGuildReducer),
   __reducerSchema("mark_portal_cutscene_seen", MarkPortalCutsceneSeenReducer),
+  __reducerSchema("mark_quest_board_seen", MarkQuestBoardSeenReducer),
   __reducerSchema("mine_node", MineNodeReducer),
   __reducerSchema("pause_research", PauseResearchReducer),
   __reducerSchema("prepare_world_action_position", PrepareWorldActionPositionReducer),
@@ -1817,6 +1820,7 @@ const reducersSchema = __reducers(
   __reducerSchema("start_prestige_challenge", StartPrestigeChallengeReducer),
   __reducerSchema("start_research", StartResearchReducer),
   __reducerSchema("take_over_session", TakeOverSessionReducer),
+  __reducerSchema("teleport_to_research", TeleportToResearchReducer),
   __reducerSchema("transfer_guild_leadership", TransferGuildLeadershipReducer),
   __reducerSchema("unlock_inventory_slot", UnlockInventorySlotReducer),
   __reducerSchema("unlock_second_upgrade_slot", UnlockSecondUpgradeSlotReducer),

@@ -1,13 +1,14 @@
 import { describe, expect, it, vi } from "vitest";
 import { MINING_NODES, miningBreakSeconds, miningGain } from "../../shared/mining";
 import { Timestamp } from "spacetimedb";
-import { TOWN_FEET_OFFSET, TOWN_SMITH_POSITION } from "../../shared/town";
+import { TOWN_ARRIVAL, TOWN_FEET_OFFSET, TOWN_QUEST_BOARD_POSITION, TOWN_RESEARCH_POSITION, TOWN_SMITH_POSITION, townRoomAt } from "../../shared/town";
+import { PLAYER_SPAWN, TUTORIAL_FOREST_MAP_ID } from "../../shared/rules";
 import { toolLevelNeed, toolUpgradeCost } from "../../shared/tools";
 import type { OreId } from "../../shared/refine";
 import { WOOD_TREE_NODES, woodcuttingChopSeconds } from "../../shared/woodcutting";
 import { miningStandSpot } from "../../src/game/runtime/auto-farm/auto-mine";
 import { choppingStandSpot } from "../../src/game/runtime/auto-farm/auto-chop";
-import { gameWorld, type GameTab } from "./harness/game";
+import { gameWorld, playAs, type GameTab } from "./harness/game";
 import { foundGuild, guildWindow } from "./harness/guild";
 import { profileSkillRows } from "../../src/ui/profile-skills";
 import { writeMiningLevel } from "../../spacetimedb/src/mining";
@@ -218,3 +219,43 @@ describe("Skills", () => {
   });
 });
 
+
+describe("The Quest Board and Research in Town", () => {
+  const tracker = (tab: GameTab) => tab.document.querySelector<HTMLElement>(".quest-tracker");
+  const tracking = (tab: GameTab) => Boolean(tracker(tab) && !tracker(tab)!.hidden);
+
+  it("quests stay off the HUD until the board is first opened, then show on every device", async () => {
+    const world = gameWorld();
+    const square = { x: TOWN_ARRIVAL.x, y: TOWN_ARRIVAL.y };
+    // Kills already drew her week's quests.
+    const ann = await gatherer(world, "Ann", { at: square, before: player => player.call("refreshDailyQuests", {}) });
+    await ann.tab.play(3_000);
+    expect(ann.tab.coop.weeklyQuests()?.quests.length).toBeGreaterThan(0);
+    expect(tracking(ann.tab)).toBe(false);
+    await ann.tab.close();
+    // Where she stands when her next page opens. Standing at the board opens it; from then on the HUD tracks quests.
+    const standAt = (spot: { x: number; y: number }) => world.player("Ann").patch("playerLastLocation", { mapId: "town", ...spot });
+    standAt(standingAt(clearSpotNear({ x: TOWN_QUEST_BOARD_POSITION.x, y: TOWN_QUEST_BOARD_POSITION.y + 10 }, 30)));
+    const atBoard = await playAs(world, "Ann");
+    expect(await atBoard.until(() => tracking(atBoard), 5_000)).toBe(true);
+    await atBoard.close();
+    // Another device, back on the square: still on.
+    standAt(square);
+    const phone = await playAs(world, "Ann");
+    expect(await phone.until(() => tracking(phone), 5_000)).toBe(true);
+  });
+
+  it("tapping Research Ready away from the Town lands inside the Research building, and Fight goes back", async () => {
+    const world = gameWorld();
+    const bob = await gatherer(world, "Bob", { at: { x: TOWN_ARRIVAL.x, y: TOWN_ARRIVAL.y },
+      before: player => player.patch("player", { mapId: TUTORIAL_FOREST_MAP_ID, x: PLAYER_SPAWN.x, y: PLAYER_SPAWN.y }) });
+    await bob.tab.play(2_000);
+    bob.tab.tap("researchReadyHint");
+    const inResearch = () => {
+      const row = world.db.player.identity.find(bob.player.identity);
+      return row?.mapId === "town" && townRoomAt(row.x, row.y)?.index === TOWN_RESEARCH_POSITION.door;
+    };
+    expect(await bob.tab.until(inResearch, 10_000)).toBe(true);
+    expect(world.db.homeReturnLocation.identity.find(bob.player.identity)?.mapId).toBe(TUTORIAL_FOREST_MAP_ID);
+  });
+});

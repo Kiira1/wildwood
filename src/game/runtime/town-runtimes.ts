@@ -10,10 +10,11 @@ import { createSlotUpgradesController } from "../../ui/slot-upgrades-controller"
 import { closeStationsOutOfReach } from "../../ui/station-reach";
 import {
   TOWN_ARMOR_SELLER_POSITION, TOWN_CARD_SELLER_POSITION, TOWN_CARD_SELLER_SERVER_REACH, TOWN_GEAR_SELLER_SERVER_REACH, TOWN_SMITH_POSITION,
-  TOWN_SMITH_SERVER_REACH, TOWN_WEAPON_SELLER_POSITION,
+  TOWN_SMITH_SERVER_REACH, TOWN_WEAPON_SELLER_POSITION, TOWN_DOORS, TOWN_RESEARCH_POSITION, townRoomAt,
 } from "../../../shared/town";
 import { TUTORIAL_FOREST_MAP_ID, SLOT_UPGRADES_POSITION, type MapId } from "../world";
 import type { CoopAccess } from "./coop-access";
+import type { MapController } from "./map-controller";
 import type { createGameBootstrap } from "./game-bootstrap";
 import type { PlayerState } from "./types";
 
@@ -26,6 +27,7 @@ export type TownRuntimeDeps = {
   inTutorial: () => boolean;
   isMapTransitioning: () => boolean;
   teleportHome: () => Promise<boolean>;
+  teleportToMap: MapController["teleportToMap"];
   clearInput: () => void;
   renderInventory: () => void;
   equip: ReturnType<typeof createInventoryController>["equip"];
@@ -49,7 +51,7 @@ export function createTownRuntimes(deps: TownRuntimeDeps) {
   const client = () => coop.client;
   const inTown = () => deps.currentMapId() === "town";
 
-  bindTownTeleportButton(e.townButton, {
+  const townTeleport = bindTownTeleportButton(e.townButton, {
     beforeTeleport: () => {
       deps.techTree.close();
       slotUpgrades.close();
@@ -142,6 +144,16 @@ export function createTownRuntimes(deps: TownRuntimeDeps) {
 
   return {
     oxShop, smith, cardSeller, gearSellers, schools, starterChest, slotUpgrades,
+    /** Research Ready's tap: through the Town teleport into the Research building; false when it cannot go now. */
+    goToResearch() {
+      const there = inTown() && townRoomAt(player.x, player.y)?.index === TOWN_RESEARCH_POSITION.door;
+      if (there || deps.inTutorial() || deps.isMapTransitioning() || !townTeleport.ready()) return false;
+      // Lands where the server puts it, so the arrival is known before the reply's row comes in.
+      const inside = TOWN_DOORS[TOWN_RESEARCH_POSITION.door].inside;
+      void townTeleport.go(() => deps.teleportToMap("town", async () =>
+        await coop.client?.teleportToResearch?.(player.x, player.y) ? { mapId: "town", ...inside, facing: 0 } : false));
+      return true;
+    },
     /** Opens a station the player walked up to, and moves the Starter Chest's prompt. */
     update() {
       updateHomeStations();

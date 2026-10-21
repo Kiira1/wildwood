@@ -8,7 +8,7 @@ import { applyQuestKills, parseWeeklyQuests, type WeeklyQuest } from "../../../s
 
 export type WeeklyQuestState = { day: number; quests: WeeklyQuest[]; bonus: number; guildPoints: number; guildName: string };
 import type { MailboxMessage } from "../../../shared/mailbox";
-import { portalCutsceneBit, unlockedPortalCutsceneMask } from "../../../shared/portal-cutscenes";
+import { QUEST_BOARD_SEEN_BIT, portalCutsceneBit, unlockedPortalCutsceneMask } from "../../../shared/portal-cutscenes";
 import { LOADOUT_FIELDS } from "../../../shared/combat-progress";
 import { withRequestDeadline } from "./request-deadline";
 import type { EnemyLootRequest } from "./regular-enemy-loot-queue";
@@ -208,6 +208,8 @@ export function createProgressionService(dependencies: ProgressionServiceDepende
   let keptAggro: { from: AggroChallenge | null; value: AggroChallenge & { parked: boolean } } = { from: null, value: { active: false, completed: 0, parked: false } };
   let keptPerks: { aggro: AggroChallenge; perks: PlayerPrestigePerks | null; expansion: typeof expansionPerks; cards: typeof cardPerks; off: ReadonlySet<string>; value: PlayerPrestigePerks } | null = null;
   let freeRespecUsed = false;
+  // Null until the server's history row arrives; set once the player opens the Quest Board.
+  let questBoardSeen: boolean | null = null;
   let weeklyQuest: WeeklyQuestState | null = null;
   const guildQuestWeeks = new Map<string, { week: number; guildId: string; guildName: string; points: number }>();
   let gemBalance = 0n;
@@ -907,10 +909,11 @@ export function createProgressionService(dependencies: ProgressionServiceDepende
     tables: {
       upsertCutsceneHistory(row: { identity: Identity; seenMask: number; generation: number }) {
         cutscenes.upsert(row.identity.toHexString(), row.seenMask, row.generation);
+        if (row.identity.toHexString() === dependencies.localIdentity()) questBoardSeen = Boolean(row.seenMask & QUEST_BOARD_SEEN_BIT);
         dependencies.notify();
       },
       removeCutsceneHistory(row: { identity: Identity }) {
-        if (row.identity.toHexString() === dependencies.localIdentity()) cutscenes.clear();
+        if (row.identity.toHexString() === dependencies.localIdentity()) { cutscenes.clear(); questBoardSeen = null; }
       },
       upsertProgress,
       upsertResearch,
@@ -1137,6 +1140,14 @@ export function createProgressionService(dependencies: ProgressionServiceDepende
       guildQuestRanking: (week: number) => [...guildQuestWeeks.values()].filter(row => row.week === week).sort((a, b) => b.points - a.points || a.guildName.localeCompare(b.guildName)),
       refreshWeeklyQuests() {
         return reducerResult("daily quests", (active) => active.reducers.refreshDailyQuests({}))();
+      },
+      /** Whether this account has opened the Quest Board; null while unknown. */
+      questBoardSeen: () => questBoardSeen,
+      markQuestBoardSeen() {
+        if (questBoardSeen) return;
+        questBoardSeen = true;
+        // A failed save leaves it unseen, so the next visit tries again.
+        void reducerResult("quest board", (active) => active.reducers.markQuestBoardSeen({}))().then(result => { if (!result.ok) questBoardSeen = false; });
       },
       /** The ranks in play: none during an Aggro run, which plays without prestige bonuses, and each switched-off perk zero. */
       prestigePerks: (): PlayerPrestigePerks => {
@@ -1481,6 +1492,7 @@ export function createProgressionService(dependencies: ProgressionServiceDepende
     beginSession(identityChanged: boolean) {
       enemyLoot.begin();
       cutscenes.begin();
+      questBoardSeen = null;
       flushStoreWrite();
       pendingProgress = store.read(dependencies.localIdentity());
       restoredSave = true;
@@ -1524,6 +1536,7 @@ export function createProgressionService(dependencies: ProgressionServiceDepende
 
       enemyLoot.clear();
       cutscenes.clear();
+      questBoardSeen = null;
       gemBalance = 0n;
       dailyGemBonusClaimable = false;
       balanceApologyGiftAmount = 0n;
