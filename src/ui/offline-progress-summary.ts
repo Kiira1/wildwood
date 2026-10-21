@@ -2,6 +2,7 @@ import { MAP_DISPLAY_NAMES, numberedMapName } from "../../shared/rules";
 import { isProceduralMap, proceduralMapNumber } from "../../shared/procedural-maps";
 import type { OfflineProgressSummary } from "../coop/services/offline-progress-watch";
 import { formatCompactNumber } from "./number-format";
+import { offlineGold } from "../../shared/gold";
 
 export function offlineMapName(mapId: string) {
   if (isProceduralMap(mapId)) return `Endless ${proceduralMapNumber(mapId)}`;
@@ -107,6 +108,9 @@ export function createOfflineProgressSummary(dependencies: {
     } else {
       lead.textContent = `${away} farming ${map} — ${formatCompactNumber(summary.kills)} kill${summary.kills === 1 ? "" : "s"}.`;
       for (const line of offlineStatLines(summary)) stats.append(statRow(line.kind, line.label, line.amount));
+      // The server pays offline gold from the kills alone (shared/gold.ts), so this is the amount it added.
+      const gold = offlineGold(summary.kills);
+      if (gold > 0) stats.append(statRow("gold", "Gold", `+${formatCompactNumber(gold)}`));
       note.textContent = stats.childElementCount
         ? "Already added to your stats."
         : "Not quite enough for a full stat point this time.";
