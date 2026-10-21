@@ -1,9 +1,11 @@
-import { describe, expect, it, vi } from "vitest";
+import { readFileSync } from "node:fs";
+import { describe, expect, it } from "vitest";
 import {
   MINING_NODES, MINING_NODE_KINDS, MINING_OUTCROP_GAP, MINING_OUTCROPS, MINING_PLATE_ROOM, MINING_REACH, MINING_ROCK_EXTENT, MINING_ROCK_ROOM,
   MINING_STARSHARD_CHANCE, MINING_TRACK, MINING_TRACK_HALF_WIDTH, MINING_VEINS, miningBreakSeconds, miningGain, miningNode, miningNodeName,
   miningSpeed, miningTrackDistanceSquared, miningYield, normalizeMining, canMineRock, miningRockHint, miningRockNeed,
 } from "./mining";
+import { layHills, miningLayoutSource } from "./mining-layout-generate";
 import { toolLevelNeed } from "./tools";
 import { GRADE_ORES, refineGrade } from "./refine";
 import { TOWN_EAST_BRIDGE, TOWN_EAST_FENCE_GAP, TOWN_HILLS, TOWN_VILLAGE_WALK_AREA, TOWN_WALK_AREA, TOWN_WALK_AREAS } from "./town";
@@ -67,11 +69,13 @@ describe("the rocks", () => {
     for (const a of MINING_NODES) for (const b of MINING_NODES) if (a.id < b.id) expect(Math.hypot(a.x - b.x, a.y - b.y)).toBeGreaterThan(80);
   });
 
-  it("are laid from their coordinates alone, the same on every client and the server", async () => {
-    vi.resetModules();
-    const fresh = await import("./mining");
-    expect(fresh.MINING_NODES).not.toBe(MINING_NODES);
-    expect(fresh.MINING_NODES).toEqual(MINING_NODES);
+  it("are the layout the generator lays, as every client and the server read it", () => {
+    // Client and server must agree on every rock, or gathering fails silently.
+    const stale = "shared/mining-layout.generated.ts is stale: run npm run generate:mining-layout and commit it";
+    expect(readFileSync(new URL("./mining-layout.generated.ts", import.meta.url), "utf8"), stale).toBe(miningLayoutSource());
+    const laid = layHills();
+    expect(MINING_NODES, stale).toEqual(laid.nodes);
+    expect(MINING_OUTCROPS, stale).toEqual(laid.outcrops);
   });
 
   it("come in every kind in every vein: mostly Small, some Large, at least one Mysterious", () => {
