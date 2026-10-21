@@ -1,4 +1,7 @@
 export const RELEASE_NOTES: Record<string, string[]> = {
+  "0.916.18": [
+    "Enemy health bars and reward labels are sharper",
+  ],
   "0.916.17": [
     "Fixed chat portraits not loading until you opened a profile",
   ],
@@ -3751,6 +3754,7 @@ const RELEASE_DATES: Record<string, string> = {
 };
 
 export const RELEASE_DAYS: Record<string, string> = {
+  "0.916.18": "2026-10-20",
   "0.916.17": "2026-10-20",
   "0.916.16": "2026-10-20",
   "0.916.15": "2026-10-20",
