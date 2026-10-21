@@ -532,6 +532,8 @@ export function createPresenceService(dependencies: PresenceServiceDependencies)
       const conflictBefore = dependencies.sessionConflict();
       playerMaps.set(id, nextMapId);
       dependencies.developer.observePresence(row.isVisible);
+      // The server drops a plan sent while we were hidden (a reload sends it before presence): send it again once seen.
+      if (row.isVisible && !localVisible && farmIntent) sentFarmIntentKey = "";
       localVisible = row.isVisible;
       if (dependencies.worldEntryReady() && row.controllerTabId && row.controllerTabId !== dependencies.authTabId()) {
         dependencies.onControllerConflict();

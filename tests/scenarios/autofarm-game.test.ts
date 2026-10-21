@@ -192,7 +192,17 @@ describe("An autofarmer as others see them (FARM-13)", () => {
     await tab.play(5_000);
     ann.call("setAutoFarmPuppet", { group: "stat:health", camp: "" });
     expect(world.db.playerAutoFarmPuppet.identity.find(ann.identity)).toBeFalsy();
-  }, 60_000);
+
+    // Cara reloads her page while farming: others see her farm again as soon as she is back, not a checkpoint later.
+    const cara = await farmer(world, "Cara", strong);
+    pressKey(cara.tab, "KeyF");
+    expect(await cara.tab.until(cara.farming, 10_000)).toBe(true);
+    cara.tab.setHidden(true);
+    await cara.tab.play(1_000);
+    const back = await cara.tab.reload();
+    expect(await back.until(back.playing, 20_000)).toBe(true);
+    expect(await back.until(cara.farming, 5_000)).toBe(true);
+  }, 90_000);
 });
 
 describe("An Aggro run (FARM-09)", () => {
