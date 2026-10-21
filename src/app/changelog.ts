@@ -1,6 +1,7 @@
 export const RELEASE_NOTES: Record<string, string[]> = {
   "0.916.21": [
     "The game loads a little faster",
+    "Players entering a map arrive a little away from the portal and spread out",
   ],
   "0.916.20": [
     "Craft always makes a new piece, so you can own more than one of the same bow",

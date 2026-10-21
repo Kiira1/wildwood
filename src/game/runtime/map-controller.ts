@@ -5,7 +5,7 @@ import type { EnemyState, PlayerState } from "./types";
 import { BOSS_KINDS, clearBossAttack, type BossHazards, type BossStates } from "./boss/boss-registry";
 import type { MapId, SpawnSite } from "../world";
 import { portalTravelScene } from "./render/portal-glimpse";
-import { exitPortalFor, portalExitPoint } from "../../../shared/map-gateways";
+import { exitPortalFor, portalArrival, portalExitPoint } from "../../../shared/map-gateways";
 import { MAP_IDS } from "../../../shared/rules";
 import { isProceduralMap } from "../../../shared/procedural-maps";
 
@@ -177,12 +177,12 @@ export function createMapController(options: {
   portalTravelScene.arrival = (mapId, from) => mapId in mapConfig ? arrivalFrom(mapId as MapId, from as MapId) : null;
 
   /**
-   * Where the server lands a traveller from `from` (map-travel.ts): a campaign or Endless map a step in front of its
-   * portal back, outside it; anywhere else, its arrival.
+   * Where the server lands a traveller from `from` (map-travel.ts): on a campaign or Endless map, out of its portal
+   * back, at the point drawn from where they stood (`at`, as sent to the server); without it, that circle's middle.
    */
-  function arrivalFrom(destination: MapId, from: MapId) {
+  function arrivalFrom(destination: MapId, from: MapId, at?: { x: number; y: number }) {
     const exit = exitFor(destination, from);
-    return exit ? portalExitPoint(exit) : mapConfig[destination].arrival;
+    return exit ? (at ? portalArrival(exit, at) : portalExitPoint(exit)) : mapConfig[destination].arrival;
   }
   function exitFor(destination: MapId, from: MapId) {
     const entry = mapConfig[destination];
@@ -378,8 +378,9 @@ export function createMapController(options: {
     stopTouchMove();
     player.moving = false;
     const attempt = mapLoadGeneration;
+    const from = { x: player.x, y: player.y };
     void prepareMapTransition(
-      () => changeMap(destination, player.x, player.y),
+      () => changeMap(destination, from.x, from.y),
       () => options.prepareMapAssets(destination),
     ).then((changed) => {
       if (attempt !== mapLoadGeneration) return;
@@ -389,7 +390,7 @@ export function createMapController(options: {
         portalCooldown = 1;
         return;
       }
-      const arrival = arrivalFrom(destination, departure);
+      const arrival = arrivalFrom(destination, departure, from);
       fadeToMap(() => {
         if (attempt !== mapLoadGeneration) return;
         loadMap(destination, arrival.x, arrival.y, player.facing);
@@ -414,7 +415,7 @@ export function createMapController(options: {
    */
   function travelThroughPortal(portal: MapPortal | null, destination: MapId): Promise<boolean> {
     const departure = { mapId: getCurrentMapId(), x: player.x, y: player.y, facing: player.facing };
-    const arrival = arrivalFrom(destination, departure.mapId);
+    const arrival = arrivalFrom(destination, departure.mapId, departure);
     const move = Promise.resolve(changeMap(destination, departure.x, departure.y));
     loadMap(destination, arrival.x, arrival.y, departure.facing);
     guardUntilStepOff = true;

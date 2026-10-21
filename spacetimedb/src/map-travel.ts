@@ -8,7 +8,7 @@ import { isProceduralMap, PROCEDURAL_ENTRY_BOSS, generateMap, PROCEDURAL_ENTRY_M
 import { isSoulMap, soulReturnOpenFor, worldBoundsFor, requireSoulDimensionOpen, SOUL_TOWN_PORTAL, SOUL_ARRIVAL } from "./soul-dimension";
 import { isGuildHallMap, guildHallMember, enterGuildHall } from "./guild-hall";
 import { isTownMap, TOWN_MAP_ID, TOWN_ARRIVAL, townPortalUsePoints } from "./town";
-import { CAMPAIGN_GATEWAYS, portalUsePoint, campaignLanding, endlessEntryPortal, exitPortalFor, portalExitPoint } from "../../shared/map-gateways";
+import { CAMPAIGN_GATEWAYS, portalUsePoint, campaignLanding, endlessEntryPortal, exitPortalFor, portalArrival } from "../../shared/map-gateways";
 import { blockedSession, requireControllingPlayer, isDeveloperIdentity } from "./session-guards";
 import { activeDuelFor } from "./duel-runtime";
 import { SenderError } from "spacetimedb/server";
@@ -102,7 +102,7 @@ export function changePlayerMap(ctx: ModuleReducerCtx, { mapId, x, y }: { mapId:
   const portalDistance = Math.hypot(x - sourcePortal.x, y - sourcePortal.y);
   if (portalDistance > MAP_PORTAL_USE_RANGE) throw new SenderError("Move closer to the portal.");
 
-  transitionPlayerMap(ctx, current, mapId, arrivalFor(mapId, current.mapId));
+  transitionPlayerMap(ctx, current, mapId, arrivalFor(mapId, current.mapId, { x, y }));
 }
 
 /** Why a campaign or Endless map is still shut to the caller, or null when it is open. */
@@ -120,10 +120,13 @@ function lockedReason(ctx: ModuleReducerCtx, mapId: string) {
   return null;
 }
 
-/** Where arriving on a map from `from` lands: a campaign or Endless map a step in front of its portal back (the client does the same). */
-function arrivalFor(mapId: string, from: string) {
+/**
+ * Where arriving on a map from `from` lands: on a campaign or Endless map, out of its portal back, at a point drawn
+ * from where the traveller stood (`at`) so the client lands them on the same spot.
+ */
+function arrivalFor(mapId: string, from: string, at: { x: number; y: number }) {
   const exit = exitPortalFor(mapId, destinationPortals(mapId), from, isTownMap(from));
-  return (exit ? portalExitPoint(exit) : null) ?? (isProceduralMap(mapId) ? generateMap(mapId).arrival : isSoulMap(mapId) ? SOUL_ARRIVAL : isTownMap(mapId) ? TOWN_ARRIVAL : MAP_ARRIVALS[mapId as keyof typeof MAP_ARRIVALS]);
+  return (exit ? portalArrival(exit, at) : null) ?? (isProceduralMap(mapId) ? generateMap(mapId).arrival : isSoulMap(mapId) ? SOUL_ARRIVAL : isTownMap(mapId) ? TOWN_ARRIVAL : MAP_ARRIVALS[mapId as keyof typeof MAP_ARRIVALS]);
 }
 
 /**
@@ -137,7 +140,7 @@ export function travelOnward(ctx: ModuleReducerCtx, mapId: string, worn: CardTot
   if (activeDuelFor(ctx, ctx.sender) || aggroChallengeActive(ctx, ctx.sender)) return false;
   const next = nextMapAfter(mapId);
   if (!next || !VALID_MAP_IDS.has(next) || lockedReason(ctx, next)) return false;
-  persistWorldLocation(ctx, transitionPlayerMap(ctx, player, next, arrivalFor(next, mapId)));
+  persistWorldLocation(ctx, transitionPlayerMap(ctx, player, next, arrivalFor(next, mapId, player)));
   return true;
 }
 

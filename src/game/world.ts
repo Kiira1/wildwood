@@ -16,7 +16,7 @@ import { CAMPS, ENEMY_TYPES, type EnemyKind } from "./enemies";
 import { savedMapDesign } from "./map-design";
 import { MAP_EDITOR_GAMEPLAY_OVERRIDES } from "../../shared/map-editor-overrides";
 import { evenCampSpacing, isNearRegionSpawns, regionSpawnPoints } from "./region-scatter";
-import { gatewayClearings } from "../../shared/map-gateways";
+import { gatewayClearings, gatewayLandings, PORTAL_EXIT_SPREAD } from "../../shared/map-gateways";
 import { PLAYER_SPAWN } from "../../shared/rules";
 
 export type WorldPath = { x: number; y: number; w: number; h: number };
@@ -645,10 +645,12 @@ export function gatewayDecorReach(item: WorldDecor) {
   return GATEWAY_DECOR_CLEARANCE + (item.type === "lavaPool" ? 150 * item.s : 0);
 }
 function clearOfGateways<T extends { decor: WorldDecor[]; paths: WorldPath[] }>(layout: T, mapId: MapId): T {
-  const clearings = gatewayClearings(mapId);
+  const clearings = gatewayClearings(mapId), landings = gatewayLandings(mapId);
   if (!clearings.length) return layout;
+  // Every point a traveller can land on keeps the same reach as the gates.
   return { ...layout, decor: layout.decor.filter(item => FLAT_DECOR.has(item.type)
-    || clearings.every(spot => Math.hypot(item.x - spot.x, item.y - spot.y) >= gatewayDecorReach(item))) };
+    || clearings.every(spot => Math.hypot(item.x - spot.x, item.y - spot.y) >= gatewayDecorReach(item))
+      && landings.every(spot => Math.hypot(item.x - spot.x, item.y - spot.y) >= gatewayDecorReach(item) + PORTAL_EXIT_SPREAD)) };
 }
 
 function authoredWorldLayout(playerSpawn: Point, mapId: MapId) {
