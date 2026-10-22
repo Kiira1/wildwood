@@ -9,6 +9,7 @@ import { effectivePowerForProgress } from "./player-power";
 import { PLAYER_GENDER_UNSET } from "../../shared/player-gender";
 import { updatePublicChatCursor } from "./public-chat-history";
 import { removeMessageReactions } from "./chat-reactions";
+import { unmarkChatAnnouncement } from "./chat-announcement";
 import { pruneExpiredSocialMessages } from "./social-service";
 import { startupTelemetryIdsToDelete, STARTUP_TELEMETRY_MAX_ROWS, STARTUP_TELEMETRY_RATE_WINDOW_MICROS } from "./startup-telemetry-policy";
 import { Identity } from "spacetimedb";
@@ -86,7 +87,7 @@ export function clearExpiredHistory(ctx: any) {
     if (replay.createdAt.microsSinceUnixEpoch < replayCutoff) staleReplayIds.push(replay.id);
   }
 
-  for (const id of staleMessageIds) { removeMessageReactions(ctx, "public", id); ctx.db.chatMessage.id.delete(id); }
+  for (const id of staleMessageIds) { removeMessageReactions(ctx, "public", id); unmarkChatAnnouncement(ctx, id); ctx.db.chatMessage.id.delete(id); }
   for (const id of staleReplayIds) { ctx.db.duelReplay.id.delete(id); ctx.db.duelCombatSnapshot.duelId.delete(id); ctx.db.duelStaffSkill?.duelId.delete(id); deleteReplayWide(ctx, id); }
   pruneExpiredSocialMessages(ctx, ctx.timestamp.microsSinceUnixEpoch);
   if (cursor?.firstId) ctx.db.publicChatCursor.id.update({ ...cursor, firstId: firstLiveId });

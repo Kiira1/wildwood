@@ -14,7 +14,7 @@ export function createServerBoostShopRow(actions: ServerBoostShopActions) {
   row.className = "shop-server-boost";
   row.setAttribute("aria-labelledby", "shopServerBoostTitle");
   row.innerHTML = '<h2 id="shopServerBoostTitle">Server Boost</h2>'
-    + "<p>2x Rewards for everyone online for 15 minutes. Patreon supporters can start one once a day.</p>"
+    + "<p>2x Rewards, Wood and Ore for everyone online for 15 minutes. Patreon supporters can start one once a day.</p>"
     + '<p class="shop-server-boost-live" role="status"></p>'
     + '<button class="shop-server-boost-start" type="button">Start Server Boost</button>'
     + '<p class="shop-server-boost-note" role="status"></p>';
@@ -31,7 +31,9 @@ export function createServerBoostShopRow(actions: ServerBoostShopActions) {
     const canStart = supporter();
     start.hidden = !canStart;
     start.disabled = busy || state.cooldownMs > 0;
-    start.textContent = state.remainingMs > 0 ? "Add 15 Minutes" : "Start Server Boost";
+    start.textContent = busy ? "Starting…" : state.remainingMs > 0 ? "Add 15 Minutes" : "Start Server Boost";
+    // A refusal stays on screen with its reason until the next press.
+    note.classList.toggle("is-error", Boolean(error));
     note.textContent = error || (!canStart ? "A Patreon supporter perk." : state.cooldownMs > 0
       ? `Your next Server Boost is ready in ${formatServerBoostWait(state.cooldownMs)}.` : "");
   }

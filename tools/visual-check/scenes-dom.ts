@@ -14,6 +14,7 @@ import { createGearSellerController, type GearSellerDeps } from "../../src/ui/ge
 import { renderProfileGuild } from "../../src/ui/profile-guild";
 import { createProfileActionsMenu } from "../../src/ui/profile-actions-menu";
 import { createGemShopController } from "../../src/ui/gem-shop-controller";
+import { createChatAnnouncementLine } from "../../src/ui/chat-announcement-line";
 import { createDiamondLookDrawer } from "../../src/game/runtime/diamond-look-preview";
 import { installServerBoostHud } from "../../src/ui/server-boost-hud";
 import { settleFrames, settleImages } from "./determinism";
@@ -272,5 +273,44 @@ async function serverBoost() {
   await settleCssImages();
 }
 
+/** Public chat, compact and expanded: a player's line, the server's Server Boost and Patreon banners, and the same words typed by a player. */
+async function chatAnnouncement() {
+  const unpin = document.createElement("style");
+  unpin.textContent = `
+    html, body { position: static !important; height: auto !important; overflow: visible !important; }
+    #chatPanel { position: relative !important; inset: auto !important; transform: none !important; margin: 12px auto !important; }
+    #chatPanel.is-large { width: 100% !important; height: auto !important; }
+    #chatPanel #chatMessages { height: auto !important; max-height: none !important; overflow: visible !important; }
+  `;
+  document.head.append(unpin);
+  const sentAtMs = Date.UTC(2026, 9, 21, 15, 42);
+  const boost = "Started a Server Boost: 2x Rewards, Wood and Ore for everyone online for 15 min. Thank you for supporting WildStat! ♥";
+  const playerLine = (name: string, words: string) => {
+    const line = document.createElement("div");
+    line.className = "chat-line";
+    line.innerHTML = '<span class="chat-profile-icon"></span><div class="chat-message-content"><span class="chat-name"></span>'
+      + '<span class="chat-text"><span class="chat-message-body"><span></span></span></span></div>';
+    line.querySelector(".chat-name")!.textContent = name;
+    line.querySelector(".chat-message-body span")!.textContent = words;
+    return line;
+  };
+  for (const large of [false, true]) {
+    const panel = await importById("chatPanel");
+    panel.classList.toggle("is-large", large);
+    const messages = panel.querySelector("#chatMessages")!;
+    const rows = [
+      playerLine("Moss", "anyone up for the boss?"),
+      createChatAnnouncementLine({ id: 1n, senderName: "Oogway", message: boost, sentAtMs }, "server-boost", large),
+      createChatAnnouncementLine({ id: 2n, senderName: "Oogway",
+        message: "Extended a Server Boost: +15 min of 2x Rewards, Wood and Ore for everyone online. Thank you for supporting WildStat! ♥", sentAtMs }, "server-boost", large),
+      createChatAnnouncementLine({ id: 3n, senderName: "Fern", message: "Became a Gold supporter on Patreon. Thank you for supporting WildStat! ♥", sentAtMs }, "patreon", large),
+      playerLine("Faker", boost),
+    ];
+    messages.append(...(large ? rows : rows.slice(1, 2).concat(rows.slice(4))));
+  }
+  await settleCssImages();
+}
+
 export const DOM_SCENES: Record<string, () => Promise<void>> = { icons, hud, wordmark, shops, "gem-shop": gemShop, "server-boost": serverBoost,
+  "chat-announcement": chatAnnouncement,
   "profile-own": () => profileWindow(true), "profile-other": () => profileWindow(false) };

@@ -1,6 +1,7 @@
 import { tables, type DbConnection } from "../../module_bindings";
-import { serverBoostCooldownMs, serverBoostMultiplier, serverBoostRemainingMs, type ServerBoostState } from "../../../shared/server-boost";
+import { serverBoostCooldownMs, serverBoostGatherMultiplier, serverBoostMultiplier, serverBoostRemainingMs, type ServerBoostState } from "../../../shared/server-boost";
 import { reducerErrorMessage } from "./reducer-errors";
+import { withRequestDeadline } from "./request-deadline";
 
 type Target = { connection: DbConnection; isCurrent: () => boolean };
 
@@ -19,7 +20,7 @@ export function createServerBoostRows(notify: () => void, nowMs: () => number) {
     const read = () => {
       if (!isCurrent()) return;
       const [row] = [...connection.db.serverBoost.iter()];
-      boost = row ? { endsAtMs: row.endsAtMs, supporterName: row.supporterName } : null;
+      boost = row ? { endsAtMs: row.endsAtMs, startedAtMs: row.startedAtMs, supporterName: row.supporterName } : null;
       lastTriggeredAtMs = [...connection.db.myServerBoostTrigger.iter()][0]?.lastTriggeredAtMs;
       notify();
     };
@@ -33,7 +34,8 @@ export function createServerBoostRows(notify: () => void, nowMs: () => number) {
     const current = target;
     if (!current || !current.isCurrent() || !current.connection.isActive) return { ok: false, error: "Not connected." };
     try {
-      await current.connection.reducers.startServerBoost({});
+      // A connection that stalls without closing never answers: time out so the Shop says so instead of waiting forever.
+      await withRequestDeadline(current.connection.reducers.startServerBoost({}));
       return { ok: true };
     } catch (error) {
       return { ok: false, error: reducerErrorMessage(error) };
@@ -42,6 +44,8 @@ export function createServerBoostRows(notify: () => void, nowMs: () => number) {
 
   return {
     watch,
+    /** What a rock or tree broken at this server time gives times, as the server judges it. */
+    gatherMultiplierAt: (atMs: number) => serverBoostGatherMultiplier(boost, atMs),
     api: {
       /** Time the boost has left (0 when none runs), who started it, and this account's wait for its next one. */
       serverBoost: () => {

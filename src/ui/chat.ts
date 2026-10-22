@@ -1,4 +1,6 @@
 import { createChatGuildRequests } from "./chat-guild-requests";
+import { createChatAnnouncementLine } from "./chat-announcement-line";
+import type { ChatAnnouncementKind } from "../../shared/chat-announcement";
 import { CHAT_CLOSED_EVENT } from "./town-teleport-button";
 import type { GuildApi } from "../coop/services/guild-service";
 import { createChatViewport } from "./chat-viewport";
@@ -104,6 +106,9 @@ type CoopClient = {
   sendChatMessage?: (message: string, replyToMessageId?: bigint) => Promise<{ ok: boolean; error?: string }>;
   reportChatMessage?: (messageId: bigint, reason: ChatReportReason) => Promise<{ ok: boolean; error?: string }>;
   chatMute?: () => ChatMuteRecord | null;
+  /** The announcement a public message is (chat-announcement-service.ts), or null for a player's own words. */
+  chatAnnouncement?: (messageId: bigint) => ChatAnnouncementKind | null;
+  chatAnnouncementRevision?: () => number;
 };
 
 type ChatElements = {
@@ -457,13 +462,15 @@ export function createChatController({ elements, getCoop, showMessage, onOpenRep
     const reactionOverride = reactionOverrides.get(`${reactionChannel}:${message.id}`);
     const reactionCountsJson = reactionOverride?.source === message.reactionCountsJson ? reactionOverride?.value : message.reactionCountsJson;
     const rowKey = `${identity}:${conversationKey()}:${large}:${message.id}`;
-    const signature = JSON.stringify([
+    // Only the world channel's messages can be announcements; the mark is the server's, never the text.
+    const announcement = channel === "public" ? coop?.chatAnnouncement?.(message.id) ?? null : null;
+    const signature = JSON.stringify([announcement,
       message.sender, message.senderName, message.message, String(message.replayId), message.guildReplayKey,
       message.powerLevel, displayedGender, message.moderated, String(message.replyToMessageId),
       message.replyToSenderName, message.replyToMessage, message.sentAtMs, guest, iconIndex, nameColor,
       playerNamePrefix(message.sender), large ? reactionCountsJson : "", large && chatTimestampsEnabled(),
     ]);
-    return { displayedGender, guest, iconIndex, nameColor, reactionChannel, reactionCountsJson, rowKey, signature };
+    return { announcement, displayedGender, guest, iconIndex, nameColor, reactionChannel, reactionCountsJson, rowKey, signature };
   }
 
   function refresh() {
@@ -509,7 +516,7 @@ export function createChatController({ elements, getCoop, showMessage, onOpenRep
     const readingLatest = enabled && large && !guildRequests.isSelected() && document.visibilityState !== "hidden"
       && (renderedRevision === "" || (!historyState.frozen && atLatest));
     // The name tags' revision moves when Show Guild Tags is switched, which no chat row does.
-    const revision = `${playerNameTagsRevision()}:${viewportRevision}:${Math.floor(now / 60_000)}:${reactionRevision}:${readingLatest}:${conversationKey()}:${coop?.chatRevision?.() ?? -1}:${coop?.social?.revision() ?? -1}:${coop?.localIdentity?.() ?? ""}:${enabled}:${large}:${historyState.revision}`;
+    const revision = `${playerNameTagsRevision()}:${viewportRevision}:${Math.floor(now / 60_000)}:${reactionRevision}:${readingLatest}:${conversationKey()}:${coop?.chatRevision?.() ?? -1}:${coop?.chatAnnouncementRevision?.() ?? -1}:${coop?.social?.revision() ?? -1}:${coop?.localIdentity?.() ?? ""}:${enabled}:${large}:${historyState.revision}`;
     if (revision === renderedRevision && now < nextExpiryAt) return;
     // Scrolling changes only the message window, not conversation metadata.
     const metadata = `${readingLatest}:${conversationKey()}:${coop?.chatRevision?.() ?? -1}:${coop?.social?.revision() ?? -1}:${identity}:${enabled}:${large}`;
@@ -618,9 +625,13 @@ export function createChatController({ elements, getCoop, showMessage, onOpenRep
     // elements: recreating them makes gender/power icons flash while repainting.
     const nextRows = new Map<string, { signature: string; element: HTMLDivElement }>();
     for (const message of messages) {
-      const { displayedGender, guest, iconIndex, nameColor, reactionChannel, reactionCountsJson, rowKey, signature } = presentMessage(coop, identity, message);
+      const { announcement, displayedGender, guest, iconIndex, nameColor, reactionChannel, reactionCountsJson, rowKey, signature } = presentMessage(coop, identity, message);
       const previous = renderedRows.get(rowKey);
       if (previous?.signature === signature) { nextRows.set(rowKey, previous); continue; }
+      if (announcement) {
+        nextRows.set(rowKey, { signature, element: createChatAnnouncementLine(message, announcement, large && chatTimestampsEnabled()) });
+        continue;
+      }
       const line = document.createElement("div");
       line.className = "chat-line";
       line.dataset.messageId = String(message.id);

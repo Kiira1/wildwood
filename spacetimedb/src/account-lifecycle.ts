@@ -20,6 +20,7 @@ import { PLAYER_GENDER_UNSET } from "../../shared/player-gender";
 import { PLAYER_SKIN_TONES } from "../../shared/player-skin-tones";
 import { isPublicDisplayNameAllowed } from "./chat-moderation";
 import { mergeAccountReactions, removeMessageReactions } from "./chat-reactions";
+import { unmarkChatAnnouncement } from "./chat-announcement";
 import { mergeItemGifts, removeItemGifts } from "./item-gifts";
 import { mergeBowSkills, removeBowSkills } from "./bow-skills";
 import { mergeSwordSkills, removeSwordSkills } from "./sword-skills";
@@ -719,6 +720,7 @@ export function createAccountLifecycle(deps: AccountLifecycleDeps) {
     for (const message of [...ctx.db.chatMessage.bySender.filter(identity) as Iterable<any>]) {
       removedMessageIds.add(message.id);
       removeMessageReactions(ctx, "public", message.id);
+      unmarkChatAnnouncement(ctx, message.id);
       ctx.db.chatMessage.id.delete(message.id);
     }
 

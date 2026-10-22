@@ -38,6 +38,10 @@
       "startedAt:timestamp",
       "completesAt:timestamp"
     ],
+    "chat_announcement": [
+      "messageId:u64",
+      "kind:string"
+    ],
     "dev_access_audit": [
       "identity:identity",
       "viewer:identity",

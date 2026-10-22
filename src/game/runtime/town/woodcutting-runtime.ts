@@ -7,6 +7,7 @@ import { gatherRespawnMs } from "../../../../shared/gather-respawn";
 import { inTownGrove, TOWN_FEET_OFFSET } from "../../../../shared/town";
 import { bagFullForOres, roomForOres, type BagSpace } from "../../../../shared/ore-bag";
 import type { ToolId } from "../../../../shared/tools";
+import { boostedYield } from "../../../../shared/server-boost";
 import { ATTACK_ANIMATION_SECONDS, ATTACK_WINDUP_SECONDS } from "../../attack-timeline";
 import type { PlayerState } from "../types";
 import { REJECTED_COLOR, miningHitAt, miningHits, moreGatheredText } from "./mining-runtime";
@@ -18,6 +19,8 @@ export type WoodcuttingSource = {
   localIdentity?: () => string | undefined;
   sessionGeneration?: () => number;
   woodcutting?: () => number;
+  /** A running Server Boost's 2x, which doubles what a fall gives. */
+  serverBoostMultiplier?: () => number;
   /** What the active cards add to chop speed (card-effects.ts), a fraction. */
   activeCardStats?: () => { woodcuttingSpeed: number };
   /** A tool's upgrades (shared/tools.ts): the hatchet's speed, which the server's rate check uses too. */
@@ -149,7 +152,8 @@ export function createWoodcuttingRuntime(deps: {
     deps.burst?.(tree.x, tree.y - 40, "#7fae5a", 16, 130);
     // What it gives before the hatchet's bonus, which the server rolls.
     const color = LOG_COLORS[tree.log].face;
-    deps.logPickup?.(`+${woodcuttingYield(tree)[tree.log] ?? 0} ${REFINE_ORES[tree.log].name}`, color);
+    const gives = boostedYield(woodcuttingYield(tree), source.serverBoostMultiplier?.() ?? 1);
+    deps.logPickup?.(`+${gives[tree.log] ?? 0} ${REFINE_ORES[tree.log].name}`, color);
     deps.burst?.(tree.x, tree.y - 30, color, 12, 95);
   }
 

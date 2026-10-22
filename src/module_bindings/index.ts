@@ -265,6 +265,7 @@ import ActiveItemUpgradeRow from "./active_item_upgrade_table";
 import ActiveItemUpgradeSlotThreeRow from "./active_item_upgrade_slot_three_table";
 import ActiveItemUpgradeSlotTwoRow from "./active_item_upgrade_slot_two_table";
 import ActiveResearchRow from "./active_research_table";
+import ChatAnnouncementRow from "./chat_announcement_table";
 import DevAccessAuditRow from "./dev_access_audit_table";
 import DevBugReportsRow from "./dev_bug_reports_table";
 import DevGemPurchaseReviewRow from "./dev_gem_purchase_review_table";
@@ -444,6 +445,17 @@ const tablesSchema = __schema({
       { name: 'active_research_identity_key', constraint: 'unique', columns: ['identity'] },
     ],
   }, ActiveResearchRow),
+  chatAnnouncement: __table({
+    name: 'chat_announcement',
+    indexes: [
+      { accessor: 'messageId', name: 'chat_announcement_message_id_idx_btree', algorithm: 'btree', columns: [
+        'messageId',
+      ] },
+    ],
+    constraints: [
+      { name: 'chat_announcement_message_id_key', constraint: 'unique', columns: ['messageId'] },
+    ],
+  }, ChatAnnouncementRow),
   duel: __table({
     name: 'duel',
     indexes: [

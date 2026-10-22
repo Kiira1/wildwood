@@ -1,5 +1,8 @@
 export const RELEASE_NOTES: Record<string, string[]> = {
   "0.916.29": [
+    "Server Boost announcements show as their own banner in chat",
+    "Server Boost also doubles wood and ore",
+    "The Server Boost button says why when it cannot start",
     "Chat and guild buttons are green again",
     "A crowded Town uses less CPU",
   ],

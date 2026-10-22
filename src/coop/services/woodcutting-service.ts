@@ -3,23 +3,27 @@ import { normalizeWoodcutting, woodcuttingGain, woodcuttingYield, woodTree } fro
 import type { OreId } from "../../../shared/refine";
 import { createGatherQueue, createReportGains, gatherExtras, type GatherClock } from "./gather-queue";
 import { reducerEventMs } from "./reducer-event-time";
+import { boostedYield } from "../../../shared/server-boost";
 
 type Target = { connection: DbConnection; isCurrent: () => boolean };
 type Ores = Partial<Record<OreId, number>>;
 const toMs = (at: { microsSinceUnixEpoch: bigint }) => Number(at.microsSinceUnixEpoch / 1000n);
 const U32 = 4_294_967_296;
+/** What a break at this server time gives times: the Server Boost (shared/server-boost.ts). */
+type BoostAt = (atMs: number) => number;
 
 /** "2 trees stand again: those falls were not counted.": falls the server did not take. */
 export const woodcuttingRejectedText = (count: number) =>
   count === 1 ? "A tree stands again: that fall was not counted." : `${count} trees stand again: those falls were not counted.`;
 
 /** What falls show at once, before the hatchet's bonus log, which the server rolls. */
-function shownLogs(claims: readonly { id: number }[]) {
+function shownLogs(claims: readonly { id: number; atMs: number }[], boostAt: BoostAt) {
   const ores: Ores = {};
   for (const claim of claims) {
     const tree = woodTree(claim.id);
     if (!tree) continue;
-    for (const [logId, count] of Object.entries(woodcuttingYield(tree))) ores[logId as OreId] = (ores[logId as OreId] ?? 0) + (count ?? 0);
+    const gives = boostedYield(woodcuttingYield(tree), boostAt(claim.atMs));
+    for (const [logId, count] of Object.entries(gives)) ores[logId as OreId] = (ores[logId as OreId] ?? 0) + (count ?? 0);
   }
   return ores;
 }
@@ -29,7 +33,7 @@ function shownLogs(claims: readonly { id: number }[]) {
  * (mining-service.ts): the Woodcutting stat and when each stump was felled. Trees fall here at once and go to the
  * server in batches (report_chopping); until it answers, the stat, the stumps and the logs read here include them.
  */
-export function createWoodcuttingRows(notify: () => void, clock?: GatherClock) {
+export function createWoodcuttingRows(notify: () => void, clock?: GatherClock, boostAt: BoostAt = () => 1) {
   let target: Target | null = null;
   let woodcutting = 0, treesChopped = 0;
   let felled = new Map<number, number>();
@@ -53,7 +57,7 @@ export function createWoodcuttingRows(notify: () => void, clock?: GatherClock) {
       const gained = gains.take(reports.get(claims));
       if (error) { rejectedListener?.(error); return; }
       // The hatchet's bonus logs, beyond what each fall showed.
-      const extra = gained ? gatherExtras(gained, shownLogs(claims)) : {};
+      const extra = gained ? gatherExtras(gained, shownLogs(claims, boostAt)) : {};
       if (Object.keys(extra).length) extraListener?.(extra);
       counted.sent += claims.length;
       const rejected = counted.sent - (treesChopped - counted.base + U32) % U32;
@@ -61,7 +65,7 @@ export function createWoodcuttingRows(notify: () => void, clock?: GatherClock) {
       counted.reported = Math.max(counted.reported, rejected);
     },
     changed() {
-      const pending = queue.pending(), next = { felled: new Map<number, number>(), gain: 0, ores: shownLogs(pending) };
+      const pending = queue.pending(), next = { felled: new Map<number, number>(), gain: 0, ores: shownLogs(pending, boostAt) };
       for (const claim of pending) {
         const tree = woodTree(claim.id);
         if (!tree) continue;

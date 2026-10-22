@@ -24,7 +24,7 @@ export function installServerBoostHud(remainingMs: () => number) {
     const label = document.createElement("strong");
     label.textContent = "2x Rewards";
     chip.replaceChildren(label, ` ${text}`);
-    chip.setAttribute("aria-label", `Server Boost: 2x Rewards, ${text} left`);
+    chip.setAttribute("aria-label", `Server Boost: 2x Rewards, Wood and Ore, ${text} left`);
   }
   render();
   window.setInterval(() => { if (!document.hidden) render(); }, 1_000);

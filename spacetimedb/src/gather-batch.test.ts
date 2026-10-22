@@ -260,6 +260,18 @@ describe("a chopping report", () => {
   });
 });
 
+describe("a Server Boost", () => {
+  it("doubles the ore and logs of breaks made while it runs, never the number of breaks", () => {
+    const f = gatherer(), t = f.nowS() - 60, seconds = woodcuttingChopSeconds(pines[0], 0);
+    f.seed("serverBoost", { id: 0, startedAtMs: (t + 10) * 1_000, endsAtMs: (f.nowS() + 600) * 1_000, supporterName: "Supporter" });
+    f.reportMining([[copper, t], [copperTwo, t + 15]]);
+    expect([f.ore("copper_ore"), f.mining()?.rocksBroken]).toEqual([3, 2]);
+    f.standAt(pines[0]);
+    f.reportChopping([[pines[0], t + 20], [pines[1], t + 20 + seconds]]);
+    expect([f.ore("pine_log"), f.db.playerWoodcutting.identity.find(f.ctx.sender)?.treesChopped]).toEqual([4 * WOODCUTTING_LOGS, 2]);
+  });
+});
+
 describe("judging a batch", () => {
   const rules = {
     node: (id: number) => (id < 3 ? { id, x: 0, y: TOWN_FEET_OFFSET } : null), canWork: () => true, gain: () => 1, seconds: () => 4,

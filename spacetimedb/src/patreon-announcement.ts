@@ -2,6 +2,7 @@ import type { Identity } from "spacetimedb";
 import type { ModuleReducerCtx } from "./index";
 import { AVATAR_FRAME_RANK, type AvatarFrame } from "../../shared/avatar-frames";
 import { updatePublicChatCursor } from "./public-chat-history";
+import { markChatAnnouncement } from "./chat-announcement";
 
 /**
  * Persistent receipt prevents renewals, retries, or unlink/relink from spamming
@@ -27,6 +28,7 @@ export function announcePatreonSupport(ctx: ModuleReducerCtx, identity: Identity
     moderated: false, replyToMessageId: 0n, replyToSenderName: "", replyToMessage: "", guildReplayKey: "",
   });
   updatePublicChatCursor(ctx, inserted.id);
+  markChatAnnouncement(ctx, inserted.id, "patreon");
   const announcedAtMs = Number(ctx.timestamp.microsSinceUnixEpoch / 1000n);
   // Thanking a tier thanks every tier below it, so a later downgrade stays quiet.
   const receipt = { userId, identity, silverAnnounced: true, goldAnnounced: AVATAR_FRAME_RANK[tier] >= AVATAR_FRAME_RANK.gold,

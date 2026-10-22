@@ -21,6 +21,8 @@ import { gatherRespawnMs } from "../../shared/gather-respawn";
 import { bagFullForOres, rockOreKinds, roomForOres } from "../../shared/ore-bag";
 import { toolBonusYield } from "../../shared/tools";
 import { toolLevelFor } from "./tools";
+import { boostedYield } from "../../shared/server-boost";
+import { serverBoostGatherMultiplierAt } from "./server-boost-tables";
 import {
   equippedFields, gatherClaims, gatherFreeSlots, gatherReach, judgeGatherBatch, logOddGatherRejections, millisOf, progressOnce,
 } from "./gather-batch";
@@ -184,7 +186,8 @@ export function mineNodeFor(ctx: Ctx, args: { nodeId: number }, deps: MiningDeps
   }
   // Mining Luck raises a Mysterious rock's Starshard chance; other rocks hold none, so no read.
   const miningLuck = node.kind === "mysterious" ? luckInPlay(ctx, ctx.sender).miningLuck : 0;
-  const ores = miningYield(node, ctx.random(), cards, cards.oreFind > 0 ? ctx.random() : 1, miningLuck, pickaxe > 0 ? toolBonusYield(pickaxe, ctx.random()) : 0);
+  const ores = boostedYield(miningYield(node, ctx.random(), cards, cards.oreFind > 0 ? ctx.random() : 1, miningLuck,
+    pickaxe > 0 ? toolBonusYield(pickaxe, ctx.random()) : 0), serverBoostGatherMultiplierAt(ctx, millisOf(ctx.timestamp)));
   for (const [oreId, count] of Object.entries(ores)) addOres(ctx, ctx.sender, oreId as OreId, count ?? 0);
   const row = {
     identity: ctx.sender,
@@ -238,8 +241,10 @@ export function reportMiningFor(ctx: Ctx, args: { breaks: readonly { nodeId: num
   const miningLuck = accepted.some(({ node }) => node.kind === "mysterious") ? luckInPlay(ctx, ctx.sender).miningLuck : 0;
   const gained: Partial<Record<OreId, number>> = {};
   let starshard = false;
-  for (const { node } of accepted) {
-    const rolled = miningYield(node, ctx.random(), cards, cards.oreFind > 0 ? ctx.random() : 1, miningLuck, pickaxe > 0 ? toolBonusYield(pickaxe, ctx.random()) : 0);
+  for (const { node, atMs } of accepted) {
+    // A Server Boost doubles what a break gives, judged at the break's own time; the count of breaks is unchanged.
+    const rolled = boostedYield(miningYield(node, ctx.random(), cards, cards.oreFind > 0 ? ctx.random() : 1, miningLuck,
+      pickaxe > 0 ? toolBonusYield(pickaxe, ctx.random()) : 0), serverBoostGatherMultiplierAt(ctx, atMs));
     for (const [oreId, count] of Object.entries(rolled)) gained[oreId as OreId] = (gained[oreId as OreId] ?? 0) + (count ?? 0);
     starshard = Boolean(rolled.starshard);
   }

@@ -5,12 +5,15 @@ import { reducerErrorMessage } from "./reducer-errors";
 import { withRequestDeadline } from "./request-deadline";
 import { createGatherQueue, createReportGains, gatherExtras, type GatherClock } from "./gather-queue";
 import { reducerEventMs } from "./reducer-event-time";
+import { boostedYield } from "../../../shared/server-boost";
 
 export type MiningResult = { ok: boolean; error?: string };
 type Target = { connection: DbConnection; isCurrent: () => boolean };
 type Ores = Partial<Record<OreId, number>>;
 const toMs = (at: { microsSinceUnixEpoch: bigint }) => Number(at.microsSinceUnixEpoch / 1000n);
 const U32 = 4_294_967_296;
+/** What a break at this server time gives times: the Server Boost (shared/server-boost.ts). */
+type BoostAt = (atMs: number) => number;
 
 /** "2 rocks stand again: those breaks were not counted.": breaks the server did not take. */
 export const miningRejectedText = (count: number) =>
@@ -20,12 +23,13 @@ export const miningRejectedText = (count: number) =>
  * What breaks show at once, before cards, luck and the pickaxe's bonus, which the server rolls: each rock's ore,
  * and a Mysterious rock's Starshard.
  */
-function shownOres(claims: readonly { id: number }[]) {
+function shownOres(claims: readonly { id: number; atMs: number }[], boostAt: BoostAt) {
   const ores: Ores = {};
   for (const claim of claims) {
     const node = miningNode(claim.id);
     if (!node) continue;
-    for (const [oreId, count] of Object.entries(miningYield(node, 1))) ores[oreId as OreId] = (ores[oreId as OreId] ?? 0) + (count ?? 0);
+    const gives = boostedYield(miningYield(node, 1), boostAt(claim.atMs));
+    for (const [oreId, count] of Object.entries(gives)) ores[oreId as OreId] = (ores[oreId as OreId] ?? 0) + (count ?? 0);
   }
   return ores;
 }
@@ -36,7 +40,7 @@ function shownOres(claims: readonly { id: number }[]) {
  * gather-queue.ts); until it answers, the Mining, the bare rocks and the ores read here include them, as the shared
  * rules give them. A break the server does not take drops out, and its rock stands again.
  */
-export function createMiningRows(notify: () => void, clock?: GatherClock) {
+export function createMiningRows(notify: () => void, clock?: GatherClock, boostAt: BoostAt = () => 1) {
   let target: Target | null = null;
   let mining = 0, rocksBroken = 0;
   let broken = new Map<number, number>();
@@ -62,7 +66,7 @@ export function createMiningRows(notify: () => void, clock?: GatherClock) {
       const gained = gains.take(reports.get(claims));
       if (error) { rejectedListener?.(error); return; }
       // The server's own rolls beyond what each break showed: bonus Starshards, Ore Find, the pickaxe's extra ore.
-      const extra = gained ? gatherExtras(gained, shownOres(claims)) : {};
+      const extra = gained ? gatherExtras(gained, shownOres(claims, boostAt)) : {};
       if (Object.keys(extra).length) extraListener?.(extra);
       // Each break taken counts up rocksBroken, and its row arrives before the reply.
       counted.sent += claims.length;
@@ -71,7 +75,7 @@ export function createMiningRows(notify: () => void, clock?: GatherClock) {
       counted.reported = Math.max(counted.reported, rejected);
     },
     changed() {
-      const pending = queue.pending(), next = { broken: new Map<number, number>(), gain: 0, ores: shownOres(pending) };
+      const pending = queue.pending(), next = { broken: new Map<number, number>(), gain: 0, ores: shownOres(pending, boostAt) };
       for (const claim of pending) {
         const node = miningNode(claim.id);
         if (!node) continue;
