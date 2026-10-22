@@ -10,8 +10,6 @@ import {
   DUSKFALL_ORCHARD_MAP_ID, INFERNAL_DEPTHS_MAP_ID, INTERMEDIATE_SNOWLANDS_MAP_ID, ION_CITADEL_MAP_ID, MOONFEN_MAP_ID,
   NEON_BASTION_MAP_ID, SAMURAI_GARDEN_MAP_ID, TUTORIAL_FOREST_MAP_ID, VERDANT_CATACOMBS_MAP_ID, WATER_REACH_MAP_ID,
 } from "../world";
-import { bossPlayerAttackCycle } from "../../../shared/boss-simulation";
-import { absoluteAttackTimestamps, attackAnimationClockAt } from "../attack-timeline";
 import { createEnemyLifecycle } from "./enemies/enemy-lifecycle";
 import { rewardLabel } from "../enemies";
 import { researchStatRewardMultiplier } from "../../../shared/research";
@@ -416,50 +414,6 @@ describe("player attack timing", () => {
     expect(attackReadyAtWithoutTarget(9.8, 10)).toBe(9.8);
     expect(attackReadyAtWithoutTarget(10.5, 10)).toBeCloseTo(10.08);
     expect(attackReadyAtWithoutTarget(9.8, 10.08)).toBe(9.8);
-  });
-
-  it("takes the local boss throw phase from the seeded boss attack cycle", () => {
-    const encounter = 22n;
-    const identity = "shared-player";
-    const preview = createGameBootstrap();
-    const attackInterval = preview.player.attackRate;
-    const cycle = bossPlayerAttackCycle({
-      kind: "dragon",
-      encounter,
-      playerId: identity,
-      attackInterval,
-      serverNowMs: 1_800_000_000_000,
-    });
-    const serverNowMs = cycle.startedAtMs + 50;
-    const create = (localNowSeconds: number) => {
-      const harness = createCombatHarness({
-        nowSeconds: () => localNowSeconds,
-        serverNowMs: () => serverNowMs,
-        localIdentity: () => identity,
-      });
-      harness.enemies.length = 0;
-      harness.bosses.dragon.encounter = encounter;
-      harness.bosses.dragon.dead = false;
-      harness.player.x = harness.bosses.dragon.x + harness.bosses.dragon.r + harness.player.attackRange - 20;
-      harness.player.y = harness.bosses.dragon.y;
-      harness.controller.attackNearest();
-      return harness;
-    };
-    const first = create(10);
-    const second = create(9_000);
-    // The throw clock any observer derives from the same cycle and server time.
-    const startedAtMs = bossPlayerAttackCycle({
-      kind: "dragon",
-      encounter,
-      playerId: identity,
-      attackInterval,
-      serverNowMs,
-    }).startedAtMs;
-    const expected = attackAnimationClockAt(absoluteAttackTimestamps(startedAtMs / 1_000, attackInterval), serverNowMs / 1_000);
-
-    expect(expected).toBeGreaterThan(0);
-    expect(first.player.throwClock).toBeCloseTo(expected, 5);
-    expect(second.player.throwClock).toBeCloseTo(first.player.throwClock, 5);
   });
 
   it("records a Snowlands loot roll when a regular enemy dies", () => {

@@ -1,7 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
   bossAbilityTimelineAt,
-  bossPlayerAttackCycle,
   bossSeededUnit,
   seededBossHazardPolar,
 } from "./boss-simulation";
@@ -98,28 +97,5 @@ describe("deterministic boss simulation", () => {
 
     expect(first.ability).toBe("shatter");
     expect(second.ability).toBe("crystalBurst");
-  });
-
-  it("shares a player's exact boss attack slot across clients", () => {
-    const options = {
-      kind: "magmalisk" as const,
-      encounter: 14n,
-      playerId: "player-a",
-      attackInterval: .8,
-      serverNowMs: 1_800_000_000_000,
-    };
-    const first = bossPlayerAttackCycle(options);
-    const sameSlot = bossPlayerAttackCycle({
-      ...options,
-      serverNowMs: first.startedAtMs + 300,
-    });
-    const nextSlot = bossPlayerAttackCycle({
-      ...options,
-      serverNowMs: first.startedAtMs + first.intervalMs + 1,
-    });
-
-    expect(sameSlot.attackIndex).toBe(first.attackIndex);
-    expect(sameSlot.startedAtMs).toBeCloseTo(first.startedAtMs);
-    expect(nextSlot.attackIndex).toBe(first.attackIndex + 1);
   });
 });

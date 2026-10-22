@@ -11,6 +11,7 @@ import { cardStatFactors, cardTotals } from "../../shared/card-effects";
 import { STAT_NAMES } from "../../shared/card-text";
 import { bonusesInPlay, masteryInPlayAtLevels } from "../../shared/bonuses-in-play";
 import { masteryAttackRange } from "../../shared/weapon-mastery";
+import { MOMENTUM_MAX, hasTechnique } from "../../shared/mastery-techniques";
 
 export function formatPlayedTime(seconds: number) {
   const wholeMinutes = Math.max(0, Math.floor(seconds / 60));
@@ -95,7 +96,7 @@ export function profilePower(profile: PlayerProfileData, soul: Partial<SoulStats
 }
 
 export type ProfileStatDisplaySource = {
-  label: "Tech" | "Equipment" | "Slot Upgrade" | "Refine" | "Cards" | "Prestige" | "Guild" | "Soul" | "Class Set" | "Armor" | "Boots" | "Mastery";
+  label: "Tech" | "Equipment" | "Slot Upgrade" | "Refine" | "Cards" | "Prestige" | "Guild" | "Soul" | "Class Set" | "Armor" | "Boots" | "Mastery" | "Momentum";
   value: string;
 };
 
@@ -134,8 +135,10 @@ export function profileStatDisplayRows(
   const statValue = (value: number) => Math.abs(value) >= 1_000_000 ? formatCompactNumber(value) : Math.round(value).toLocaleString();
   const inPlay = profileInPlay(profile);
   // Long Shot cards and Archery's range on top of the saved range, as the world adds them (progress-controller.ts addedRange).
-  const addedRange = { cards: cardStatFactors(inPlay.cards).range, mastery: masteryAttackRange(masteryInPlayAtLevels(inPlay.mastery,
-    progress.equippedRightHand, progress.equippedRightHand || progress.equippedLeftHand)) };
+  const masteryNow = masteryInPlayAtLevels(inPlay.mastery, progress.equippedRightHand, progress.equippedRightHand || progress.equippedLeftHand);
+  const addedRange = { cards: cardStatFactors(inPlay.cards).range, mastery: masteryAttackRange(masteryNow) };
+  // Swordplay's Momentum swings past the cap after hits in a row (mastery-technique-runtime.ts).
+  const momentum = hasTechnique(masteryNow, "momentum") ? MOMENTUM_MAX : 0;
   const ranged = { ...progress, attackRange: progress.attackRange + addedRange.cards + addedRange.mastery };
   const inputs = profileStatInputs(ranged, ranks, profile.itemUpgradeLevels, profile.itemRefines, inPlay.cardIds, {
     soul, attackCap, prestigeLevel, guildBonus,
@@ -203,10 +206,11 @@ export function profileStatDisplayRows(
       equationOperator: "×",
       multiplier: multiplierValue(1), total: attackSpeedLabel(stats.attackRate, 1 / minAttackInterval), equationTotal: attackSpeed,
       // Attacks a second, never the rating behind them; the cap beside it shows how close the player is.
-      expandedDetail: `${(1 / minAttackInterval).toFixed(2)}/s Cap`,
+      expandedDetail: `${(1 / minAttackInterval).toFixed(2)}/s Cap${momentum ? ` · ${((1 + momentum) / minAttackInterval).toFixed(2)}/s Momentum` : ""}`,
       // The soul's own share, which adds to the run's and is kept through prestige.
       // The soul adds attacks a second flat (soulAttackSpeedBonus), so its line is that, not a rating.
-      sources: soulSource(from.attackSpeed.soul, value => Number.isFinite(value) ? `${value.toFixed(3)}/s` : "Max"),
+      sources: [...soulSource(from.attackSpeed.soul, value => Number.isFinite(value) ? `${value.toFixed(3)}/s` : "Max"),
+        ...(momentum ? [{ label: "Momentum" as const, value: `+${Math.round(momentum * 100)}%` }] : [])],
     },
     {
       kind: "range", label: "Attack Range:", base: statValue(baseRange),

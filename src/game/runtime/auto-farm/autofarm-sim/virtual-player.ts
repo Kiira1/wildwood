@@ -539,7 +539,7 @@ export function createVirtualPlayer(profile: VirtualPlayerProfile, options: {
 
   playerCombat = createPlayerCombatController({
     player, enemies, spawnSites, projectileStore, bosses, random,
-    nowSeconds: () => gameTime, serverNowMs: () => clock.ms, localIdentity: () => identity,
+    nowSeconds: () => gameTime, localIdentity: () => identity,
     engageEnemy: enemy => engageEnemy(enemy, identity || LOCAL_REGULAR_ENEMY_TARGET_ID, regularEnemySimulationTick(clock.ms)),
     researchDamageMultiplier: researchController.damageMultiplier,
     researchCriticalChance: researchController.criticalChance,

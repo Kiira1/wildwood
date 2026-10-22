@@ -69,7 +69,6 @@ export function createPlayerCombat(deps: PlayerCombatWiringDeps) {
     player, enemies: deps.world.enemies, spawnSites: deps.world.spawnSites, projectileStore: deps.world.projectileStore,
     bosses: deps.world.bosses,
     nowSeconds: deps.nowSeconds,
-    serverNowMs: coop.serverNowMs,
     localIdentity: coop.localIdentity,
     engageEnemy: enemy => deps.engageEnemy(
       enemy,

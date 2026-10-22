@@ -44,10 +44,6 @@ import {
   attackReleaseReached,
   type AbsoluteAttackTimestamps,
 } from "../attack-timeline";
-import {
-  bossPlayerAttackCycle,
-  type BossSimulationKind,
-} from "../../../shared/boss-simulation";
 
 const PLAYER_PROJECTILE_VISUAL_TAIL = 36;
 // A Piercing Shot arrow reaches twice as far as a plain one, and once past
@@ -124,7 +120,6 @@ export function createPlayerCombatController(options: {
   /** Every world boss; the current map's is the one that can be targeted. */
   bosses: BossStates;
   nowSeconds: () => number;
-  serverNowMs?: () => number;
   localIdentity?: () => string | undefined;
   engageEnemy: (enemy: EnemyState) => void;
   researchDamageMultiplier: () => number;
@@ -299,7 +294,6 @@ export function createPlayerCombatController(options: {
   let maxEnemyRadius = 0;
   let pendingPlayerAttack: PendingPlayerAttack | null = null;
   let nextAttackAtSeconds = 0;
-  let lastBossAttackCycleKey = "";
 
   function activeMapBoss(): BossTarget | null {
     return bossStateForMap(bosses, options.currentMapId());
@@ -333,46 +327,6 @@ export function createPlayerCombatController(options: {
     pendingPlayerAttack = { target, timestamps, projectileReleased: false, weaponItem: options.equippedWeapon() };
     nextAttackAtSeconds = timestamps.nextAttackAtSeconds;
     player.attackClock = Math.max(0, nextAttackAtSeconds - nowSeconds);
-    return true;
-  }
-
-  function bossKindFor(target: BossTarget): BossSimulationKind {
-    return "bossKind" in target ? target.bossKind : "dragon";
-  }
-
-  /**
-   * Starts the real local throw from the same absolute slot observers render.
-   * Returning true means the shared boss cadence handled this frame, even when
-   * the current slot is already idle or another throw is still finishing.
-   */
-  function fireAtSharedBossCycle(
-    target: BossTarget,
-    attackInterval: number,
-    localNowSeconds: number,
-  ) {
-    const identity = options.localIdentity?.();
-    if (!options.serverNowMs || !identity || target.encounter === null) return false;
-    if (pendingPlayerAttack) return true;
-    const serverNowMs = options.serverNowMs();
-    const cycle = bossPlayerAttackCycle({
-      kind: bossKindFor(target),
-      encounter: target.encounter,
-      playerId: identity,
-      attackInterval,
-      serverNowMs,
-    });
-    const cycleKey = `${bossKindFor(target)}:${target.encounter}:${cycle.attackIndex}`;
-    if (lastBossAttackCycleKey === cycleKey) return true;
-    const serverTimestamps = absoluteAttackTimestamps(cycle.startedAtMs / 1_000, attackInterval);
-    const safeServerNowSeconds = (Number.isFinite(serverNowMs) ? Math.max(0, serverNowMs) : 0) / 1_000;
-    if (attackAnimationFinished(serverTimestamps, safeServerNowSeconds)) {
-      lastBossAttackCycleKey = cycleKey;
-      return true;
-    }
-    const localStartedAtSeconds = localNowSeconds - (safeServerNowSeconds - cycle.startedAtMs / 1_000);
-    if (fireAt(target, attackInterval, localNowSeconds, localStartedAtSeconds)) {
-      lastBossAttackCycleKey = cycleKey;
-    }
     return true;
   }
 
@@ -610,8 +564,6 @@ export function createPlayerCombatController(options: {
       return;
     }
     const attackInterval = weaponAttackInterval(options.equippedWeapon(), player.attackRate);
-    // The shared boss cadence stays on the plain interval, so observers and the server count the same slots.
-    if (target.isBoss && fireAtSharedBossCycle(target, attackInterval, nowSeconds)) return;
     if (nowSeconds < nextAttackAtSeconds) return;
     // Momentum swings faster after hits in a row.
     fireAt(target, attackInterval / techniques.attackSpeed(), nowSeconds);
@@ -1013,7 +965,6 @@ export function createPlayerCombatController(options: {
       searchedEnemyCount = -1;
       pendingPlayerAttack = null;
       nextAttackAtSeconds = 0;
-      lastBossAttackCycleKey = "";
       player.attackClock = 0;
       player.throwClock = 0;
       player.combatFacing = null;

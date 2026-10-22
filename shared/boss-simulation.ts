@@ -197,35 +197,6 @@ export function bossAbilityTimelineAt(options: {
   };
 }
 
-/** Shared absolute cadence for one player's attacks against a boss. */
-export function bossPlayerAttackCycle(options: {
-  kind: BossSimulationKind;
-  encounter: bigint;
-  playerId: string;
-  attackInterval: number;
-  serverNowMs: number;
-}) {
-  const intervalMs = Math.max(
-    50,
-    (Number.isFinite(options.attackInterval) ? options.attackInterval : 1) * 1_000,
-  );
-  const nowMs = Number.isFinite(options.serverNowMs) ? Math.max(0, options.serverNowMs) : 0;
-  // Retain the original seed address so this correction does not reshuffle the
-  // observer-side phase introduced with simulation version 1.
-  const phaseOffsetMs = bossSeededUnit(
-    "remote-player-attack-phase",
-    options.kind,
-    options.encounter,
-    options.playerId,
-  ) * intervalMs;
-  const attackIndex = Math.floor((nowMs + phaseOffsetMs) / intervalMs);
-  return {
-    attackIndex,
-    intervalMs,
-    startedAtMs: attackIndex * intervalMs - phaseOffsetMs,
-  };
-}
-
 export function seededBossHazardPolar(options: {
   kind: BossSimulationKind;
   encounter: bigint | null;
