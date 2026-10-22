@@ -106,22 +106,46 @@ function sizeOf(source: CanvasImageSource): [number, number] {
   return [typeof sized.width === "number" ? sized.width : 0, typeof sized.height === "number" ? sized.height : 0];
 }
 
-function matrixKey(m: Matrix, ox: number, oy: number) {
-  return `${q(m[0])},${q(m[1])},${q(m[2])},${q(m[3])},${q(m[4] - ox)},${q(m[5] - oy)}`;
+// Keys hold every point where it lands in device pixels, relative to the raster's corner, with each transform's
+// linear part: a shape that only moved (its coordinates shifted with the camera) keeps its key and its canvas.
+function linearKey(m: Matrix) {
+  return `${q(m[0])},${q(m[1])},${q(m[2])},${q(m[3])}`;
 }
 
-function styleKey(style: PaintStyle) {
+function at(m: Matrix, x: number, y: number, ox: number, oy: number) {
+  const [px, py] = transformPoint(m, x, y);
+  return `${q(px - ox)},${q(py - oy)}`;
+}
+
+function styleKey(style: PaintStyle, m: Matrix, ox: number, oy: number) {
   if (typeof style === "string") return style;
-  return `${style.kind}(${style.args.map(q).join(",")}|${style.stops.map(([at, color]) => `${q(at)}:${color}`).join(",")})`;
+  const a = style.args;
+  const geometry = style.kind === "linear" ? `${at(m, a[0], a[1], ox, oy)};${at(m, a[2], a[3], ox, oy)}`
+    : style.kind === "radial" ? `${at(m, a[0], a[1], ox, oy)};${q(a[2])};${at(m, a[3], a[4], ox, oy)};${q(a[5])}`
+      : `${q(a[0])};${at(m, a[1], a[2], ox, oy)}`;
+  return `${style.kind}(${geometry}|${style.stops.map(([offset, color]) => `${q(offset)}:${color}`).join(",")})`;
+}
+
+function commandKey(command: PathCommand, ox: number, oy: number) {
+  const { name, args: a, m } = command;
+  switch (name) {
+    case "closePath": return "z";
+    case "moveTo": return `m${at(m, a[0], a[1], ox, oy)}`;
+    case "lineTo": return `l${at(m, a[0], a[1], ox, oy)}`;
+    case "quadraticCurveTo": return `q${at(m, a[0], a[1], ox, oy)};${at(m, a[2], a[3], ox, oy)}`;
+    case "bezierCurveTo": return `b${at(m, a[0], a[1], ox, oy)};${at(m, a[2], a[3], ox, oy)};${at(m, a[4], a[5], ox, oy)}`;
+    case "arcTo": return `t${at(m, a[0], a[1], ox, oy)};${at(m, a[2], a[3], ox, oy)};${q(a[4])}`;
+    default: return `${name}${at(m, a[0], a[1], ox, oy)};${a.slice(2).map(q).join(",")}`;
+  }
 }
 
 function pathKey(path: readonly PathCommand[], ox: number, oy: number) {
   let key = "";
-  let lastMatrix = "";
+  let lastLinear = "";
   for (const command of path) {
-    const matrix = matrixKey(command.m, ox, oy);
-    if (matrix !== lastMatrix) { key += `[${matrix}]`; lastMatrix = matrix; }
-    key += `${command.name}(${command.args.map(q).join(",")})`;
+    const linear = linearKey(command.m);
+    if (linear !== lastLinear) { key += `[${linear}]`; lastLinear = linear; }
+    key += commandKey(command, ox, oy);
   }
   return key;
 }
@@ -137,14 +161,18 @@ function lineKey(line: LineStyle) {
 function opKey(op: VectorOp, ox: number, oy: number, inGroup: boolean): string {
   if (op.type === "clip") return `clip:${op.rule}:${pathKey(op.path, ox, oy)}`;
   const shared = `${effectsKey(op.effects)}${inGroup ? `|${q(op.alpha)}|${op.composite}` : ""}`;
-  if (op.type === "fill") return `fill:${op.rule}:${styleKey(op.style)}:${matrixKey(op.m, ox, oy)}:${pathKey(op.path, ox, oy)}:${shared}`;
-  if (op.type === "stroke") return `stroke:${styleKey(op.style)}:${lineKey(op.line)}:${matrixKey(op.m, ox, oy)}:${pathKey(op.path, ox, oy)}:${shared}`;
+  const linear = linearKey(op.m);
+  if (op.type === "fill") return `fill:${op.rule}:${styleKey(op.style, op.m, ox, oy)}:${linear}:${pathKey(op.path, ox, oy)}:${shared}`;
+  if (op.type === "stroke") return `stroke:${styleKey(op.style, op.m, ox, oy)}:${lineKey(op.line)}:${linear}:${pathKey(op.path, ox, oy)}:${shared}`;
   if (op.type === "text") {
     const t = op.textStyle;
-    return `text:${op.stroke ? "s" : "f"}:${op.text}:${q(op.x)},${q(op.y)},${op.maxWidth ?? ""}:${t.font}|${t.align}|${t.baseline}|${t.direction}|${t.letterSpacing}:`
-      + `${styleKey(op.style)}:${op.stroke ? lineKey(op.line) : ""}:${matrixKey(op.m, ox, oy)}:${shared}`;
+    return `text:${op.stroke ? "s" : "f"}:${op.text}:${at(op.m, op.x, op.y, ox, oy)},${op.maxWidth ?? ""}:${t.font}|${t.align}|${t.baseline}|${t.direction}|${t.letterSpacing}:`
+      + `${styleKey(op.style, op.m, ox, oy)}:${op.stroke ? lineKey(op.line) : ""}:${linear}:${shared}`;
   }
-  return `image:${objectId(op.source as object)}:${op.args.map(q).join(",")}:${op.smooth ? op.quality : "n"}:${matrixKey(op.m, ox, oy)}:${shared}`;
+  const a = op.args;
+  const place = a.length === 8 ? `${a.slice(0, 4).map(q).join(",")};${at(op.m, a[4], a[5], ox, oy)};${q(a[6])},${q(a[7])}`
+    : a.length === 4 ? `${at(op.m, a[0], a[1], ox, oy)};${q(a[2])},${q(a[3])}` : at(op.m, a[0], a[1], ox, oy);
+  return `image:${objectId(op.source as object)}:${place}:${op.smooth ? op.quality : "n"}:${linear}:${shared}`;
 }
 
 function shifted(m: Matrix, ox: number, oy: number): Matrix {
@@ -237,13 +265,23 @@ export function createVectorRasterCache() {
         right: Math.max(bounds.right, next.right), bottom: Math.max(bounds.bottom, next.bottom) } : next;
     }
     if (!bounds) return null;
-    const left = Math.max(0, Math.floor(bounds.left)), top = Math.max(0, Math.floor(bounds.top));
-    const right = Math.min(width, Math.ceil(bounds.right)), bottom = Math.min(height, Math.ceil(bounds.bottom));
-    if (right <= left || bottom <= top) return null;
+    // Off the view entirely: nothing to draw.
+    if (bounds.right <= 0 || bounds.bottom <= 0 || bounds.left >= width || bounds.top >= height) return null;
+    // Whole, even where it runs off the view, so a shape sliding past the edge keeps one canvas; only a shape too big
+    // to cache whole is cut to the view.
+    let left = Math.floor(bounds.left), top = Math.floor(bounds.top), right = Math.ceil(bounds.right), bottom = Math.ceil(bounds.bottom);
+    if ((right - left) * (bottom - top) > RASTER_PIXEL_LIMIT) {
+      left = Math.max(0, left); top = Math.max(0, top); right = Math.min(width, right); bottom = Math.min(height, bottom);
+    }
     const w = right - left, h = bottom - top;
     if (w * h > RASTER_PIXEL_LIMIT) return "too-big";
+    // Moved by under an eighth of a pixel onto the nearest quarter, so a shape that moves smoothly (a walking
+    // player's plate) is one of at most 16 cached canvases, not a new one every frame.
+    const reference = ops[0].type === "clip" ? ops[0].path[0]?.m : ops[0].m;
+    const nudge = (value: number) => { const fraction = value - Math.floor(value); return Math.round(fraction * 4) / 4 - fraction; };
+    const ox = left - (reference ? nudge(reference[4]) : 0), oy = top - (reference ? nudge(reference[5]) : 0);
     let key = `${w}x${h}`;
-    for (const op of ops) key += `\n${opKey(op, left, top, group)}`;
+    for (const op of ops) key += `\n${opKey(op, ox, oy, group)}`;
     const cached = entries.get(key);
     if (cached) {
       entries.delete(key);
@@ -258,7 +296,7 @@ export function createVectorRasterCache() {
     const ctx = canvas.getContext("2d");
     if (!ctx) return null;
     ctx.imageSmoothingEnabled = false;
-    for (const op of ops) drawOp(ctx, op, left, top, group);
+    for (const op of ops) drawOp(ctx, op, ox, oy, group);
     const entry = { canvas, left: 0, top: 0, width: w, height: h, pixels: w * h };
     entries.set(key, entry);
     pixels += entry.pixels;

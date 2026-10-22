@@ -420,6 +420,7 @@ function initializeWebGLStaticWorldLayer(overlayCanvas: HTMLCanvasElement, overl
   // The world sprites (sprite-recorder.ts), drawn over everything else on this layer.
   const spritePass = createWebGLSpritePass(gl, (vertex, fragment) => createProgram(gl, vertex, fragment), (...slots) => useAttributes(...slots));
   const attributeSlots = [...new Set([position, spritePosition, spriteTexturePosition, colorPosition, colorValue, ...(spritePass?.slots ?? [])])];
+  if (spritePass) (window as unknown as { __worldSpriteTextures?: unknown }).__worldSpriteTextures = spritePass.stats;
 
   function useAttributes(...slots: number[]) {
     for (const slot of attributeSlots) {

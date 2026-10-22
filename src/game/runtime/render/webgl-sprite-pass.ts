@@ -4,7 +4,7 @@ import { canvasVersion } from "./frozen-canvas";
 /** Quads per draw call: their vertex numbers must fit a 16-bit index. */
 export const MAX_SPRITE_QUADS = 16_384;
 /** A texture not drawn for this many frames is released. */
-const TEXTURE_IDLE_FRAMES = 600;
+const TEXTURE_IDLE_FRAMES = 180;
 /** Texture memory kept past one frame: phones and tablets close a page that holds too much. */
 const touchDevice = typeof matchMedia === "function" && matchMedia("(pointer: coarse)").matches;
 const TEXTURE_BUDGET_BYTES = (touchDevice ? 96 : 384) * 1024 * 1024;
@@ -92,6 +92,8 @@ export function createWebGLSpritePass(
 
   const textures = new Map<SpriteSource, SpriteTexture>();
   let textureBytes = 0;
+  // What the textures cost, for the developer readout (window.__worldSprites.textures).
+  const stats = { uploads: 0, uploadedBytes: 0, evictions: 0, bytes: () => textureBytes, count: () => textures.size, budget: TEXTURE_BUDGET_BYTES };
   let white: WebGLTexture | null = null;
   let frame = 0;
   let uploaded = false;
@@ -170,6 +172,7 @@ export function createWebGLSpritePass(
       try {
         gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, source);
         uploaded = true;
+        stats.uploads += 1;
       } finally {
         gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, false);
       }
@@ -177,6 +180,7 @@ export function createWebGLSpritePass(
       entry = { texture, smooth, straight: bitmap && !bitmapsPremultiplied, usedAt: frame, version: canvasVersion(source), bytes: width * height * 4 };
       textures.set(source, entry);
       textureBytes += entry.bytes;
+      stats.uploadedBytes += entry.bytes;
     } else {
       gl.bindTexture(gl.TEXTURE_2D, entry.texture);
       if (entry.smooth !== smooth) { setFilter(smooth); entry.smooth = smooth; }
@@ -199,6 +203,7 @@ export function createWebGLSpritePass(
     for (const [source, entry] of idle) {
       if (textureBytes <= TEXTURE_BUDGET_BYTES) break;
       forget(source, entry);
+      stats.evictions += 1;
     }
   }
 
@@ -236,13 +241,14 @@ export function createWebGLSpritePass(
       gl.drawElements(gl.TRIANGLES, batch.count * 6, gl.UNSIGNED_SHORT, batch.first * 12);
     }
     gl.disable(gl.BLEND);
-    if (frame % 120 === 0 || textureBytes > TEXTURE_BUDGET_BYTES) release(TEXTURE_IDLE_FRAMES);
+    if (frame % 30 === 0 || textureBytes > TEXTURE_BUDGET_BYTES) release(TEXTURE_IDLE_FRAMES);
     return uploaded;
   }
 
   return {
     slots: [positionUv, tint],
     draw,
+    stats,
     /** Forgets every uploaded texture (the layer's tiles were dropped, or its context went). */
     clear() {
       for (const entry of textures.values()) gl.deleteTexture(entry.texture);
