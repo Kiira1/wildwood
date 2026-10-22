@@ -58,6 +58,8 @@ type ExpectedApiKey =
   | "weaponMasteryInPlay"
   | "gold"
   | "serverBoost"
+  | "chatAnnouncement"
+  | "chatAnnouncementRevision"
   | "serverBoostMultiplier"
   | "triggerServerBoost"
   | "craftSkills"

@@ -10,6 +10,7 @@ import { miningScene, resetMiningScene } from "./mining-scene";
 import { ORE_COLORS } from "./ore-rock-renderer";
 import { bagFullForOres, rockOreKinds, roomForOres, type BagSpace } from "../../../../shared/ore-bag";
 import type { ToolId } from "../../../../shared/tools";
+import { boostedYield } from "../../../../shared/server-boost";
 
 /** What mining needs from the session (mining-service.ts on the coop API). */
 export type MiningSource = {
@@ -29,6 +30,8 @@ export type MiningSource = {
   /** Told what a report gave beyond what its breaks showed (the server's rolls). */
   setOnMiningExtra?: (callback: ((ores: Partial<Record<OreId, number>>) => void) | null) => void;
   serverNowMs?: () => number;
+  /** A running Server Boost's 2x, which doubles what a break gives. */
+  serverBoostMultiplier?: () => number;
   /** The player's research: Resource Respawn shortens how long rocks and trees take to grow back (shared/gather-respawn.ts). */
   research?: () => { resourceRespawn?: number };
 };
@@ -172,7 +175,7 @@ export function createMiningRuntime(deps: {
     brokenShown = BROKEN_SHOW_SECONDS;
     deps.burst?.(rock.x, rock.y - 18, "#c7ced3", 14, 120);
     // What it gives before the server's rolls (cards, the pickaxe's bonus): the same rule the bag counts.
-    const color = ORE_COLORS[rock.ore].light, gives = miningYield(rock, 1);
+    const color = ORE_COLORS[rock.ore].light, gives = boostedYield(miningYield(rock, 1), source.serverBoostMultiplier?.() ?? 1);
     deps.logPickup?.(`+${gives[rock.ore] ?? 0} ${REFINE_ORES[rock.ore].name}`, color);
     if (gives.starshard) deps.logPickup?.(`+${gives.starshard} Starshard`, STARSHARD_COLOR);
     deps.burst?.(rock.x, rock.y - 24, color, 12, 95);

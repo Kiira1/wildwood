@@ -4720,6 +4720,7 @@
 .shop-server-boost-start { justify-self: start; min-height: 44px; padding: 8px 16px; border: 1px solid #777; border-radius: 6px; background: #222; color: #fff; box-shadow: none; font-size: 14px; }
 .shop-server-boost-start[hidden] { display: none; }
 .shop-server-boost-start:disabled { opacity: .55; cursor: default; }
+.shop-server-boost .shop-server-boost-note.is-error { color: #ffb0a6; }
 .shop-frame-tiers { display: flex; justify-content: space-around; align-items: start; gap: 10px; margin-top: 8px; }
 .shop-frame-tier { display: grid; justify-items: center; gap: 10px; }
 .shop-frame-portrait { display: block; width: 64px; height: 64px; border-radius: 8px; background-color: #2a2f36; }
@@ -5009,3 +5010,22 @@ html.text-outline-shadow .death-countdown { text-shadow: var(--text-outline-ring
 .inventory-loadout .equipment-slot.slot-tool > span:not(.slot-tool-art) { place-self: center; font-size: var(--font-readable-min); }
 .inventory-loadout .slot-tool .slot-tool-art { grid-area: 1 / 1; width: 100%; height: 100%; margin: 0; background: center / contain no-repeat; transform: rotate(-35deg); }
 .inventory-loadout .slot-tool .slot-tool-art.slot-tool-crossed { transform: rotate(35deg) scaleX(-1); }
+
+/* Server announcements in chat (chat-announcement-line.ts): a full-width banner, never a player's bubble. */
+#chatPanel .chat-line.chat-announcement { display: grid; grid-template-columns: auto minmax(0, 1fr); grid-template-areas: "icon head" "icon text"; align-items: center; gap: 2px 10px; width: 100%; min-height: 0; margin: 8px 0; padding: 10px 12px; border: 1px solid rgba(255,255,255,.28); border-radius: 8px; background: linear-gradient(90deg, #26282c, #121315); box-shadow: inset 3px 0 0 #fff; color: #fff; font-family: var(--player-name-font); overflow-wrap: anywhere; }
+#chatPanel.is-large .chat-line.chat-announcement { max-width: 715px; margin: 27px auto 10px; padding: 12px 16px; }
+.chat-announcement-icon { grid-area: icon; display: grid; place-items: center; width: 34px; height: 34px; border-radius: 50%; background: #fff; color: #111; font-size: 19px; font-weight: 900; line-height: 1; }
+.chat-announcement-head { grid-area: head; display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 8px; min-width: 0; }
+.chat-announcement-label { color: #fff; font-size: 13px; font-weight: 900; letter-spacing: .02em; }
+.chat-announcement-name { color: #d9dce0; font-size: 13px; font-weight: 900; }
+.chat-announcement-time { margin-left: auto; color: rgba(255,255,255,.45); font-size: 11px; font-weight: 800; }
+.chat-announcement-text { grid-area: text; color: #e8e9eb; font-size: 13px; font-weight: 800; line-height: 1.4; }
+#chatPanel.is-large .chat-announcement-label, #chatPanel.is-large .chat-announcement-name { font-size: 15px; }
+#chatPanel.is-large .chat-announcement-text { font-size: 15px; }
+/* The two-line chat strip: one line, icon, label and words, cut short. */
+#chatPanel:not(.is-large) .chat-line.chat-announcement { display: flex; align-items: center; gap: 5px; margin: 0; padding: 0 5px; min-height: 18px; border-radius: 4px; box-shadow: none; border-color: rgba(255,255,255,.35); white-space: nowrap; overflow: hidden; }
+#chatPanel:not(.is-large) .chat-announcement-icon { width: auto; height: auto; background: none; color: #fff; font-size: var(--mini-chat-font-size); }
+#chatPanel:not(.is-large) .chat-announcement-head { flex: 0 0 auto; flex-wrap: nowrap; gap: 5px; }
+#chatPanel:not(.is-large) .chat-announcement-label, #chatPanel:not(.is-large) .chat-announcement-name, #chatPanel:not(.is-large) .chat-announcement-text { font-size: var(--mini-chat-font-size); }
+#chatPanel:not(.is-large) .chat-announcement-name::after { content: ":"; }
+#chatPanel:not(.is-large) .chat-announcement-text { flex: 1 1 0; min-width: 0; overflow: hidden; text-overflow: ellipsis; }

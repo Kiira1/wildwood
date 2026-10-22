@@ -145,6 +145,12 @@ export const BugReport = __t.object("BugReport", {
 });
 export type BugReport = __Infer<typeof BugReport>;
 
+export const ChatAnnouncement = __t.object("ChatAnnouncement", {
+  messageId: __t.u64(),
+  kind: __t.string(),
+});
+export type ChatAnnouncement = __Infer<typeof ChatAnnouncement>;
+
 export const ChatCooldown = __t.object("ChatCooldown", {
   identity: __t.identity(),
   lastSentAt: __t.timestamp(),

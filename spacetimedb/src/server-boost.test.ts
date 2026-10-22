@@ -45,8 +45,16 @@ describe("server boost", () => {
     const f = supporter("diamond");
     start(f);
     expect(endsAt(f)).toBe(nowMs(f) + SERVER_BOOST_DURATION_MS);
+    const [announced] = [...f.db.chatMessage.iter()];
     expect([...f.db.chatMessage.iter()]).toHaveLength(1);
-    advance(f, SERVER_BOOST_COOLDOWN_MS - 1);
+    expect(f.db.chatAnnouncement.messageId.find(announced.id)?.kind).toBe("server-boost");
+    // The same words typed by a player are an ordinary message: only the server marks an announcement.
+    advance(f, 60_000);
+    f.run(server.sendChatMessage, { message: announced.message });
+    const typed = [...f.db.chatMessage.iter()].find((row: any) => row.id !== announced.id);
+    expect(typed?.message).toBe(announced.message);
+    expect(f.db.chatAnnouncement.messageId.find(typed.id)).toBeFalsy();
+    advance(f, SERVER_BOOST_COOLDOWN_MS - 60_001);
     expect(() => start(f)).toThrow();
     advance(f, 1);
     start(f);

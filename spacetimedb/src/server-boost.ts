@@ -1,5 +1,5 @@
 // Server Boost (shared/server-boost.ts): a Patreon supporter starts 2x kill
-// stat rewards and gold for everyone online, once a day per account.
+// stat rewards, gold, wood and ore for everyone online, once a day per account.
 import { t, SenderError } from "spacetimedb/server";
 import type { Identity } from "spacetimedb";
 import { isDeveloperIdentity } from "../../shared/developer-identity";
@@ -8,6 +8,7 @@ import { extendedServerBoostEnd, formatServerBoostWait, serverBoostCooldownMs, S
 import { serverBoostTables } from "./server-boost-tables";
 import { patreonStatus } from "./patreon";
 import { insertChatMessage } from "./chat-runtime";
+import { markChatAnnouncement } from "./chat-announcement";
 import { requireControllingPlayer } from "./session-guards";
 
 type Ctx = any;
@@ -37,9 +38,11 @@ export function triggerServerBoost(ctx: Ctx) {
   if (current) ctx.db.serverBoost.id.update(row); else ctx.db.serverBoost.insert(row);
   const stamp = { identity: ctx.sender, lastTriggeredAtMs: now };
   if (trigger) ctx.db.serverBoostTrigger.identity.update(stamp); else ctx.db.serverBoostTrigger.insert(stamp);
-  insertChatMessage(ctx, ctx.sender, name, extending
-    ? "Added 15 minutes to the Server Boost: 2x Rewards for everyone online. Thank you for supporting WildStat! ♥"
-    : "Started a Server Boost: 2x Rewards for everyone online for 15 minutes. Thank you for supporting WildStat! ♥");
+  // Marked in chat_announcement, which no chat reducer writes, so the client draws it as a banner and typed text never is.
+  const announced = insertChatMessage(ctx, ctx.sender, name, extending
+    ? "Extended a Server Boost: +15 min of 2x Rewards, Wood and Ore for everyone online. Thank you for supporting WildStat! ♥"
+    : "Started a Server Boost: 2x Rewards, Wood and Ore for everyone online for 15 min. Thank you for supporting WildStat! ♥");
+  markChatAnnouncement(ctx, announced.id, "server-boost");
 }
 
 /** The caller's own cooldown row, for the Shop. */

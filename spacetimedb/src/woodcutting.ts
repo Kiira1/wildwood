@@ -17,6 +17,8 @@ import { bagFullForOres, roomForOres } from "../../shared/ore-bag";
 import type { MiningDeps } from "./mining";
 import { toolBonusYield } from "../../shared/tools";
 import { toolLevelFor } from "./tools";
+import { boostedYield } from "../../shared/server-boost";
+import { serverBoostGatherMultiplierAt } from "./server-boost-tables";
 import { researchRankFor } from "./research-rank";
 import { gatherRespawnMs } from "../../shared/gather-respawn";
 import { cardStatFactors } from "../../shared/card-effects";
@@ -165,7 +167,8 @@ export function chopTreeFor(ctx: Ctx, args: { treeId: number }, deps: MiningDeps
   if (woodcutting && microsSince(ctx, woodcutting.lastChopAt) < woodcuttingChopSeconds(tree, skill, hatchet, cards.woodcuttingSpeed) * WOODCUTTING_RATE_SLACK * 1_000_000) {
     throw new SenderError("Still chopping.");
   }
-  const logs = woodcuttingYield(tree, hatchet > 0 ? toolBonusYield(hatchet, ctx.random()) : 0, cards.logFind, cards.logFind > 0 ? ctx.random() : 1);
+  const logs = boostedYield(woodcuttingYield(tree, hatchet > 0 ? toolBonusYield(hatchet, ctx.random()) : 0, cards.logFind,
+    cards.logFind > 0 ? ctx.random() : 1), serverBoostGatherMultiplierAt(ctx, millisOf(ctx.timestamp)));
   for (const [logId, count] of Object.entries(logs)) addOres(ctx, ctx.sender, logId as OreId, count ?? 0);
   awardTreeCardDrops(ctx, ctx.sender, [tree]);
   const row = {
@@ -211,8 +214,10 @@ export function reportChoppingFor(ctx: Ctx, args: { chops: readonly { treeId: nu
   for (const row of rows.values()) if (!last.has(row.treeId) && grownBack(ctx, row, rank)) ctx.db.playerChoppedTree.key.delete(row.key);
   if (!accepted.length) return;
   const gained: Partial<Record<OreId, number>> = {};
-  for (const { node } of accepted) {
-    const logs = woodcuttingYield(node, hatchet > 0 ? toolBonusYield(hatchet, ctx.random()) : 0, cards.logFind, cards.logFind > 0 ? ctx.random() : 1);
+  for (const { node, atMs } of accepted) {
+    // A Server Boost doubles the logs, judged at the fall's own time; the count of falls is unchanged.
+    const logs = boostedYield(woodcuttingYield(node, hatchet > 0 ? toolBonusYield(hatchet, ctx.random()) : 0, cards.logFind,
+      cards.logFind > 0 ? ctx.random() : 1), serverBoostGatherMultiplierAt(ctx, atMs));
     for (const [logId, count] of Object.entries(logs)) gained[logId as OreId] = (gained[logId as OreId] ?? 0) + (count ?? 0);
   }
   for (const [logId, count] of Object.entries(gained)) addOres(ctx, ctx.sender, logId as OreId, count ?? 0);

@@ -20,6 +20,7 @@ import { createToolRows } from "./tool-service";
 import { createItemCollectionRows } from "./item-collection-service";
 import { createStarterChestRows } from "./starter-chest-service";
 import { createServerBoostRows } from "./server-boost-service";
+import { createChatAnnouncementRows } from "./chat-announcement-service";
 import { itemLevelParts, type ItemLevel } from "../../../shared/items";
 import { NO_CARDS, cardStatFactors, cardTotals, type CardTotals } from "../../../shared/card-effects";
 import { BASE_CARD_SLOTS, activeCardSlots, activeCardsInPlay, type ActiveCardSlots, type ActiveCards } from "../../../shared/active-cards";
@@ -76,8 +77,11 @@ export function createAccountRowServices(connection: () => DbConnection | null, 
   const soulDimension = createSoulDimensionRows(connection, notify);
   const guildHall = createGuildHallRows(connection, notify);
   const itemRefine = createItemRefineRows(notify, slotTierFor);
-  const mining = createMiningRows(notify, gatherClock);
-  const woodcutting = createWoodcuttingRows(notify, gatherClock);
+  // The Server Boost doubles wood and ore, so the gathering rows read it for what a break shows.
+  const serverBoost = createServerBoostRows(notify, () => gatherClock?.serverNowMs() ?? wallClockNowMs());
+  const mining = createMiningRows(notify, gatherClock, serverBoost.gatherMultiplierAt);
+  const woodcutting = createWoodcuttingRows(notify, gatherClock, serverBoost.gatherMultiplierAt);
+  const chatAnnouncements = createChatAnnouncementRows(notify);
   const cards = createCardRows(notify);
   const cardShop = createCardShopRows(notify);
   const builds = createBuildRows(notify);
@@ -87,7 +91,6 @@ export function createAccountRowServices(connection: () => DbConnection | null, 
   const tools = createToolRows(notify);
   const collection = createItemCollectionRows(notify);
   const starterChest = createStarterChestRows(notify);
-  const serverBoost = createServerBoostRows(notify, () => gatherClock?.serverNowMs() ?? wallClockNowMs());
   // The active cards in play, added up again only when the cards or the slots are replaced (read many times a frame).
   let activeFrom: ActiveCards | null = null, activeSlots: ActiveCardSlots | null = null;
   let active: { ids: readonly string[]; totals: CardTotals; stats: ReturnType<typeof cardStatFactors> } = { ids: [], totals: NO_CARDS, stats: cardStatFactors(NO_CARDS) };
@@ -136,6 +139,7 @@ export function createAccountRowServices(connection: () => DbConnection | null, 
       collection.watch(current, isCurrent);
       starterChest.watch(current, isCurrent);
       serverBoost.watch(current, isCurrent);
+      chatAnnouncements.watch(current, isCurrent);
     },
     api: {
       ...offlinePreference.api,
@@ -157,6 +161,7 @@ export function createAccountRowServices(connection: () => DbConnection | null, 
       ...collection.api,
       ...starterChest.api,
       ...serverBoost.api,
+      ...chatAnnouncements.api,
       /** Ores held, by kind, with those from breaks the server has not answered yet. */
       ores: oresHeld,
       flushGathering,

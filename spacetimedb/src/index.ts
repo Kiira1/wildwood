@@ -83,6 +83,7 @@ import { beginPatreonLink as beginSupporterLink, refreshPatreon, sweepPatreonLin
 import { requestPatreonSupport } from "./patreon-support";
 import { triggerServerBoost, registerServerBoost } from "./server-boost";
 import { serverBoostTables } from "./server-boost-tables";
+import { chatAnnouncementTables } from "./chat-announcement";
 import { allowedAvatarFrame, isAvatarFrame } from "../../shared/avatar-frames";
 import { createGemPurchaseService } from "./gem-purchase-service";
 import { HOME_EXTERIOR_MAP_ID } from "../../shared/home";
@@ -1397,7 +1398,7 @@ const spacetimedb = schema({
   ...proceduralMapTables,
   ...leaderboardPageTables,
   ...gemPurchaseTables,
-  ...patreonTables, ...serverBoostTables,
+  ...patreonTables, ...serverBoostTables, ...chatAnnouncementTables,
   homeReturnLocation,
   ...guildTables,
   ...socialTables,
