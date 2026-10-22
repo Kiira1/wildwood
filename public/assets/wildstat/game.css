@@ -4712,7 +4712,7 @@
 .shop-dev-note p { margin: 0; color: #e3e6ea; font-size: 14px; font-weight: 700; line-height: 1.45; -webkit-text-stroke: 0; text-shadow: none; }
 .shop-dev-note .shop-dev-sign { color: #f0d7e7; font-weight: 900; }
 /* Server Boost: what it does, the one running, and the supporter's Start button with its wait. */
-.shop-server-boost { display: grid; gap: 8px; margin: 0 0 18px; padding: 14px 16px; border: 1px solid #ffffff1f; border-radius: 12px; background: #000000b3; color: #fff; text-align: left; }
+.shop-server-boost { display: grid; gap: 8px; margin: 18px 0 0; padding: 14px 16px; border: 1px solid #ffffff1f; border-radius: 12px; background: #000000b3; color: #fff; text-align: left; }
 .shop-server-boost h2 { margin: 0; color: #fff; font-size: 15px; }
 .shop-server-boost p { margin: 0; color: #e3e6ea; font-size: 13px; font-weight: 700; line-height: 1.4; -webkit-text-stroke: 0; text-shadow: none; }
 .shop-server-boost p:empty { display: none; }

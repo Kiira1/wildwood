@@ -119,7 +119,7 @@ export function createGemShopController(options: {
     }
     const patreonRows = dialog.querySelectorAll('.shop-patreon-button, .shop-patreon-connect, .shop-patreon-status');
     patreonRows[patreonRows.length - 1].after(note);
-    if (options.serverBoost) note.before(createServerBoostShopRow(options.serverBoost));
+    if (options.serverBoost) note.after(createServerBoostShopRow(options.serverBoost));
   }
   let loadTestProducts = async () => {};
   if (nativeShop) {

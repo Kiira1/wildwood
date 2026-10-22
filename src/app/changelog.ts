@@ -1,4 +1,7 @@
 export const RELEASE_NOTES: Record<string, string[]> = {
+  "0.916.29.1": [
+    "The Shop shows the Server Boost below the note from the dev",
+  ],
   "0.916.29": [
     "Server Boost announcements show as their own banner in chat",
     "Server Boost also doubles wood and ore",
@@ -3824,6 +3827,7 @@ const RELEASE_DATES: Record<string, string> = {
 };
 
 export const RELEASE_DAYS: Record<string, string> = {
+  "0.916.29.1": "2026-10-21",
   "0.916.29": "2026-10-21",
   "0.916.28": "2026-10-21",
   "0.916.27": "2026-10-21",
