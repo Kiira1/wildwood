@@ -2,6 +2,7 @@ export const RELEASE_NOTES: Record<string, string[]> = {
   "0.916.31": [
     "The profile Duel button matches the game's green buttons",
     "Message in a player's profile ⋯ menu opens a private chat with them",
+    "The green and yellow houses in Town can be entered again",
   ],
   "0.916.30": [
     "The trash can in the item window sells the item and shows how much",
