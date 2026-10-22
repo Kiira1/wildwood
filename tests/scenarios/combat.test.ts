@@ -287,6 +287,19 @@ describe("combat in the booted game", { timeout: 60_000 }, () => {
     expect(at().y).toBeGreaterThan(outside.y + 50);
   });
 
+  it("every house door in the Town takes her in when she walks up to it", async () => {
+    for (const door of TOWN_DOORS) {
+      const world = gameWorld();
+      const ann = characterAt(world, "Ann", { mapId: "town", x: door.outside.x, y: door.outside.y + 60 });
+      const tab = await playAs(world, "Ann");
+      await tab.play(300);
+      await tab.hold("KeyW", 1_500);
+      await tab.play(500);
+      const at = ann.row("player")!;
+      expect(at.x >= door.room.left && at.x <= door.room.right && at.y >= door.room.top && at.y <= door.room.bottom, `door ${door.index}`).toBe(true);
+    }
+  });
+
   it("movement reaches the server sparsely, and the server takes each packet where the player says they are", async () => {
     const world = gameWorld();
     const ann = characterAt(world, "Ann", { x: PLAYER_SPAWN.x, y: PLAYER_SPAWN.y });

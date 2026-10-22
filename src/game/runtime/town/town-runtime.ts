@@ -67,8 +67,6 @@ export const TOWN_FEET_RADIUS = 12;
 const DOOR_PUSH_REACH = 20;
 /** How far past the sill feet may be and still count as at the door; anything further is behind the building. */
 const DOOR_SILL_DEPTH = 16;
-/** Doors onto empty rooms stay shut: walking into them does nothing. Anyone already inside still walks out. */
-export const TOWN_LOCKED_DOORS: ReadonlySet<number> = new Set([0, 7]);
 /** Going through: a few steps into the doorway while the screen goes dark. */
 const DOORWAY_STEP = 22, DOORWAY_MS = 240;
 /** How far into a well's outline the feet must reach to fall: its opening, not its rim. */
@@ -279,7 +277,7 @@ export function createTownRuntime(deps: {
     const heading = Number.isFinite(lastY) ? player.y - lastY : 0;
     const atSill = (door: { x: number; half: number; enter: number }, reach: number) => Math.abs(feetX - door.x) < door.half
       && feetY > door.enter - DOOR_SILL_DEPTH && feetY < door.enter + TOWN_FEET_RADIUS + reach;
-    for (const door of TOWN_DOORS) if (atSill(door, DOOR_PUSH_REACH) && !TOWN_LOCKED_DOORS.has(door.index)) SOUL_DOORS_OPEN.add(door.index);
+    for (const door of TOWN_DOORS) if (atSill(door, DOOR_PUSH_REACH)) SOUL_DOORS_OPEN.add(door.index);
     const into = TOWN_DOORS.find(door => SOUL_DOORS_OPEN.has(door.index) && atSill(door, 8));
     if (into && heading < 0) { startDoorway(into, true); return; }
     const room = townRoomAt(player.x, player.y);
