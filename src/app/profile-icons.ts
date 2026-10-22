@@ -105,7 +105,7 @@ function whenOnScreen(target: HTMLElement, show: () => void) {
 
 /** Shows a sheet as the target's background once it has loaded; its backdrop alone until then. */
 function showSheet(target: HTMLElement, path: string) {
-  target.dataset.profileSheet = path;
+  if (target.dataset.profileSheet !== path) target.dataset.profileSheet = path;
   const image = `url("${path}")`;
   if (profileSheetReady(path)) { if (target.style.backgroundImage !== image) target.style.backgroundImage = image; return; }
   target.style.backgroundImage = "none";
@@ -130,8 +130,9 @@ function showSheet(target: HTMLElement, path: string) {
  */
 export function applyProfileIcon(element: HTMLElement, iconIndex: number, identity?: string) {
   const icon = profileIconLocation(iconIndex);
-  element.dataset.profileIcon = String(icon.index);
-  element.dataset.profileBackground = icon.background;
+  // The HUD repaints its portrait every tick: write only what changed.
+  if (element.dataset.profileIcon !== String(icon.index)) element.dataset.profileIcon = String(icon.index);
+  if (element.dataset.profileBackground !== icon.background) element.dataset.profileBackground = icon.background;
   element.style.backgroundColor = PROFILE_ICON_BACKGROUND_COLORS[icon.background];
   watchProfileSnapshotElement(element, icon.snapshot && identity ? () => applyProfileIcon(element, iconIndex, identity) : null);
   const portrait = icon.snapshot ? profileSnapshotPortrait(identity) : undefined;
@@ -139,7 +140,7 @@ export function applyProfileIcon(element: HTMLElement, iconIndex: number, identi
   if (portrait) {
     delete element.dataset.profileSheet;
     element.querySelector(":scope > .profile-icon-art")?.remove();
-    element.classList.remove("profile-icon-cropped");
+    element.classList.toggle("profile-icon-cropped", false);
     if (portrait.paint) { showMovingPortrait(element, portrait); return; }
     if (element.querySelector(":scope > canvas.profile-icon-live")) { removeMovingPortrait(element); appliedSnapshots.delete(element); }
     // The HUD repaints its own portrait often; a data URL is only set again when it changed.

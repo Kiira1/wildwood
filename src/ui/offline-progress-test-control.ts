@@ -1,5 +1,6 @@
 import { OFFLINE_WINDOW_SECONDS } from "../../shared/offline-progress";
 import { offlineWindowSecondsWithResearch } from "../../shared/utility-research";
+import { setAttr, setDisabled, setHidden, setText } from "./dom-write";
 
 /**
  * Developer-only: backdate the unattended window and reconnect, so offline
@@ -28,11 +29,12 @@ export function createOfflineProgressTestControl(parent: HTMLElement, dependenci
 
   function render() {
     const maxMinutes = offlineWindowSecondsWithResearch(dependencies.offlineWindowRank?.() ?? 0) / 60;
-    if (input.value === input.max) input.value = String(maxMinutes);
-    input.max = String(maxMinutes);
-    form.hidden = !dependencies.allowed();
-    input.disabled = button.disabled = pending || form.hidden;
-    button.textContent = pending ? "Applying…" : "Apply";
+    if (input.value === input.max && input.value !== String(maxMinutes)) input.value = String(maxMinutes);
+    setAttr(input, "max", String(maxMinutes));
+    setHidden(form, !dependencies.allowed());
+    setDisabled(input, pending || form.hidden);
+    setDisabled(button, pending || form.hidden);
+    setText(button, pending ? "Applying…" : "Apply");
   }
 
   form.addEventListener("submit", async event => {

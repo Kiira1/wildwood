@@ -1,5 +1,6 @@
 import { prestigeCapped, prestigeEndlessRequirement, prestigeRequirementHint } from "../../shared/prestige";
 import { PRESTIGE_ARMED_WARNING, PRESTIGE_COST, prestigeRewardLabel, submitPrestige, type PrestigeResult } from "./prestige-panel";
+import { setHidden } from "./dom-write";
 
 /** Per identity: the highest prestige level this browser has announced, or seen the account reach. */
 export const PRESTIGE_UNLOCK_ANNOUNCED_KEY = "wildstat.prestigeUnlockAnnounced";
@@ -296,7 +297,7 @@ export function createPrestigeUnlockPreviewControl(parent: HTMLElement, dependen
   button.setAttribute("aria-label", "Preview prestige unlock popup");
   row.append(label, button);
   parent.append(row);
-  const render = () => { row.hidden = !dependencies.allowed(); };
+  const render = () => { setHidden(row, !dependencies.allowed()); };
   button.addEventListener("click", () => { if (dependencies.allowed()) dependencies.preview(); });
   render();
   return { render, element: row };

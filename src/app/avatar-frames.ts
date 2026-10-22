@@ -82,7 +82,9 @@ export function updateAvatarFrame(state: AvatarFrameState) {
 export function applyAvatarFrame(element: HTMLElement, identity: string | undefined) {
   if (portraitProvider) { portraitProvider(element, identity); return; }
   if (element.dataset.avatarOwner !== (identity ?? "")) element.dataset.avatarOwner = identity ?? "";
-  element.classList.add("avatar-frame-portrait"); paint(element); request(identity ?? "");
+  // classList.add rewrites the attribute even when the class is there; the HUD calls this every tick.
+  if (!element.classList.contains("avatar-frame-portrait")) element.classList.add("avatar-frame-portrait");
+  paint(element); request(identity ?? "");
   if (!maintenance && typeof window !== "undefined") maintenance = setInterval(() => {
     for (const el of mounted()) { paint(el); request(el.dataset.avatarOwner ?? ""); }
   }, 30_000);

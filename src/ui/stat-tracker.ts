@@ -2,6 +2,7 @@ import { formatCompactNumber } from './number-format';
 import { installMovableHudCard } from './movable-hud-card';
 import { renderBooleanSetting } from './settings';
 import { createStatTrackerModel, TRACKED_STATS, type TrackedStat, type TrackerBuild, type TrackerValues } from './stat-tracker-model';
+import { setClassName, setHidden, setText } from './dom-write';
 
 const LABELS = { power: 'Power', hp: 'Max HP', damage: 'Damage', armor: 'Armor', regen: 'Regen', attackSpeed: 'Atk Speed', critDamage: 'Crit Dmg', kills: 'Kills' };
 const ENABLED_KEY = 'wildstat-native-stat-tracker-enabled';
@@ -136,13 +137,13 @@ export function installStatTracker(options: {
     // Keep session tracking independent of visibility; hiding does not reset it.
     const result = snapshot ? model.update(snapshot.identity, snapshot.values, snapshot.prestigeLevel, snapshot.build) : null;
     const wasHidden = panel.hidden;
-    panel.hidden = !enabled || !result;
+    setHidden(panel, !enabled || !result);
     if (panel.hidden && !settings.hidden) showSettings(false);
     if (result && Date.now() - lastSave >= 10_000) { model.save(); lastSave = Date.now(); }
     if (panel.hidden || !result) return;
     if (wasHidden) movable.place();
     const seconds = Math.floor(result.elapsedMs / 1000);
-    clock.textContent = `${String(Math.floor(seconds / 3600)).padStart(2, '0')}:${String(Math.floor(seconds / 60) % 60).padStart(2, '0')}:${String(seconds % 60).padStart(2, '0')}`;
+    setText(clock, `${String(Math.floor(seconds / 3600)).padStart(2, '0')}:${String(Math.floor(seconds / 60) % 60).padStart(2, '0')}:${String(seconds % 60).padStart(2, '0')}`);
     for (const row of result.rows) {
       const rowCells = cells.get(row.stat)!;
       // Three significant digits throughout keeps every column narrow. Values
@@ -151,10 +152,10 @@ export function installStatTracker(options: {
         ? value.toLocaleString(undefined, { maximumFractionDigits: 2 })
         : formatCompactNumber(value);
       const detail = snapshot?.details?.[row.stat];
-      rowCells[0].textContent = detail ? `${format(row.current)} (${detail})` : format(row.current);
+      setText(rowCells[0], detail ? `${format(row.current)} (${detail})` : format(row.current));
       [row.gain, row.perHour].forEach((value, index) => {
-        rowCells[index + 1].textContent = `${value > 0 ? '+' : value < 0 ? '−' : ''}${format(Math.abs(value))}`;
-        rowCells[index + 1].className = value > 0 ? 'positive' : value < 0 ? 'negative' : '';
+        setText(rowCells[index + 1], `${value > 0 ? '+' : value < 0 ? '−' : ''}${format(Math.abs(value))}`);
+        setClassName(rowCells[index + 1], value > 0 ? 'positive' : value < 0 ? 'negative' : '');
       });
     }
   }

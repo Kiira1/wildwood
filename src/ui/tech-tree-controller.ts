@@ -16,6 +16,7 @@ import { researchSpeedUpGemCost } from "../../shared/gems";
 import { createTechTreeLayout, type TechTreeNode } from "./tech-tree-layout";
 import { gemSpendConfirmation } from "./gem-spend-confirmation";
 import { gameConfirm, type ConfirmPrompt, type ConfirmRequest } from "./confirm-dialog";
+import { setHidden } from "./dom-write";
 
 export type ResearchRanks = SharedResearchRanks;
 export type ActiveResearch = {
@@ -272,7 +273,7 @@ export function createTechTreeController(elements: TechTreeControllerElements, h
     for (const finished of completionTracker.poll(hooks.localIdentity(), hooks.isConnected(), current, ranks)) {
       hooks.onResearchFinished?.(finished);
     }
-    notice.hidden = Boolean(current) || !hasAvailableResearch(ranks);
+    setHidden(notice, Boolean(current) || !hasAvailableResearch(ranks));
   }
 
   function render() {

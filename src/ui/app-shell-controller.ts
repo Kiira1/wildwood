@@ -14,6 +14,7 @@ import {
   renderFullscreenSetting,
   renderLatencyStatus,
   renderVolume,
+  setText,
 } from "./settings";
 
 type AccountState = { signedIn: boolean; notice: string; hasAccountToken?: boolean };
@@ -296,7 +297,7 @@ export function createAppShellController(dependencies: AppShellDependencies) {
     refreshStatus,
     renderFps: (fps: number) => {
       if (!fpsVisible) return;
-      gameFpsStatus.textContent = `FPS: ${fps}`;
+      setText(gameFpsStatus, `FPS: ${fps}`);
     },
     ensureMusicPlaying,
   };

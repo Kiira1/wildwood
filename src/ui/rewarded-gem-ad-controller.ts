@@ -13,6 +13,7 @@ import {
   type AdGemRewardRecord,
   type AdGemRewardStatus,
 } from "../../shared/ad-gem-reward";
+import { setAttr, setData, setDisabled, setHidden, setText } from "./dom-write";
 
 type RewardedGemAdElements = {
   button: HTMLButtonElement;
@@ -101,28 +102,28 @@ export function createRewardedGemAdController(
     }
   }
 
-  function render(next: ButtonState, status: string, disabled: boolean, label = WATCH_LABEL) {
+  /** The wait renders every second: only what changed is written, and nothing is shown then hidden again. */
+  function render(next: ButtonState, status: string, disabled: boolean, label = WATCH_LABEL, countdown: string | null = null, buttonHidden = false) {
     state = next;
     renderedRecord = dependencies.adGemReward();
-    elements.button.hidden = false;
-    elements.button.dataset.state = next;
-    elements.button.disabled = disabled;
-    elements.status.textContent = status;
-    elements.countdown.hidden = true;
-    elements.confirmButton.textContent = next === "waiting" ? "Retry Ad" : "Watch Ad";
-    elements.button.title = label;
-    elements.button.setAttribute("aria-label", label);
-    elements.button.setAttribute("aria-busy", next === "checking" || next === "showing" || next === "claiming" ? "true" : "false");
+    setHidden(elements.button, buttonHidden);
+    setData(elements.button, "state", next);
+    setDisabled(elements.button, disabled);
+    setText(elements.status, status);
+    setHidden(elements.countdown, countdown === null);
+    if (countdown !== null) setText(elements.countdown, countdown);
+    setText(elements.confirmButton, next === "waiting" ? "Retry Ad" : "Watch Ad");
+    if (elements.button.title !== label) elements.button.title = label;
+    setAttr(elements.button, "aria-label", label);
+    setAttr(elements.button, "aria-busy", next === "checking" || next === "showing" || next === "claiming" ? "true" : "false");
   }
 
   /** Cooldown or spent day: the button counts down and cannot be pressed. */
   function renderWait(status: WaitStatus) {
     closePrompt(false);
     const wait = formatAdGemWait(status.waitMs);
-    render(status.kind, `NEXT AD IN ${wait}`, true, adGemRefusal(status) ?? WATCH_LABEL);
-    elements.countdown.hidden = false;
-    elements.countdown.textContent = `Ad in ${wait}\n${status.claimsLeft} left today`;
-    if (!(dependencies.showWaitTimer?.() ?? true)) elements.button.hidden = true;
+    render(status.kind, `NEXT AD IN ${wait}`, true, adGemRefusal(status) ?? WATCH_LABEL,
+      `Ad in ${wait}\n${status.claimsLeft} left today`, !(dependencies.showWaitTimer?.() ?? true));
   }
 
   function readyLabel(claimsLeft: number) {

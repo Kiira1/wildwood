@@ -12,6 +12,7 @@ import { installMovableHudCard } from './movable-hud-card';
 import type { AggroChallenge } from '../../shared/aggro-challenge';
 import type { RewardType } from '../game/enemies';
 import { AUTO_CHOP_HELP_LINES, AUTO_MINE_HELP_LINES, createAutoChopView, createAutoMineView } from './auto-gather-view';
+import { setAttr, setHidden, setText } from './dom-write';
 
 /** Where the card was dragged to; positions saved under older keys are ignored, so the card starts centred. */
 export const AUTO_FARM_POSITION_KEY = 'wildstat:autofarm-position:v2';
@@ -402,13 +403,13 @@ export function createAutoFarmPanel(options: {
     // A run lacking its picked groups on this map gets the picker, which stays until they are picked.
     const groups = mapGroups(), needed = aggroPicksNeeded(options.aggro?.());
     if (aggroRun() && options.visible() && groups.length && !picker.isOpen() && picker.lacking(needed, groups)) picker.open(needed, groups);
-    helpToggle.hidden = content.hidden;
-    aggroRow.hidden = !aggroRun();
+    setHidden(helpToggle, content.hidden);
+    setHidden(aggroRow, !aggroRun());
     const visible = shown();
     // Walked out of its area: the window folds away with the button.
     if (options.visible() && !visible && !content.hidden) { setHelpOpen(false); setExpanded(false); }
     const wasHidden = sheet.hidden;
-    sheet.hidden = !visible;
+    setHidden(sheet, !visible);
     if (wasHidden && visible) movable.place();
     showKind();
     const state = options.farm.state();
@@ -416,15 +417,15 @@ export function createAutoFarmPanel(options: {
     const here = gather();
     if (here) {
       const status = here.run.state().status;
-      toggle.setAttribute('aria-label', content.hidden ? `Open ${here.name}. ${farming() ? `${status}. ` : ''}Drag or use arrow keys to move; Home to reset position.` : `Close ${here.name}`);
-      toggle.title = `${farming() ? `${status} · ` : ''}Click to ${content.hidden ? 'open' : 'close'} · Drag to move · F to ${farming() ? 'stop' : 'start'}`;
-    } else toggle.setAttribute('aria-label', content.hidden
+      setAttr(toggle, 'aria-label', content.hidden ? `Open ${here.name}. ${farming() ? `${status}. ` : ''}Drag or use arrow keys to move; Home to reset position.` : `Close ${here.name}`);
+      setAttr(toggle, 'title', `${farming() ? `${status} · ` : ''}Click to ${content.hidden ? 'open' : 'close'} · Drag to move · F to ${farming() ? 'stop' : 'start'}`);
+    } else setAttr(toggle, 'aria-label', content.hidden
       ? `Open Auto Farm. ${state.active ? `Farming ${state.selectedLabel}. ` : ''}Drag or use arrow keys to move; Home to reset position.`
       : 'Close Auto Farm');
-    if (!mining()) toggle.title = `${state.active ? `${state.selectedLabel} · ${state.status} · ` : ''}Click to ${content.hidden ? 'open' : 'close'} · Drag to move · F to ${state.active ? 'stop' : 'start'}`;
+    if (!mining()) setAttr(toggle, 'title', `${state.active ? `${state.selectedLabel} · ${state.status} · ` : ''}Click to ${content.hidden ? 'open' : 'close'} · Drag to move · F to ${state.active ? 'stop' : 'start'}`);
     const text = badgeText();
-    if (badge.textContent !== text) badge.textContent = text;
-    badge.hidden = !text;
+    setText(badge, text);
+    setHidden(badge, !text);
     if (visible && !content.hidden) renderChoices();
   }
 

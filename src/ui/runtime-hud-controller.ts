@@ -24,6 +24,8 @@ import {
 } from "./stat-reward-toast";
 import type { PlayerGender } from "../../shared/player-gender";
 import { statPopupsEnabled } from "./stat-popup-setting";
+import { setHidden, setText } from "./dom-write";
+import { replaceChildrenIfChanged } from "./replace-children-if-changed";
 
 
 const GEM_DROP_ART = "assets/wildstat/gems/gem-icon-v2.webp";
@@ -356,19 +358,19 @@ export function createRuntimeHudController(dependencies: RuntimeHudDependencies)
   function updateDuelControls() {
     const duel = dependencies.activeDuel();
     document.body.classList.toggle("is-dueling", Boolean(duel && ["countdown", "active", "finishing"].includes(duel.status)));
-    elements.duelStatus.hidden = false;
+    setHidden(elements.duelStatus, false);
     dependencies.updateProfileDuelButton();
 
     if ((duel?.status === "active" || duel?.status === "finishing") && Date.now() >= duel.endsAtMs) dependencies.pulseDuel();
 
     if (duel?.status === "countdown") {
       const remaining = Math.max(0, Math.ceil((duel.startsAtMs - Date.now()) / 1000));
-      elements.duelStatus.textContent = "DUEL STARTING";
+      setText(elements.duelStatus, "DUEL STARTING");
       setDuelCountdown(remaining);
-      elements.duelControls.hidden = false;
+      setHidden(elements.duelControls, false);
       return;
     }
-    elements.duelCountdown.hidden = true;
+    setHidden(elements.duelCountdown, true);
     if (duel?.status === "active") {
       const remaining = Math.max(0, Math.ceil((duel.endsAtMs - Date.now()) / 1000));
       const opponentIsChallenger = duel.opponent === dependencies.localIdentity();
@@ -376,21 +378,21 @@ export function createRuntimeHudController(dependencies: RuntimeHudDependencies)
       opponentName.className = "duel-status-name";
       opponentName.append(document.createTextNode(dependencies.duelOpponentName(duel)));
       appendPlayerGenderIcon(opponentName, opponentIsChallenger ? duel.challengerGender : duel.opponentGender);
-      elements.duelStatus.replaceChildren("DUEL · ", opponentName, ` · ${remaining}s`);
-      elements.duelControls.hidden = false;
+      replaceChildrenIfChanged(elements.duelStatus, target => target.replaceChildren("DUEL · ", opponentName, ` · ${remaining}s`));
+      setHidden(elements.duelControls, false);
       return;
     }
     if (duel?.status === "finishing") {
-      elements.duelStatus.textContent = "DUEL COMPLETE";
-      elements.duelControls.hidden = false;
+      setText(elements.duelStatus, "DUEL COMPLETE");
+      setHidden(elements.duelControls, false);
       return;
     }
-    elements.duelControls.hidden = true;
+    setHidden(elements.duelControls, true);
   }
 
   function setDuelCountdown(countdown: number) {
-    elements.duelCountdown.textContent = String(countdown || "");
-    elements.duelCountdown.hidden = !countdown;
+    setText(elements.duelCountdown, String(countdown || ""));
+    setHidden(elements.duelCountdown, !countdown);
   }
 
   function updateHud(force = false) {

@@ -1,3 +1,4 @@
+import { setDisabled, setHidden, setText } from "./dom-write";
 type EndlessTravelDependencies = {
   allowed: () => boolean;
   travel: (number: number) => Promise<boolean>;
@@ -17,9 +18,10 @@ export function createEndlessTravelControl(parent: HTMLElement, dependencies: En
   parent.append(row);
   let pending = false;
   function render() {
-    row.hidden = !dependencies.allowed();
-    input.disabled = button.disabled = pending || row.hidden;
-    button.textContent = pending ? "GOING…" : "GO";
+    setHidden(row, !dependencies.allowed());
+    setDisabled(input, pending || row.hidden);
+    setDisabled(button, pending || row.hidden);
+    setText(button, pending ? "GOING…" : "GO");
   }
   row.addEventListener("submit", async (event) => {
     event.preventDefault();

@@ -1,4 +1,5 @@
 import { nativeUpdates } from '../app/native-updates';
+import { setHidden } from './dom-write';
 /** Developer-only controls; normal players use the production feed automatically. */
 export function createOtaPanel(root: HTMLElement) {
   const section = document.createElement('section'); section.className = 'balance-group ota-panel'; section.hidden = true;
@@ -6,7 +7,7 @@ export function createOtaPanel(root: HTMLElement) {
   root.append(section);
   let developer = false;
   function render() {
-    const api = nativeUpdates(); section.hidden = !developer || !api;
+    const api = nativeUpdates(); setHidden(section, !developer || !api);
     if (!api) return;
     const s = api.snapshot();
     section.querySelector('.ota-state')!.textContent = `${s.channel === 'developer' ? 'Developer test' : 'Production'} · ${s.current}${s.pending ? ` → ${s.pending}` : ''}`;

@@ -4,6 +4,7 @@ import { createOfflineProgressTestControl } from "./offline-progress-test-contro
 import { createBossHitboxOverlayControl } from "./boss-hitbox-overlay-control";
 import { createPrestigeUnlockPreviewControl } from "./prestige-unlock-popup";
 import { createOtaPanel } from './ota-panel';
+import { setHidden } from './dom-write';
 import { createBalanceEditorPanel, type BalanceEditorDependencies } from "./balance-editor-panel";
 import { createDevModerationLog, type ModerationLogLoader } from "./dev-moderation-log";
 import { createDevConsolePanels, type DevConsoleApi } from "./dev-console-panels";
@@ -359,10 +360,11 @@ export function createDevPanelController(dependencies: DevPanelDependencies) {
     playerTravel.render();
     offlineProgressTest.render();
     prestigeUnlockPreview.render();
-    settingsRow.hidden = !developer;
-    button.hidden = !developer;
+    setHidden(settingsRow, !developer);
+    setHidden(button, !developer);
     if (developer) return;
-    close();
+    // Runs every HUD tick: a panel already closed has nothing left to close.
+    if (!panel.hidden) close();
     // Drop the triage data once, on the way out, not on every HUD refresh.
     if (!confirmedIdentity) return;
     confirmedIdentity = "";

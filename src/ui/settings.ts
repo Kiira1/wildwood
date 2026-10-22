@@ -1,11 +1,6 @@
-/**
- * Status renders run on the 100ms HUD tick whether or not the settings window
- * is open. Assigning the same text or attribute still dirties the node, so
- * these only write what changed.
- */
-export function setText(element: HTMLElement, text: string) {
-  if (element.textContent !== text) element.textContent = text;
-}
+// Status renders run on the 100ms HUD tick whether or not the settings window is open.
+import { setText } from "./dom-write";
+export { setText };
 
 export function renderBooleanSetting(button: HTMLElement, enabled: boolean) {
   // Some callers refresh every frame; rewriting the same text still replaces

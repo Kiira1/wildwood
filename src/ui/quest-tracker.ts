@@ -2,6 +2,7 @@ import { installMovableHudCard } from "./movable-hud-card";
 import type { QuestTrackerView } from "./quest-board-controller";
 import { REWARD_DATA, rewardStatLabel } from "../game/enemies";
 import { renderBooleanSetting } from "./settings";
+import { setHidden } from "./dom-write";
 
 const COLLAPSED_KEY = "wildstat-quest-tracker-collapsed-v1";
 const POSITION_KEY = "wildstat-quest-tracker-position-v1";
@@ -78,7 +79,7 @@ export function installQuestTracker(options: {
     const showing = options.enabled() && !options.hiddenHere();
     if (showing) options.ensure?.();
     const view = showing ? options.view() : null;
-    if (!view) { panel.hidden = true; return; }
+    if (!view) { setHidden(panel, true); return; }
     const wasHidden = panel.hidden;
     panel.hidden = false;
     if (wasHidden) movable.place();

@@ -1,6 +1,7 @@
 import { formatTimerMs } from "../../shared/timer-format";
 import type { ActiveItemUpgrade } from "../wildstat-coop";
 import type { ActiveResearch } from "./tech-tree-controller";
+import { setAttr, setHidden, setText } from "./dom-write";
 
 type TimerElements = {
   research: HTMLElement;
@@ -40,12 +41,10 @@ export function hudProgressTimers(
 
 export function createHudProgressTimers(elements: TimerElements, sources: TimerSources) {
   const render = (element: HTMLElement, label: string, remaining: string | null, paused = false) => {
-    element.hidden = remaining === null;
+    setHidden(element, remaining === null);
     if (remaining === null) return;
-    const text = `${label} ${remaining}`;
-    if (element.textContent !== text) element.textContent = text;
-    const description = `${label === "Tech" ? "Tech research" : `Slot Upgrade ${label}`} ${paused ? "paused with" : "finishes in"} ${remaining}`;
-    if (element.getAttribute("aria-label") !== description) element.setAttribute("aria-label", description);
+    setText(element, `${label} ${remaining}`);
+    setAttr(element, "aria-label", `${label === "Tech" ? "Tech research" : `Slot Upgrade ${label}`} ${paused ? "paused with" : "finishes in"} ${remaining}`);
   };
 
   function tick() {

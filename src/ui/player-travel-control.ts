@@ -1,3 +1,4 @@
+import { setDisabled, setHidden, setText } from "./dom-write";
 /** A manual lookup avoids subscribing to every player's map or movement. */
 export function createPlayerTravelControl(parent: HTMLElement, dependencies: {
   allowed: () => boolean;
@@ -13,9 +14,10 @@ export function createPlayerTravelControl(parent: HTMLElement, dependencies: {
   const button = form.querySelector("button")!;
   let pending = false;
   const render = () => {
-    form.hidden = !dependencies.allowed();
-    input.disabled = button.disabled = pending || form.hidden;
-    button.textContent = pending ? "Teleporting…" : "Teleport";
+    setHidden(form, !dependencies.allowed());
+    setDisabled(input, pending || form.hidden);
+    setDisabled(button, pending || form.hidden);
+    setText(button, pending ? "Teleporting…" : "Teleport");
   };
   form.addEventListener("submit", async event => {
     event.preventDefault();
