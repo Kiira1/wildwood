@@ -5012,21 +5012,7 @@ html.text-outline-shadow .death-countdown { text-shadow: var(--text-outline-ring
 .inventory-loadout .slot-tool .slot-tool-art { grid-area: 1 / 1; width: 100%; height: 100%; margin: 0; background: center / contain no-repeat; transform: rotate(-35deg); }
 .inventory-loadout .slot-tool .slot-tool-art.slot-tool-crossed { transform: rotate(35deg) scaleX(-1); }
 
-/* Server announcements in chat (chat-announcement-line.ts): a full-width banner, never a player's bubble. */
-#chatPanel .chat-line.chat-announcement { display: grid; grid-template-columns: auto minmax(0, 1fr); grid-template-areas: "icon head" "icon text"; align-items: center; gap: 2px 10px; width: 100%; min-height: 0; margin: 8px 0; padding: 10px 12px; border: 1px solid rgba(255,255,255,.14); border-radius: 8px; background: #1c1d20; box-shadow: none; color: #fff; font-family: var(--player-name-font); overflow-wrap: anywhere; }
-#chatPanel.is-large .chat-line.chat-announcement { max-width: 715px; margin: 27px auto 10px; padding: 8px 12px; }
-.chat-announcement-icon { grid-area: icon; }
-#chatPanel.is-large .chat-announcement .chat-profile-icon { width: 40px; height: 40px; }
-.chat-announcement-head { grid-area: head; display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 8px; min-width: 0; }
-.chat-announcement-label { color: #fff; font-size: 13px; font-weight: 900; letter-spacing: .02em; }
-.chat-announcement-name { color: #d9dce0; font-size: 13px; font-weight: 900; }
-.chat-announcement-time { margin-left: auto; color: rgba(255,255,255,.45); font-size: 11px; font-weight: 800; }
-.chat-announcement-text { grid-area: text; color: #e8e9eb; font-size: 13px; font-weight: 800; line-height: 1.4; }
-#chatPanel.is-large .chat-announcement-label, #chatPanel.is-large .chat-announcement-name { font-size: 15px; }
-#chatPanel.is-large .chat-announcement-text { font-size: 15px; }
-/* The two-line chat strip: one line, icon, label and words, cut short. */
-#chatPanel:not(.is-large) .chat-line.chat-announcement { display: flex; align-items: center; gap: 5px; margin: 0; padding: 0 5px; min-height: 18px; border-radius: 4px; box-shadow: none; border-color: rgba(255,255,255,.35); white-space: nowrap; overflow: hidden; }
-#chatPanel:not(.is-large) .chat-announcement-head { flex: 0 0 auto; flex-wrap: nowrap; gap: 5px; }
-#chatPanel:not(.is-large) .chat-announcement-label, #chatPanel:not(.is-large) .chat-announcement-name, #chatPanel:not(.is-large) .chat-announcement-text { font-size: var(--mini-chat-font-size); }
-#chatPanel:not(.is-large) .chat-announcement-name::after { content: ":"; }
-#chatPanel:not(.is-large) .chat-announcement-text { flex: 1 1 0; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+/* Server announcements in chat (chat-announcement-line.ts): a player's line with a label and an outlined bubble. */
+.chat-announcement-label { display: inline-block; margin-left: 8px; padding: 1px 8px; border: 1px solid rgba(255,255,255,.3); border-radius: 999px; color: #fff; font-size: 13px; font-weight: 900; line-height: 1.3; vertical-align: middle; -webkit-text-stroke: 0; }
+#chatPanel.is-large .chat-announcement .chat-text { box-shadow: inset 0 0 0 1px rgba(255,255,255,.3); }
+#chatPanel:not(.is-large) .chat-announcement-label { display: none; }

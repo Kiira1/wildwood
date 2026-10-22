@@ -14,7 +14,7 @@ import { createGearSellerController, type GearSellerDeps } from "../../src/ui/ge
 import { renderProfileGuild } from "../../src/ui/profile-guild";
 import { createProfileActionsMenu } from "../../src/ui/profile-actions-menu";
 import { createGemShopController } from "../../src/ui/gem-shop-controller";
-import { createChatAnnouncementLine } from "../../src/ui/chat-announcement-line";
+import { markChatAnnouncement } from "../../src/ui/chat-announcement-line";
 import { createDiamondLookDrawer } from "../../src/game/runtime/diamond-look-preview";
 import { installServerBoostHud } from "../../src/ui/server-boost-hud";
 import { createItemInspectionController } from "../../src/ui/item-inspection-controller";
@@ -285,7 +285,6 @@ async function chatAnnouncement() {
     #chatPanel #chatMessages { height: auto !important; max-height: none !important; overflow: visible !important; }
   `;
   document.head.append(unpin);
-  const sentAtMs = Date.UTC(2026, 9, 21, 15, 42);
   const boost = "Started a Server Boost: 2x Rewards for 15 min";
   const playerLine = (name: string, words: string) => {
     const line = document.createElement("div");
@@ -296,11 +295,10 @@ async function chatAnnouncement() {
     line.querySelector(".chat-message-body span")!.textContent = words;
     return line;
   };
-  const portrait = (index: number) => {
-    const icon = document.createElement("span");
-    icon.className = "chat-profile-icon";
-    applyProfileIcon(icon, index);
-    return icon;
+  const announcement = (name: string, words: string, kind: "server-boost" | "patreon") => {
+    const line = playerLine(name, words);
+    markChatAnnouncement(line, line.querySelector<HTMLElement>(".chat-name")!, kind);
+    return line;
   };
   for (const large of [false, true]) {
     const panel = await importById("chatPanel");
@@ -308,10 +306,9 @@ async function chatAnnouncement() {
     const messages = panel.querySelector("#chatMessages")!;
     const rows = [
       playerLine("Moss", "anyone up for the boss?"),
-      createChatAnnouncementLine({ id: 1n, senderName: "Oogway", message: boost, sentAtMs }, "server-boost", large, portrait(3)),
-      createChatAnnouncementLine({ id: 2n, senderName: "Oogway",
-        message: "Extended a Server Boost by 15 min", sentAtMs }, "server-boost", large, portrait(3)),
-      createChatAnnouncementLine({ id: 3n, senderName: "Fern", message: "Became a Gold supporter on Patreon. Thank you for supporting WildStat! ♥", sentAtMs }, "patreon", large, portrait(5)),
+      announcement("Oogway", boost, "server-boost"),
+      announcement("Oogway", "Extended a Server Boost by 15 min", "server-boost"),
+      announcement("Fern", "Became a Gold supporter on Patreon. Thank you for supporting WildStat! ♥", "patreon"),
       playerLine("Faker", boost),
     ];
     messages.append(...(large ? rows : rows.slice(1, 2).concat(rows.slice(4))));

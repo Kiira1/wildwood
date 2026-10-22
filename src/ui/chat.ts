@@ -1,5 +1,5 @@
 import { createChatGuildRequests } from "./chat-guild-requests";
-import { createChatAnnouncementLine } from "./chat-announcement-line";
+import { markChatAnnouncement } from "./chat-announcement-line";
 import type { ChatAnnouncementKind } from "../../shared/chat-announcement";
 import { CHAT_CLOSED_EVENT } from "./town-teleport-button";
 import type { GuildApi } from "../coop/services/guild-service";
@@ -652,10 +652,6 @@ export function createChatController({ elements, getCoop, showMessage, onOpenRep
         openPlayer(event);
       });
       applyProfileIcon(icon, iconIndex, displayIdentity);
-      if (announcement) {
-        nextRows.set(rowKey, { signature, element: createChatAnnouncementLine(message, announcement, large && chatTimestampsEnabled(), icon) });
-        continue;
-      }
       const line = document.createElement("div");
       line.className = "chat-line";
       line.dataset.messageId = String(message.id);
@@ -689,6 +685,7 @@ export function createChatController({ elements, getCoop, showMessage, onOpenRep
       const name = document.createElement("span");
       name.className = "chat-name";
       appendPlayerIdentity(name, { identity: displayIdentity, name: displayName, power: displayedPower, gender: displayedGender, guest, nameColor }, { chat: true });
+      if (announcement) markChatAnnouncement(line, name, announcement);
       const openMessageActions = (event: Event) => {
         event.stopPropagation();
         messageActions.open({

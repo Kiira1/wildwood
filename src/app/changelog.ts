@@ -2,6 +2,7 @@ export const RELEASE_NOTES: Record<string, string[]> = {
   "0.916.30": [
     "The trash can in the item window sells the item and shows how much",
     "Item skills no longer say Best Of",
+    "Server Boost and Patreon messages line up with chat and can be replied to and hearted",
   ],
   "0.916.29.1": [
     "The Shop shows the Server Boost below the note from the dev",
