@@ -1,6 +1,6 @@
 export const RELEASE_NOTES: Record<string, string[]> = {
   "0.916.32.1": [
-    "Fixed the world drawing wrongly on iPhone and iPad",
+    "Fixed the world drawing wrongly, and the game crashing, on phones and iPads",
   ],
   "0.916.32": [
     "The world is drawn on the graphics card, so the game uses far less CPU, most of all in Town",
