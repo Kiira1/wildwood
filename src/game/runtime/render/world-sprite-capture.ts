@@ -15,13 +15,25 @@ export type WorldSpriteCapture = {
 };
 
 /**
+ * Only Chromium browsers draw the world as sprites for now: WebKit (every iPhone and iPad browser) drew it
+ * broken. ?sprites=1 turns it on anywhere, ?sprites=0 off (?renderer=canvas turns the whole WebGL layer off).
+ */
+export function worldSpritesWanted(search: string, browser: Pick<Navigator, "userAgent" | "maxTouchPoints"> & { platform?: string }) {
+  const asked = new URLSearchParams(search).get("sprites");
+  if (asked === "1") return true;
+  if (asked === "0") return false;
+  const agent = browser.userAgent;
+  const apple = /iPad|iPhone|iPod/.test(agent) || (browser.platform === "MacIntel" && browser.maxTouchPoints > 1);
+  return !apple && /(Chrome|Chromium)\/\d/.test(agent);
+}
+
+/**
  * The world part of a frame (decor, actors, bosses, portals) recorded as sprites and drawn by the WebGL world
  * layer in one ordered pass. Anything the recorder cannot draw sends the frame, and the next few, to the canvas.
  */
 export function createWorldSpriteCapture(context: SwitchableContext | undefined, layer: () => StaticWorldLayer | null | undefined) {
   if (!context?.canSwitch || typeof document === "undefined") return null;
-  // ?sprites=0 keeps the world on the canvas (?renderer=canvas turns the whole WebGL layer off).
-  if (new URLSearchParams(window.location.search).get("sprites") === "0") return null;
+  if (!worldSpritesWanted(window.location.search, navigator)) return null;
   const probe = document.createElement("canvas").getContext("2d");
   const recorder = createSpriteRecorder(() => probe);
   const stats = { recorded: 0, canvas: 0, lastUnsupported: "", shapes: recorder.rasterStats };
