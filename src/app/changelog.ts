@@ -1,4 +1,7 @@
 export const RELEASE_NOTES: Record<string, string[]> = {
+  "0.916.32.6": [
+    "Endless boss attacks and well falls no longer slow down phones",
+  ],
   "0.916.32.5": [
     "Phones and iPads now draw the world on the graphics card, like computers",
   ],
@@ -3854,6 +3857,7 @@ const RELEASE_DATES: Record<string, string> = {
 };
 
 export const RELEASE_DAYS: Record<string, string> = {
+  "0.916.32.6": "2026-10-21",
   "0.916.32.5": "2026-10-21",
   "0.916.32.4": "2026-10-21",
   "0.916.32.3": "2026-10-21",

@@ -27,6 +27,7 @@ void main() {
 
 // A radial batch's uv is the point's offset from the gradient's centre in outer radii, and its texture is the
 // gradient's colour ramp, drawn by a 2D context so its colours blend exactly as the canvas blends them.
+// A ring batch's uv is the same offset; its edges are antialiased over one device pixel (u_feather) as a canvas's are.
 // highp: on phone and tablet GPUs mediump is 16-bit, too coarse to address one pixel of a large sprite sheet.
 const FRAGMENT_SHADER = `
 precision highp float;
@@ -34,12 +35,18 @@ uniform sampler2D u_texture;
 uniform float u_straight;
 uniform float u_radial;
 uniform float u_inner;
+uniform float u_feather;
 varying vec2 v_uv;
 varying vec4 v_tint;
 
 void main() {
   vec4 texel;
-  if (u_radial > 0.5) {
+  if (u_radial > 1.5) {
+    float d = length(v_uv);
+    float coverage = clamp((1.0 - d) / u_feather + 0.5, 0.0, 1.0);
+    if (u_inner > 0.0) coverage *= clamp((d - u_inner) / u_feather + 0.5, 0.0, 1.0);
+    texel = vec4(coverage);
+  } else if (u_radial > 0.5) {
     float t = clamp((length(v_uv) - u_inner) / (1.0 - u_inner), 0.0, 1.0);
     texel = texture2D(u_texture, vec2((t * 255.0 + 0.5) / 256.0, 0.5));
   } else {
@@ -75,9 +82,10 @@ export function createWebGLSpritePass(
   const straight = gl.getUniformLocation(program, "u_straight");
   const radial = gl.getUniformLocation(program, "u_radial");
   const inner = gl.getUniformLocation(program, "u_inner");
+  const feather = gl.getUniformLocation(program, "u_feather");
   const vertexBuffer = gl.createBuffer();
   const indexBuffer = gl.createBuffer();
-  if (positionUv < 0 || tint < 0 || !resolution || !sampler || !straight || !radial || !inner || !vertexBuffer || !indexBuffer) {
+  if (positionUv < 0 || tint < 0 || !resolution || !sampler || !straight || !radial || !inner || !feather || !vertexBuffer || !indexBuffer) {
     gl.deleteProgram(program);
     return null;
   }
@@ -224,7 +232,8 @@ export function createWebGLSpritePass(
     gl.activeTexture(gl.TEXTURE0);
     gl.enable(gl.BLEND);
     let blend = "";
-    let straightNow = -1, radialNow = -1, innerNow = -1;
+    let straightNow = -1, radialNow = -1, innerNow = -1, featherNow = -1;
+    let scissorNow: readonly number[] | null = null;
     for (const batch of recording.batches) {
       if (batch.blend !== blend) {
         blend = batch.blend;
@@ -234,13 +243,26 @@ export function createWebGLSpritePass(
       let straightBatch = 0;
       if (batch.source) straightBatch = bindSource(batch.source, batch.smooth).straight ? 1 : 0;
       else bindWhite();
-      const radialBatch = batch.radial === null ? 0 : 1;
+      const radialBatch = batch.ring ? 2 : batch.radial === null ? 0 : 1;
+      const innerBatch = batch.ring ? batch.ring[0] : batch.radial;
       if (straightBatch !== straightNow) { gl.uniform1f(straight, straightBatch); straightNow = straightBatch; }
       if (radialBatch !== radialNow) { gl.uniform1f(radial, radialBatch); radialNow = radialBatch; }
-      if (batch.radial !== null && batch.radial !== innerNow) { gl.uniform1f(inner, batch.radial); innerNow = batch.radial; }
+      if (innerBatch !== null && innerBatch !== innerNow) { gl.uniform1f(inner, innerBatch); innerNow = innerBatch; }
+      if (batch.ring && batch.ring[1] !== featherNow) { gl.uniform1f(feather, batch.ring[1]); featherNow = batch.ring[1]; }
+      if (batch.scissor !== scissorNow) {
+        scissorNow = batch.scissor;
+        if (!scissorNow) gl.disable(gl.SCISSOR_TEST);
+        else {
+          // The scissor counts rows from the bottom.
+          const [left, top, right, bottom] = scissorNow;
+          gl.enable(gl.SCISSOR_TEST);
+          gl.scissor(left, backingHeight - bottom, right - left, bottom - top);
+        }
+      }
       gl.drawElements(gl.TRIANGLES, batch.count * 6, gl.UNSIGNED_SHORT, batch.first * 12);
     }
     gl.disable(gl.BLEND);
+    gl.disable(gl.SCISSOR_TEST);
     if (frame % 30 === 0 || textureBytes > TEXTURE_BUDGET_BYTES) release(TEXTURE_IDLE_FRAMES);
     return uploaded;
   }

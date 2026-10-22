@@ -13,10 +13,15 @@ import {
 export type SpriteSource = HTMLImageElement | HTMLCanvasElement | ImageBitmap | OffscreenCanvas;
 export type SpriteBlend = "normal" | "add";
 /**
- * Consecutive quads drawn with one texture, filter and blend. A null source is a solid colour. `radial` is null for
+ * Consecutive quads drawn with one texture, filter, blend and clip. A null source is a solid colour. `radial` is null for
  * an image, or a radial gradient's inner radius as a share of its outer one: the source is then its colour ramp.
+ * `ring` is a solid circle or ring the shader draws: its inner radius as a share of its outer one, and one device
+ * pixel in the same units. `scissor` is a clip rectangle in device pixels (left, top, right, bottom), or null.
  */
-export type SpriteBatch = { source: SpriteSource | null; smooth: boolean; blend: SpriteBlend; radial: number | null; first: number; count: number };
+export type SpriteBatch = {
+  source: SpriteSource | null; smooth: boolean; blend: SpriteBlend; radial: number | null; ring: readonly [number, number] | null;
+  scissor: readonly number[] | null; first: number; count: number;
+};
 
 /** Floats per vertex: device x, y, texture u, v, and a premultiplied colour multiplier r, g, b, a. */
 export const SPRITE_VERTEX_FLOATS = 8;
@@ -52,6 +57,8 @@ type State = {
   lineDash: number[];
   imageSmoothingQuality: ImageSmoothingQuality;
   letterSpacing: string;
+  /** A rectangle clip the GPU's scissor test applies, in device pixels: left, top, right, bottom. */
+  scissor: readonly number[] | null;
 };
 
 const COPIED_PROPERTIES = [
@@ -151,7 +158,7 @@ export function createSpriteRecorder(measure: () => CanvasRenderingContext2D | n
   /** The current path, in the order its commands came, each with the transform it came under. Not part of save(). */
   let path: PathCommand[] = [];
   /** A clip and everything drawn under it, rastered together when the save it was made in is restored. */
-  let group: { ops: VectorOp[]; depth: number } | null = null;
+  let group: { ops: VectorOp[]; depth: number; scissor: readonly number[] | null } | null = null;
 
   function blankState(): State {
     return {
@@ -159,6 +166,7 @@ export function createSpriteRecorder(measure: () => CanvasRenderingContext2D | n
       fillStyle: "#000", strokeStyle: "#000", filter: "none", shadowBlur: 0, shadowColor: "rgba(0, 0, 0, 0)", shadowOffsetX: 0,
       shadowOffsetY: 0, font: "10px sans-serif", textAlign: "start", textBaseline: "alphabetic", direction: "inherit", lineWidth: 1,
       lineCap: "butt", lineJoin: "miter", miterLimit: 10, lineDashOffset: 0, lineDash: [], imageSmoothingQuality: "low", letterSpacing: "0px",
+      scissor: null,
     };
   }
 
@@ -212,12 +220,15 @@ export function createSpriteRecorder(measure: () => CanvasRenderingContext2D | n
   function pushCorners(source: SpriteSource | null, smooth: boolean, blend: SpriteBlend,
     x0: number, y0: number, x1: number, y1: number, x2: number, y2: number, x3: number, y3: number,
     u0: number, v0: number, u1: number, v1: number, r: number, g: number, b: number, alpha: number,
-    radial: number | null = null, uv?: readonly number[]) {
+    radial: number | null = null, uv?: readonly number[], ring: readonly [number, number] | null = null) {
     if (quads >= MAX_RECORDED_QUADS) unsupported("more sprites than one frame holds");
+    const scissor = state.scissor;
     let batch = batchCount > 0 ? batches[batchCount - 1] : undefined;
-    if (!batch || batch.source !== source || batch.blend !== blend || batch.radial !== radial || (source !== null && batch.smooth !== smooth)) {
-      batch = batches[batchCount] ?? (batches[batchCount] = { source, smooth, blend, radial, first: quads, count: 0 });
-      batch.source = source; batch.smooth = smooth; batch.blend = blend; batch.radial = radial; batch.first = quads; batch.count = 0;
+    if (!batch || batch.source !== source || batch.blend !== blend || batch.radial !== radial || (source !== null && batch.smooth !== smooth)
+      || batch.scissor !== scissor || batch.ring?.[0] !== ring?.[0] || batch.ring?.[1] !== ring?.[1]) {
+      batch = batches[batchCount] ?? (batches[batchCount] = { source, smooth, blend, radial, ring, scissor, first: quads, count: 0 });
+      batch.source = source; batch.smooth = smooth; batch.blend = blend; batch.radial = radial; batch.ring = ring; batch.scissor = scissor;
+      batch.first = quads; batch.count = 0;
       batchCount += 1;
     }
     if ((quads + 1) * QUAD_FLOATS > vertices.length) {
@@ -285,6 +296,38 @@ export function createSpriteRecorder(measure: () => CanvasRenderingContext2D | n
     return { gradient, cx, cy, radius };
   }
 
+  /**
+   * A path that is one whole circle, round under the transform it was made in (any rotation, one scale, mirrored
+   * or not): what the shader draws at any size, so a ring that grows each frame needs no new raster.
+   */
+  function roundCircle() {
+    if (path.length !== 1 || group || hasEffects()) return null;
+    const [shape] = path;
+    let cx: number, cy: number, radius: number, start: number, end: number;
+    if (shape.name === "arc") [cx, cy, radius, start, end] = shape.args;
+    else if (shape.name === "ellipse" && shape.args[2] === shape.args[3]) [cx, cy, radius, , , start, end] = shape.args;
+    else return null;
+    if (!(radius > 0) || Math.abs(end - start) < Math.PI * 2 - 1e-6) return null;
+    const [a, b, c, d] = shape.m;
+    const scale = Math.hypot(a, b);
+    if (!(scale > 0) || Math.abs(Math.hypot(c, d) - scale) > scale * 1e-6 || Math.abs(a * c + b * d) > scale * scale * 1e-6) return null;
+    return { cx, cy, radius, m: shape.m, scale };
+  }
+
+  /** A solid circle (inner 0) or ring between two radii around a round circle's centre, drawn by the shader. */
+  function pushRing(circle: NonNullable<ReturnType<typeof roundCircle>>, inner: number, outer: number, color: readonly number[]) {
+    const alpha = color[3] * state.globalAlpha;
+    if (!(alpha > 0) || !(outer > 0)) return;
+    const { cx, cy, m: [a, b, c, d, e, f] } = circle;
+    // One device pixel past the edge, for its antialiased fringe.
+    const reach = outer + 1 / circle.scale;
+    const px = (ux: number, uy: number) => a * ux + c * uy + e, py = (ux: number, uy: number) => b * ux + d * uy + f;
+    const x0 = cx - reach, y0 = cy - reach, x1 = cx + reach, y1 = cy + reach, edge = reach / outer;
+    pushCorners(null, false, blendNow(), px(x0, y0), py(x0, y0), px(x1, y0), py(x1, y0), px(x0, y1), py(x0, y1), px(x1, y1), py(x1, y1),
+      0, 0, 1, 1, color[0], color[1], color[2], alpha, null, [-edge, -edge, edge, -edge, -edge, edge, edge, edge],
+      [Math.max(0, inner) / outer, 1 / (outer * circle.scale)]);
+  }
+
   /** Draws a vector op: into the open clip group, or rastered on its own as one quad. */
   function drawVector(op: VectorOp) {
     if (group) {
@@ -309,9 +352,14 @@ export function createSpriteRecorder(measure: () => CanvasRenderingContext2D | n
 
   function closeGroup() {
     if (!group) return;
-    const { ops } = group;
+    const { ops, scissor } = group;
     group = null;
-    if (ops.length > 1) pushRaster(ops, "normal", 1);
+    if (ops.length <= 1) return;
+    // Under the rectangle clip it was opened in, which the restore that closes it may have dropped.
+    const current = state.scissor;
+    state.scissor = scissor;
+    pushRaster(ops, "normal", 1);
+    state.scissor = current;
   }
 
   function addPath(name: string, args: number[]) {
@@ -458,18 +506,36 @@ export function createSpriteRecorder(measure: () => CanvasRenderingContext2D | n
     fill(rule?: unknown) {
       const glow = radialCircle(paintStyle(state.fillStyle));
       if (glow) { pushRadial(glow.gradient, glow.cx - glow.radius, glow.cy - glow.radius, glow.radius * 2, glow.radius * 2); return; }
+      const circle = roundCircle();
+      const color = circle && typeof state.fillStyle === "string" ? parseSolidColor(state.fillStyle) : null;
+      if (circle && color) { pushRing(circle, 0, circle.radius, color); return; }
       drawVector({ type: "fill", path: [...path], rule: fillRule(rule), style: paintStyle(state.fillStyle), m: matrix(), alpha: state.globalAlpha,
         composite: state.globalCompositeOperation, effects: effects() });
     },
     stroke(pathArgument?: unknown) {
       if (pathArgument !== undefined) unsupported("a Path2D");
+      // The line's width is in the transform it is stroked in, so only one that matches the circle's.
+      const circle = roundCircle(), now = matrix();
+      const color = circle && typeof state.strokeStyle === "string" && !state.lineDash.length && state.lineWidth > 0
+        && circle.m.every((value, index) => value === now[index]) ? parseSolidColor(state.strokeStyle) : null;
+      if (circle && color) { pushRing(circle, circle.radius - state.lineWidth / 2, circle.radius + state.lineWidth / 2, color); return; }
       drawVector({ type: "stroke", path: [...path], style: paintStyle(state.strokeStyle), line: line(), m: matrix(), alpha: state.globalAlpha,
         composite: state.globalCompositeOperation, effects: effects() });
     },
     clip(rule?: unknown) {
       const op: VectorOp = { type: "clip", path: [...path], rule: fillRule(rule) };
       if (group) unsupported("a clip inside a clip");
-      group = { ops: [op], depth: stack.length };
+      // A rectangle on the screen's axes is the GPU's scissor test: what is drawn under it stays quads.
+      const [shape] = path;
+      if (path.length === 1 && shape.name === "rect" && shape.m[1] === 0 && shape.m[2] === 0) {
+        const [a, , , d, e, f] = shape.m, [x, y, w, h] = shape.args;
+        const xs = [a * x + e, a * (x + w) + e], ys = [d * y + f, d * (y + h) + f];
+        const outer = state.scissor ?? [-Infinity, -Infinity, Infinity, Infinity];
+        const left = Math.max(outer[0], Math.round(Math.min(...xs))), top = Math.max(outer[1], Math.round(Math.min(...ys)));
+        state.scissor = [left, top, Math.max(left, Math.min(outer[2], Math.round(Math.max(...xs)))), Math.max(top, Math.min(outer[3], Math.round(Math.max(...ys))))];
+        return;
+      }
+      group = { ops: [op], depth: stack.length, scissor: state.scissor };
     },
     fillText: (value: string, x: number, y: number, maxWidth?: number) => text(false, value, x, y, maxWidth),
     strokeText: (value: string, x: number, y: number, maxWidth?: number) => text(true, value, x, y, maxWidth),
@@ -512,6 +578,7 @@ export function createSpriteRecorder(measure: () => CanvasRenderingContext2D | n
       // A property the browser lacks (WebKit has no filter) keeps its default: undefined read as a filter on every draw.
       for (const name of COPIED_PROPERTIES) (state as Record<string, unknown>)[name] = from[name] ?? defaults[name];
       state.lineDash = from.getLineDash();
+      state.scissor = null;
     },
     /** The first call it could not record this frame, if any. */
     failure: () => failure,
