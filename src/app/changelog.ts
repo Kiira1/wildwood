@@ -1,4 +1,7 @@
 export const RELEASE_NOTES: Record<string, string[]> = {
+  "0.916.28.1": [
+    "Chat and guild buttons are dark grey instead of white",
+  ],
   "0.916.28": [
     "The Smith and the Sellers show your items as a grid, with the picked item and its button always on top",
     "Craft and the Sellers always list all gear",
@@ -3817,6 +3820,7 @@ const RELEASE_DATES: Record<string, string> = {
 };
 
 export const RELEASE_DAYS: Record<string, string> = {
+  "0.916.28.1": "2026-10-21",
   "0.916.28": "2026-10-21",
   "0.916.27": "2026-10-21",
   "0.916.26": "2026-10-21",
