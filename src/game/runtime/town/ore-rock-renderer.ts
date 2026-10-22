@@ -128,15 +128,19 @@ export function createOreRockRenderer(options: {
     const bare = miningScene.bare.has(node.id), mysterious = node.kind === "mysterious", crystal = node.kind === "crystal";
     const width = frame.w * rock.s, time = options.time();
     // A glow filled to exactly the gradient's own circle, so it fades out to nothing with no edge anywhere.
+    // Its pulse is the context's alpha, so the gradient itself never changes and the WebGL world reuses it.
     const glow = (cx: number, cy: number, radius: number, tint: string, alpha: number) => {
       const gradient = ctx.createRadialGradient(cx, cy, 2, cx, cy, radius);
-      gradient.addColorStop(0, `rgba(${tint}, ${alpha})`);
-      gradient.addColorStop(.55, `rgba(${tint}, ${alpha * .35})`);
+      gradient.addColorStop(0, `rgb(${tint})`);
+      gradient.addColorStop(.55, `rgba(${tint}, .35)`);
       gradient.addColorStop(1, `rgba(${tint}, 0)`);
+      ctx.save();
+      ctx.globalAlpha *= Math.max(0, Math.min(1, alpha));
       ctx.fillStyle = gradient;
       ctx.beginPath();
       ctx.arc(cx, cy, radius, 0, Math.PI * 2);
       ctx.fill();
+      ctx.restore();
     };
     // A Mysterious rock glows all over, a slow violet pulse behind it: something in this one is not like the rest.
     if (mysterious && !bare) glow(x, y - frame.ay * rock.s * .55, width * .85, "205, 180, 255", .32 + .14 * Math.sin(time * 2.4));

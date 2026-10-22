@@ -1,3 +1,6 @@
+import { createWebGLSpritePass } from "./webgl-sprite-pass";
+import type { SpriteRecording } from "./sprite-recorder";
+
 export type StaticWorldTileFrame = {
   key: string;
   source: HTMLCanvasElement | ImageBitmap;
@@ -49,6 +52,8 @@ export type StaticWorldLayer = {
   hide: () => void;
   invalidate: () => void;
   render: (frame: StaticWorldLayerFrame) => boolean;
+  /** Draws recorded world sprites over this frame's render(); false when it could not, so the canvas does. */
+  drawSprites?: (recording: SpriteRecording) => boolean;
   renderer: "webgl";
   /** Rebuilds a layer whose GPU context was lost, on a fresh canvas; true when WebGL is drawing again. */
   recover?: () => boolean;
@@ -266,6 +271,7 @@ export function createWebGLStaticWorldLayer(overlayCanvas: HTMLCanvasElement): S
     hide: () => layer?.hide(),
     invalidate: () => layer?.invalidate(),
     render: (frame) => layer?.render(frame) ?? false,
+    drawSprites: (recording) => layer?.drawSprites?.(recording) ?? false,
     renderer: "webgl",
     recover() {
       // Only a lost context is rebuilt; a layer that turned itself off for an upload failure stays off.
@@ -410,12 +416,14 @@ function initializeWebGLStaticWorldLayer(overlayCanvas: HTMLCanvasElement, overl
   let lastHeight = 0;
   let lastDpr = 0;
   let uploadedTexture = false;
-  const attributeSlots = [...new Set([position, spritePosition, spriteTexturePosition, colorPosition, colorValue])];
   const enabledAttributes = new Set([position]);
+  // The world sprites (sprite-recorder.ts), drawn over everything else on this layer.
+  const spritePass = createWebGLSpritePass(gl, (vertex, fragment) => createProgram(gl, vertex, fragment), (...slots) => useAttributes(...slots));
+  const attributeSlots = [...new Set([position, spritePosition, spriteTexturePosition, colorPosition, colorValue, ...(spritePass?.slots ?? [])])];
 
-  function useAttributes(first: number, second = -1) {
+  function useAttributes(...slots: number[]) {
     for (const slot of attributeSlots) {
-      const needed = slot === first || slot === second;
+      const needed = slots.includes(slot);
       if (needed === enabledAttributes.has(slot)) continue;
       if (needed) { gl.enableVertexAttribArray(slot); enabledAttributes.add(slot); }
       else { gl.disableVertexAttribArray(slot); enabledAttributes.delete(slot); }
@@ -433,6 +441,7 @@ function initializeWebGLStaticWorldLayer(overlayCanvas: HTMLCanvasElement, overl
     spriteTextures.clear();
     activeSpriteGroups.clear();
     spriteGroupPool.length = 0;
+    spritePass?.clear();
   }
 
   function disable() {
@@ -639,11 +648,36 @@ function initializeWebGLStaticWorldLayer(overlayCanvas: HTMLCanvasElement, overl
         const error = gl.getError();
         if (error !== gl.NO_ERROR) throw new Error(`World texture upload failed (WebGL 0x${error.toString(16)})`);
       }
+      renderedFrame = frame;
       return true;
     } catch (error) {
       console.warn("WildStat WebGL world failed; returning to Canvas2D.", error);
       disable();
       return false;
+    }
+  }
+
+  let renderedFrame: StaticWorldLayerFrame | null = null;
+  let spriteUploadsUnchecked = false, spriteFramesSinceCheck = 0;
+  function drawSprites(recording: SpriteRecording) {
+    if (!enabled || !spritePass || !renderedFrame || gl.isContextLost()) return false;
+    try {
+      const uploaded = spritePass.draw(recording, Math.max(1, Math.round(renderedFrame.width * renderedFrame.dpr)), Math.max(1, Math.round(renderedFrame.height * renderedFrame.dpr)));
+      // Checked at most once a second, and only after an upload: getError waits for the GPU.
+      if (uploaded) spriteUploadsUnchecked = true;
+      if (spriteUploadsUnchecked && ++spriteFramesSinceCheck >= 60) {
+        spriteUploadsUnchecked = false;
+        spriteFramesSinceCheck = 0;
+        const error = gl.getError();
+        if (error !== gl.NO_ERROR) throw new Error(`World sprites failed (WebGL 0x${error.toString(16)})`);
+      }
+      return true;
+    } catch (error) {
+      console.warn("WildStat WebGL world sprites failed; returning to Canvas2D.", error);
+      disable();
+      return false;
+    } finally {
+      renderedFrame = null;
     }
   }
 
@@ -661,6 +695,7 @@ function initializeWebGLStaticWorldLayer(overlayCanvas: HTMLCanvasElement, overl
     hide: () => { canvas.hidden = true; },
     invalidate: () => { if (!lost) clearTextures(); },
     render,
+    drawSprites,
     renderer: "webgl",
     lost: () => lost,
     destroy: () => canvas.remove(),

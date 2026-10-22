@@ -3,6 +3,7 @@ import { actorShadowDimensions } from "./actor-shadow-geometry";
 import { createCanvasPrimitives } from "../../canvas";
 import { requiredCanvasContext } from "../dom";
 import { canvasRenderPixelRatio } from "./render-budget";
+import { createSwitchableContext } from "./switchable-context";
 
 export function gameplayBottomInset(toolbarHeight: number, fullScreenScene = false) {
   if (fullScreenScene) return 0;
@@ -40,7 +41,9 @@ export function createCanvasRuntime({
   transparent?: boolean;
   getActorShadowSprite: () => HTMLImageElement | null;
 }) {
-  const ctx = requiredCanvasContext(canvas, { alpha: transparent });
+  // Everything draws through the switchable context, so the world can be sent to the WebGL layer (world-sprite-capture.ts).
+  const worldContext = createSwitchableContext(requiredCanvasContext(canvas, { alpha: transparent }));
+  const ctx = worldContext.context;
   const primitives = createCanvasPrimitives(ctx);
   let dpr = 1;
   let width = innerWidth;
@@ -113,6 +116,7 @@ export function createCanvasRuntime({
 
   return {
     ctx,
+    worldContext,
     ...primitives,
     resize,
     dpr: () => dpr,

@@ -110,6 +110,7 @@ export function createWorldRendering(deps: WorldRenderingDeps) {
   return createWorldRenderRuntime({
     drawMapHazards: () => deps.proceduralBoss.draw(canvasRuntime.ctx, camera),
     ctx: canvasRuntime.ctx,
+    worldContext: canvasRuntime.worldContext,
     staticWorldLayer: deps.staticWorldLayer,
     camera,
     viewport: canvasRuntime.renderViewport,

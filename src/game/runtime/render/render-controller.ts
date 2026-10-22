@@ -6,6 +6,7 @@ import type { DuelScene, EnemyShot, PlayerState, Projectile } from "../types";
 import type { StaticWorldColorQuadFrame, StaticWorldSpriteFrame } from "./webgl-static-world-layer";
 import { snapWorldRenderCoordinate } from "./render-space";
 import { freezeCanvas, releaseFrozen, type FrozenImage } from "./frozen-canvas";
+import type { WorldSpriteCapture } from "./world-sprite-capture";
 
 type BootsPickup = { x: number; y: number; r: number; collected: boolean };
 
@@ -68,6 +69,10 @@ export function createRenderController(options: {
   enemyShots: EnemyShot[];
   webGLProjectileBatch: () => { frames: readonly StaticWorldSpriteFrame[]; complete: boolean };
   webGLParticleBatch: () => { frames: readonly StaticWorldColorQuadFrame[]; complete: boolean };
+  /** Sends the world's decor, actors, bosses, portals, effects and minimap to the WebGL layer when it is drawing. */
+  worldSprites?: WorldSpriteCapture | null;
+  /** Drawing calls that have reached the canvas so far (switchable-context.ts); -1 when it cannot tell. */
+  canvasDraws?: () => number;
 }): RenderController {
   const {
     ctx, camera, player, bootsPickup, viewport, pixelCircle, remotePlayers, mapPlayerMarkers,
@@ -273,6 +278,10 @@ export function createRenderController(options: {
     // player, so its off-arena position does not darken replays.
   }
 
+  // A canvas that drew nothing last frame is still empty: leaving it alone spares the browser re-uploading the whole
+  // screen of it, which is most of the cost of a frame the WebGL layer drew.
+  let canvasHasPixels = true;
+  let canvasSize = "";
   function renderFrame() {
     const { width, height, dpr } = viewport();
     // A mobile browser can restore a covered/background canvas with default
@@ -280,7 +289,9 @@ export function createRenderController(options: {
     // clearing or drawing, including the first frame after closing a menu.
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     ctx.imageSmoothingEnabled = false;
-    ctx.clearRect(0, 0, width, height);
+    const size = `${ctx.canvas?.width}x${ctx.canvas?.height}`;
+    if (canvasHasPixels || size !== canvasSize || !options.canvasDraws) ctx.clearRect(0, 0, width, height);
+    canvasSize = size;
     drawProfileCharacterPreview();
     // Opaque menus already cover the world. Keep their previews alive without
     // repainting the terrain, actors, effects, minimap, and WebGL layers below.
@@ -302,23 +313,40 @@ export function createRenderController(options: {
       projectileBatch.complete ? projectileBatch.frames : [],
       particleBatch.complete ? particleBatch.frames : [],
     );
+    ctx.restore();
     const projectilesRenderedByWebGL = staticWorldRenderedByWebGL && projectileBatch.complete;
     const particlesRenderedByWebGL = staticWorldRenderedByWebGL && particleBatch.complete;
-    drawDuelArena(isArenaScene(), DUEL_ARENA);
-    if (!isDueling()) { drawDecor(); options.drawMapHazards?.(); }
-    if (!isDueling()) drawBossTelegraphs();
-    drawAttackRange();
-    if (!projectilesRenderedByWebGL) {
-      for (const projectile of projectiles) drawProjectile(projectile, false);
-      for (const shot of enemyShots) drawProjectile(shot, true);
-    }
     const cutscene = portalCutsceneActive();
-    drawDepthSortedWorld(remotes, !cutscene);
-    if (!particlesRenderedByWebGL) drawParticles(ctx, camera);
-    drawDamageNumbers(ctx, camera);
-    ctx.restore();
-    if (!isDueling() && !cutscene) drawNightMask();
-    if (!isDueling() && !cutscene) drawMinimap(mapPlayerMarkers());
+    const overWorld = !isDueling() && !cutscene;
+    // Everything over the ground, in order: what the WebGL layer draws when it can, else the canvas.
+    const drawWorld = () => {
+      ctx.save();
+      ctx.scale(camera.zoom, camera.zoom);
+      drawDuelArena(isArenaScene(), DUEL_ARENA);
+      if (!isDueling()) { drawDecor(); options.drawMapHazards?.(); }
+      if (!isDueling()) drawBossTelegraphs();
+      drawAttackRange();
+      if (!projectilesRenderedByWebGL) {
+        for (const projectile of projectiles) drawProjectile(projectile, false);
+        for (const shot of enemyShots) drawProjectile(shot, true);
+      }
+      drawDepthSortedWorld(remotes, !cutscene);
+      if (!particlesRenderedByWebGL) drawParticles(ctx, camera);
+      drawDamageNumbers(ctx, camera);
+      ctx.restore();
+      if (overWorld) { drawNightMask(); drawMinimap(mapPlayerMarkers()); }
+    };
+    const sprites = options.worldSprites;
+    if (staticWorldRenderedByWebGL && sprites?.begin()) {
+      let recorded = true;
+      try { drawWorld(); }
+      catch (error) {
+        recorded = false;
+        if (!sprites.abort(error)) throw error;
+        drawWorld();
+      }
+      if (recorded && !sprites.commit()) drawWorld();
+    } else drawWorld();
     drawVignette();
     if (cutscene) {
       ctx.fillStyle = `rgba(0,0,0,${portalBlackoutOpacity()})`;
@@ -332,11 +360,18 @@ export function createRenderController(options: {
 
   function render() {
     vignetteWanted = false;
-    try { renderFrame(); showVignette(vignetteWanted); }
+    const drawsBefore = options.canvasDraws?.() ?? -1;
+    try {
+      renderFrame();
+      showVignette(vignetteWanted);
+      const drawsAfter = options.canvasDraws?.() ?? -1;
+      canvasHasPixels = drawsBefore < 0 || drawsAfter !== drawsBefore;
+    }
     catch (error) {
       // Clear leaked clipping, transforms, filters and save-stack entries before retrying.
       // Assigning the backing width resets the existing context without changing layout.
       ctx.canvas.width = ctx.canvas.width;
+      canvasHasPixels = true;
       const { dpr } = viewport();
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
       ctx.imageSmoothingEnabled = false;

@@ -38,6 +38,16 @@ export function releaseFrozen(image: unknown) {
 const copies = new WeakMap<object, ImageBitmap>();
 const versions = new WeakMap<object, number>();
 
+/** Says a canvas drawn as a source was drawn over again, so the WebGL world uploads it again. */
+export function markCanvasChanged(canvas: object) {
+  versions.set(canvas, (versions.get(canvas) ?? 0) + 1);
+}
+
+/** How many times a kept canvas has been thawed to change: the WebGL world uploads it again when this moves. */
+export function canvasVersion(canvas: object) {
+  return versions.get(canvas) ?? 0;
+}
+
 /** What to draw for a canvas: its frozen copy once there is one, the canvas until then. */
 export function frozenCopyOf<T extends CanvasImageSource>(canvas: T): T | ImageBitmap {
   return copies.get(canvas) ?? canvas;

@@ -1,4 +1,6 @@
 import { TOWN_FEET_OFFSET } from "../../../../shared/town";
+import { createWorldSpriteCapture } from "./world-sprite-capture";
+import type { SwitchableContext } from "./switchable-context";
 import { drawTownTeleport } from "../town/town-teleport";
 import { createOreRockRenderer } from "../town/ore-rock-renderer";
 import { createPickaxeSprite, MINING_PICKAXE, PICKAXE_OVERRIDES } from "../town/pickaxe-sprite";
@@ -53,6 +55,8 @@ type DrawShadow = (x: number, y: number, width: number, alpha?: number) => void;
 export type WorldRenderRuntimeOptions = {
   ctx: CanvasRenderingContext2D;
   staticWorldLayer?: StaticWorldLayer | null;
+  /** The context everything draws through, switched to the sprite recorder for the world (world-sprite-capture.ts). */
+  worldContext?: SwitchableContext;
   camera: Camera;
   viewport: () => Viewport;
   minimapBounds?: () => MinimapBounds | null;
@@ -330,6 +334,7 @@ export function createWorldRenderRuntime(options: WorldRenderRuntimeOptions) {
 
   function createFrameRenderer(frame: FrameRendererOptions): RenderController {
     let renderer: RenderController;
+    const worldSprites = createWorldSpriteCapture(options.worldContext, () => options.staticWorldLayer);
     const webGLProjectileFrames: StaticWorldSpriteFrame[] = [];
     const webGLProjectileBatchState = { frames: webGLProjectileFrames, complete: false };
     const webGLProjectileBatch = () => {
@@ -507,6 +512,8 @@ export function createWorldRenderRuntime(options: WorldRenderRuntimeOptions) {
       enemyShots: frame.enemyShots,
       webGLProjectileBatch,
       webGLParticleBatch,
+      worldSprites,
+      canvasDraws: options.worldContext?.realDraws,
     });
     return renderer;
   }

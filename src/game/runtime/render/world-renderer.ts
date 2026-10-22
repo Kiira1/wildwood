@@ -39,7 +39,7 @@ import { mapWorldLayout } from "../../map-layout";
 import { isGuildHallMap } from "../../../../shared/guild-hall";
 import { portalTravelScene } from "./portal-glimpse";
 import { createShrunkImages, deviceScale } from "./shrunk-image";
-import { freezeEntry, releaseFrozen, type FrozenImage } from "./frozen-canvas";
+import { freezeEntry, markCanvasChanged, releaseFrozen, type FrozenImage } from "./frozen-canvas";
 import { createGlowCache } from "./glow-cache";
 
 export { snapWorldRenderCoordinate } from "./render-space";
@@ -1219,6 +1219,7 @@ export function createWorldRenderer(options: WorldRendererOptions) {
 
   function renderMinimapFrame(remotePlayers: MapPlayerMarker[], size: number, view: Viewport) {
     if (!minimapCtx) return;
+    markCanvasChanged(minimapCanvas);
     const dpr = options.getDevicePixelRatio();
     const cacheKey = `${options.getMapId()}:${size}:${dpr}`;
     const pixelSize = Math.round(size * dpr);
