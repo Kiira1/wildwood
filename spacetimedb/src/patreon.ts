@@ -97,7 +97,9 @@ function saveMembership(ctx: Tx, identity: Identity, tokens: { accessToken: stri
   const validUntilMs = Math.max(now + LEASE_MS, paidThroughMs);
   const row = { identity, ...tokens, ...saved, frame, validUntilMs, checkedAtMs: now, attemptedAtMs: now };
   if (previous) ctx.db.patreonLink.identity.update(row); else ctx.db.patreonLink.insert(row);
-  announcePatreonSupport(ctx, identity, membership.userId, membership.tier);
+  // A member whose last membership had lapsed is thanked again when they come back.
+  const returning = Boolean(previous && (previous.tier === "none" || previous.validUntilMs <= now));
+  announcePatreonSupport(ctx, identity, membership.userId, membership.tier, returning);
 }
 
 function refreshPatreonLink(ctx: ProcedureCtx<Schema>, identity: Identity, minIntervalMs: number) {

@@ -8,11 +8,13 @@ import { markChatAnnouncement } from "./chat-announcement";
  * Persistent receipt prevents renewals, retries, or unlink/relink from spamming
  * chat. A supporter is thanked once per tier on the way up and never on the way
  * down: the receipt remembers the highest tier already thanked, so Gold to
- * Diamond is announced and Diamond back to Gold is not.
+ * Diamond is announced and Diamond back to Gold is not. A supporter returning
+ * after their membership lapsed starts over and is thanked again.
  */
-export function announcePatreonSupport(ctx: ModuleReducerCtx, identity: Identity, userId: string, tier: AvatarFrame) {
+export function announcePatreonSupport(ctx: ModuleReducerCtx, identity: Identity, userId: string, tier: AvatarFrame, returning = false) {
   if (tier === "none") return;
-  const previous = ctx.db.patreonAnnouncement.userId.find(userId);
+  if (returning) ctx.db.patreonDiamondAnnouncement.userId.delete(userId);
+  const previous = returning ? undefined : ctx.db.patreonAnnouncement.userId.find(userId);
   const diamondThanked = Boolean(ctx.db.patreonDiamondAnnouncement.userId.find(userId));
   const thankedRank = diamondThanked ? AVATAR_FRAME_RANK.diamond : previous?.goldAnnounced ? AVATAR_FRAME_RANK.gold
     : previous?.silverAnnounced ? AVATAR_FRAME_RANK.silver : AVATAR_FRAME_RANK.none;
@@ -33,7 +35,7 @@ export function announcePatreonSupport(ctx: ModuleReducerCtx, identity: Identity
   // Thanking a tier thanks every tier below it, so a later downgrade stays quiet.
   const receipt = { userId, identity, silverAnnounced: true, goldAnnounced: AVATAR_FRAME_RANK[tier] >= AVATAR_FRAME_RANK.gold,
     messageId: inserted.id, announcedAtMs };
-  if (previous) ctx.db.patreonAnnouncement.userId.update(receipt);
+  if (ctx.db.patreonAnnouncement.userId.find(userId)) ctx.db.patreonAnnouncement.userId.update(receipt);
   else ctx.db.patreonAnnouncement.insert(receipt);
   if (tier === "diamond") ctx.db.patreonDiamondAnnouncement.insert({ userId, announcedAtMs });
 }

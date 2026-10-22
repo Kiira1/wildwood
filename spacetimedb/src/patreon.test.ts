@@ -198,10 +198,10 @@ describe("background membership sweep", () => {
   });
 });
 
-it("thanks a supporter once per tier climb and never on the way down", () => {
+it("thanks a supporter once per tier climb, never on the way down, and again after a lapse", () => {
   const f = fixture();
   const count = () => [...f.db.chatMessage.iter()].length;
-  const thank = (user: string, tier: "silver" | "gold" | "diamond") => announcePatreonSupport(f.ctx as never, f.ctx.sender, user, tier);
+  const thank = (user: string, tier: "silver" | "gold" | "diamond", returning = false) => announcePatreonSupport(f.ctx as never, f.ctx.sender, user, tier, returning);
   thank("patreon-user-9", "gold"); thank("patreon-user-9", "gold");
   expect(count()).toBe(1);
   thank("patreon-user-9", "diamond"); thank("patreon-user-9", "diamond");
@@ -210,4 +210,8 @@ it("thanks a supporter once per tier climb and never on the way down", () => {
   expect(count()).toBe(2);
   thank("patreon-user-10", "diamond"); thank("patreon-user-10", "gold");
   expect(count()).toBe(3);
+  thank("patreon-user-9", "silver", true); thank("patreon-user-9", "silver");
+  expect(count()).toBe(4);
+  thank("patreon-user-9", "diamond", true);
+  expect(count()).toBe(5);
 });
