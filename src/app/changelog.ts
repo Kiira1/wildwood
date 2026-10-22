@@ -1,6 +1,7 @@
 export const RELEASE_NOTES: Record<string, string[]> = {
   "0.916.29.1": [
     "The Shop shows the Server Boost below the note from the dev",
+    "Server Boost and Patreon banners in chat show the supporter's portrait",
   ],
   "0.916.29": [
     "Server Boost announcements show as their own banner in chat",

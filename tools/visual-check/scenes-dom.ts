@@ -294,16 +294,22 @@ async function chatAnnouncement() {
     line.querySelector(".chat-message-body span")!.textContent = words;
     return line;
   };
+  const portrait = (index: number) => {
+    const icon = document.createElement("span");
+    icon.className = "chat-profile-icon";
+    applyProfileIcon(icon, index);
+    return icon;
+  };
   for (const large of [false, true]) {
     const panel = await importById("chatPanel");
     panel.classList.toggle("is-large", large);
     const messages = panel.querySelector("#chatMessages")!;
     const rows = [
       playerLine("Moss", "anyone up for the boss?"),
-      createChatAnnouncementLine({ id: 1n, senderName: "Oogway", message: boost, sentAtMs }, "server-boost", large),
+      createChatAnnouncementLine({ id: 1n, senderName: "Oogway", message: boost, sentAtMs }, "server-boost", large, portrait(3)),
       createChatAnnouncementLine({ id: 2n, senderName: "Oogway",
-        message: "Extended a Server Boost: +15 min of 2x Rewards, Wood and Ore for everyone online. Thank you for supporting WildStat! ♥", sentAtMs }, "server-boost", large),
-      createChatAnnouncementLine({ id: 3n, senderName: "Fern", message: "Became a Gold supporter on Patreon. Thank you for supporting WildStat! ♥", sentAtMs }, "patreon", large),
+        message: "Extended a Server Boost: +15 min of 2x Rewards, Wood and Ore for everyone online. Thank you for supporting WildStat! ♥", sentAtMs }, "server-boost", large, portrait(3)),
+      createChatAnnouncementLine({ id: 3n, senderName: "Fern", message: "Became a Gold supporter on Patreon. Thank you for supporting WildStat! ♥", sentAtMs }, "patreon", large, portrait(5)),
       playerLine("Faker", boost),
     ];
     messages.append(...(large ? rows : rows.slice(1, 2).concat(rows.slice(4))));

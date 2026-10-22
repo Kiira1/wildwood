@@ -628,8 +628,32 @@ export function createChatController({ elements, getCoop, showMessage, onOpenRep
       const { announcement, displayedGender, guest, iconIndex, nameColor, reactionChannel, reactionCountsJson, rowKey, signature } = presentMessage(coop, identity, message);
       const previous = renderedRows.get(rowKey);
       if (previous?.signature === signature) { nextRows.set(rowKey, previous); continue; }
+      const displayName = message.senderName || (message.replayId > 0n ? "DUEL" : "PLAYER");
+      const displayIdentity = message.sender;
+      const openPlayer = (event: Event) => {
+        event.stopPropagation();
+        if (!large) {
+          event.preventDefault();
+          setLarge(true);
+          return;
+        }
+        onOpenPlayer?.(displayIdentity, displayName);
+      };
+      const icon = document.createElement("span");
+      icon.className = "chat-profile-icon";
+      if (large) applyAvatarFrame(icon, displayIdentity);
+      icon.setAttribute("role", "button");
+      icon.setAttribute("tabindex", large ? "0" : "-1");
+      icon.setAttribute("aria-label", `View ${displayName}'s profile`);
+      icon.addEventListener("click", openPlayer);
+      icon.addEventListener("keydown", (event) => {
+        if (event.key !== "Enter" && event.key !== " ") return;
+        event.preventDefault();
+        openPlayer(event);
+      });
+      applyProfileIcon(icon, iconIndex, displayIdentity);
       if (announcement) {
-        nextRows.set(rowKey, { signature, element: createChatAnnouncementLine(message, announcement, large && chatTimestampsEnabled()) });
+        nextRows.set(rowKey, { signature, element: createChatAnnouncementLine(message, announcement, large && chatTimestampsEnabled(), icon) });
         continue;
       }
       const line = document.createElement("div");
@@ -661,21 +685,10 @@ export function createChatController({ elements, getCoop, showMessage, onOpenRep
         messageBody.prepend(replyPrefix);
       }
       text.appendChild(messageBody);
-      const displayName = message.senderName || (message.replayId > 0n ? "DUEL" : "PLAYER");
-      const displayIdentity = message.sender;
       const displayedPower = message.powerLevel;
       const name = document.createElement("span");
       name.className = "chat-name";
       appendPlayerIdentity(name, { identity: displayIdentity, name: displayName, power: displayedPower, gender: displayedGender, guest, nameColor }, { chat: true });
-      const openPlayer = (event: Event) => {
-        event.stopPropagation();
-        if (!large) {
-          event.preventDefault();
-          setLarge(true);
-          return;
-        }
-        onOpenPlayer?.(displayIdentity, displayName);
-      };
       const openMessageActions = (event: Event) => {
         event.stopPropagation();
         messageActions.open({
@@ -690,19 +703,6 @@ export function createChatController({ elements, getCoop, showMessage, onOpenRep
           replyToMessageId: message.replyToMessageId,
         });
       };
-      const icon = document.createElement("span");
-      icon.className = "chat-profile-icon";
-      if (large) applyAvatarFrame(icon, displayIdentity);
-      icon.setAttribute("role", "button");
-      icon.setAttribute("tabindex", large ? "0" : "-1");
-      icon.setAttribute("aria-label", `View ${displayName}'s profile`);
-      icon.addEventListener("click", openPlayer);
-      icon.addEventListener("keydown", (event) => {
-        if (event.key !== "Enter" && event.key !== " ") return;
-        event.preventDefault();
-        openPlayer(event);
-      });
-      applyProfileIcon(icon, iconIndex, displayIdentity);
       const content = document.createElement("div");
       content.className = "chat-message-content";
       content.append(name, text);
