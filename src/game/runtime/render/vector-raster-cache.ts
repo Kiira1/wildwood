@@ -211,7 +211,7 @@ function drawOp(ctx: CanvasRenderingContext2D, op: VectorOp, ox: number, oy: num
 }
 
 /** The most pixels the cache keeps, and the largest single raster (bigger ones are drawn on the canvas). */
-const CACHE_PIXEL_LIMIT = 6_000_000;
+const CACHE_PIXEL_LIMIT = typeof matchMedia === "function" && matchMedia("(pointer: coarse)").matches ? 2_000_000 : 6_000_000;
 const RASTER_PIXEL_LIMIT = 4_000_000;
 
 export function createVectorRasterCache() {
