@@ -1,4 +1,5 @@
 import { decodedImage } from "../render/decoded-image";
+import { markCanvasChanged } from "../render/frozen-canvas";
 import { TOWN_EAST_BRIDGE } from "../../../../shared/town";
 import { TOWN_VILLAGE_GROUND } from "../../town-village";
 import { SOUL_WATER_CELLS } from "./soul-water-cells";
@@ -274,6 +275,7 @@ export function createSoulWater(options: {
         glints.drawImage(foam!, 0, 0, width, height, 0, 0, width, height);
       }
       glints.restore();
+      markCanvasChanged(layer);
       litKey = key;
       litAt = t;
     }

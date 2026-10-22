@@ -1,4 +1,5 @@
 import { decodedImage } from "../render/decoded-image";
+import { markCanvasChanged } from "../render/frozen-canvas";
 import { townInteriorArea as soulInteriorArea, TOWN_INTERIOR_MARGIN as SOUL_INTERIOR_MARGIN } from "../../../../shared/town";
 import { SOUL_ATLAS, SOUL_DOORS_OPEN, SOUL_INTERIOR_ROOMS, TOWN_VILLAGE_GROUND, TOWN_VILLAGE_SCENE } from "../../town-village";
 import { guildHallDoorState, guildHallFrame } from "../../guild-hall";
@@ -181,6 +182,7 @@ export function createSoulGroundRenderer(options: {
     shadowContext.setTransform(ctx.getTransform());
     shadowContext.imageSmoothingEnabled = ctx.imageSmoothingEnabled;
     for (const item of visible) options.drawProp(item, shadowContext);
+    markCanvasChanged(layer);
     ctx.save();
     ctx.setTransform(1, 0, 0, 1, 0, 0);
     ctx.globalAlpha = SOUL_SHADOW_STRENGTH;

@@ -20,6 +20,8 @@ export type WorldSpriteCapture = {
  */
 export function createWorldSpriteCapture(context: SwitchableContext | undefined, layer: () => StaticWorldLayer | null | undefined) {
   if (!context?.canSwitch || typeof document === "undefined") return null;
+  // ?sprites=0 keeps the world on the canvas (?renderer=canvas turns the whole WebGL layer off).
+  if (new URLSearchParams(window.location.search).get("sprites") === "0") return null;
   const probe = document.createElement("canvas").getContext("2d");
   const recorder = createSpriteRecorder(() => probe);
   const stats = { recorded: 0, canvas: 0, lastUnsupported: "", shapes: recorder.rasterStats };

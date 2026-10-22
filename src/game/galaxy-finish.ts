@@ -1,4 +1,5 @@
 import { residentDrawable } from "./runtime/render/resident-image";
+import { markCanvasChanged } from "./runtime/render/frozen-canvas";
 
 /**
  * The sky finishes for cosmetic equipment: an existing piece of gear whose
@@ -415,6 +416,7 @@ function paintPiece(piece: Piece, sprite: CanvasImageSource, seconds: number, pa
   context.globalCompositeOperation = "destination-in";
   context.drawImage(residentDrawable(sprite), 0, 0, width, height);
   context.globalCompositeOperation = "source-over";
+  markCanvasChanged(frame);
 }
 
 /**
