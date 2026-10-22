@@ -1,4 +1,7 @@
 export const RELEASE_NOTES: Record<string, string[]> = {
+  "0.916.32.11": [
+    "The Smith, Slot Upgrades bench and other Town stops reopen only after you walk a bit away",
+  ],
   "0.916.32.10": [
     "Map Guide's Travel goes straight to the map, with no stop in the Town",
   ],
@@ -3882,6 +3885,7 @@ const RELEASE_DATES: Record<string, string> = {
 };
 
 export const RELEASE_DAYS: Record<string, string> = {
+  "0.916.32.11": "2026-10-22",
   "0.916.32.10": "2026-10-22",
   "0.916.32.9": "2026-10-22",
   "0.916.32.8": "2026-10-22",

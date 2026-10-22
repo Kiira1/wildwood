@@ -14,3 +14,17 @@ export function closeStationsOutOfReach(player: { x: number; y: number }, here: 
   stations: readonly (readonly [StationWindow, { x: number; y: number }, number])[]) {
   for (const [window, at, reach] of stations) if (window.isOpen() && !(here && withinStationReach(player, at, reach))) window.close();
 }
+
+/** How far past a station's edge the player walks before walking back opens it again; a nudge along the edge does not. */
+export const STATION_REARM_DISTANCE = 40;
+
+/** Says when to open a station: on walking in, and again only after the player has been STATION_REARM_DISTANCE away. */
+export function createStationLatch() {
+  let armed = true;
+  return (inside: boolean, farAway: boolean) => {
+    if (farAway) armed = true;
+    if (!inside || !armed) return false;
+    armed = false;
+    return true;
+  };
+}

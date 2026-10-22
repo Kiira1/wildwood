@@ -18,6 +18,7 @@ import type { ActiveItemUpgrade, SlotUpgradeQueue } from "../wildstat-coop";
 import { gemSpendConfirmation } from "./gem-spend-confirmation";
 import { gameConfirm, type ConfirmPrompt, type ConfirmRequest } from "./confirm-dialog";
 import { slotUpgradeDurationWithResearch } from "../../shared/utility-research";
+import { createStationLatch, STATION_REARM_DISTANCE } from "./station-reach";
 
 type SlotUpgradesElements = {
   panel: HTMLElement;
@@ -82,10 +83,6 @@ const SLOT_UPGRADES_TOUCH_RADIUS_X = 54;
 const SLOT_UPGRADES_TOUCH_RADIUS_Y = 39;
 const UPGRADE_QUEUES = [1, 2, 3] as const;
 
-export function slotUpgradesTouchTransition(wasTouching: boolean, touching: boolean) {
-  return { touching, shouldOpen: touching && !wasTouching };
-}
-
 export function queueAfterPickerDismiss(queue: SlotUpgradeQueue | null, itemId: string | undefined) {
   return queue && itemId ? queue : null;
 }
@@ -93,11 +90,12 @@ export function queueAfterPickerDismiss(queue: SlotUpgradeQueue | null, itemId: 
 export function playerTouchesSlotUpgrades(
   player: { x: number; y: number },
   station: { x: number; y: number },
+  margin = 0,
 ) {
   const dx = player.x - station.x;
   const dy = player.y - (station.y + SLOT_UPGRADES_TOUCH_OFFSET_Y);
-  return dx * dx / (SLOT_UPGRADES_TOUCH_RADIUS_X * SLOT_UPGRADES_TOUCH_RADIUS_X) +
-    dy * dy / (SLOT_UPGRADES_TOUCH_RADIUS_Y * SLOT_UPGRADES_TOUCH_RADIUS_Y) <= 1;
+  const rx = SLOT_UPGRADES_TOUCH_RADIUS_X + margin, ry = SLOT_UPGRADES_TOUCH_RADIUS_Y + margin;
+  return dx * dx / (rx * rx) + dy * dy / (ry * ry) <= 1;
 }
 
 /**
@@ -210,7 +208,7 @@ export function createSlotUpgradesController(elements: SlotUpgradesElements, dep
   /** Which slot each queue is set to advance, before it is started. */
   const selectedSlots = new Map<SlotUpgradeQueue, UpgradeSlot>();
   let selectedQueue: SlotUpgradeQueue | null = null;
-  let touchingStation = false;
+  const stationLatch = createStationLatch();
   let busy = false;
   let lastRenderKey = "";
   let renderedActiveQueues = new Set<SlotUpgradeQueue>();
@@ -665,7 +663,7 @@ export function createSlotUpgradesController(elements: SlotUpgradesElements, dep
 
   function updateTouch() {
     if (dependencies.currentMapId() !== dependencies.stationMapId) {
-      touchingStation = false;
+      stationLatch(false, true);
       close();
       return;
     }
@@ -673,9 +671,7 @@ export function createSlotUpgradesController(elements: SlotUpgradesElements, dep
     // The decor depth point sits below the visible workbench feet. Center the
     // interaction footprint on the art while remaining inside server range.
     const touching = playerTouchesSlotUpgrades(player, dependencies.stationPosition);
-    const transition = slotUpgradesTouchTransition(touchingStation, touching);
-    touchingStation = transition.touching;
-    if (transition.shouldOpen) open();
+    if (stationLatch(touching, !playerTouchesSlotUpgrades(player, dependencies.stationPosition, STATION_REARM_DISTANCE))) open();
   }
 
   elements.back.addEventListener("click", close);

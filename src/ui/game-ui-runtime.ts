@@ -33,6 +33,7 @@ import { createSignedInAsNotice } from "./signed-in-as-notice";
 import { installLoginMove } from "./login-move-controller";
 import { createTechTreeController } from "./tech-tree-controller";
 import { installCameraZoomControl } from "./camera-zoom-control";
+import { createStationLatch, STATION_REARM_DISTANCE } from "./station-reach";
 
 /** Tech Research, the Weekly Quests board and Ox's shop, in the Town's windmill, Inn and bottom-right house, the Smith in the forge house's yard, the market's Card, Weapon and Armor Sellers and each school's building, open as a player walks up to them. */
 export function createHomeStationTouchHandler(
@@ -47,42 +48,28 @@ export function createHomeStationTouchHandler(
   openSchool?: (school: WeaponSchool) => void,
   openGearSeller?: (seller: GearSeller) => void,
 ) {
-  let touchingResearch = false, touchingQuestBoard = false, touchingOx = false, touchingSmith = false, touchingCardSeller = false;
-  const touchingSeller: Partial<Record<GearSeller, boolean>> = {};
-  const touchingSchool: Partial<Record<WeaponSchool, boolean>> = {};
+  const latches = new Map<string, ReturnType<typeof createStationLatch>>();
+  const visit = (key: string, distance: number, reach: number, open?: () => void) => {
+    let latch = latches.get(key);
+    if (!latch) latches.set(key, latch = createStationLatch());
+    const home = isHome();
+    if (latch(home && distance < reach, !home || distance >= reach + STATION_REARM_DISTANCE)) open?.();
+  };
+  const feet = (at: { x: number; y: number }) => Math.hypot(player.x - at.x, player.y + TOWN_FEET_OFFSET - at.y);
   return () => {
-    const touching = isHome() && Math.hypot(player.x - TOWN_RESEARCH_POSITION.x, player.y - (TOWN_RESEARCH_POSITION.y - 36)) < 42.5;
-    if (touching && !touchingResearch) openResearch();
-    touchingResearch = touching;
+    visit("research", Math.hypot(player.x - TOWN_RESEARCH_POSITION.x, player.y - (TOWN_RESEARCH_POSITION.y - 36)), 42.5, openResearch);
     // The board is wider than the desk: walk up to its face to read it.
-    const atBoard = isHome() && Math.hypot(player.x - TOWN_QUEST_BOARD_POSITION.x, player.y - (TOWN_QUEST_BOARD_POSITION.y - 30)) < 55;
-    if (atBoard && !touchingQuestBoard) openQuestBoard?.();
-    touchingQuestBoard = atBoard;
-    // Ox's feet against the player's: walk up to him and his shop opens.
-    const atOx = isHome() && Math.hypot(player.x - TOWN_OX_POSITION.x, player.y + TOWN_FEET_OFFSET - TOWN_OX_POSITION.y) < TOWN_OX_REACH;
-    if (atOx && !touchingOx) openOxShop?.();
-    touchingOx = atOx;
-    // The Smith likewise, feet against feet, outdoors at the forge house.
-    const atSmith = isHome() && Math.hypot(player.x - TOWN_SMITH_POSITION.x, player.y + TOWN_FEET_OFFSET - TOWN_SMITH_POSITION.y) < TOWN_SMITH_REACH;
-    if (atSmith && !touchingSmith) openSmith?.();
-    touchingSmith = atSmith;
-    // The Card Seller from the lane in front of the stall's counter.
-    const atCardSeller = isHome() && Math.hypot(player.x - TOWN_CARD_SELLER_POSITION.x, player.y + TOWN_FEET_OFFSET - TOWN_CARD_SELLER_POSITION.y) < TOWN_CARD_SELLER_REACH;
-    if (atCardSeller && !touchingCardSeller) openCardSeller?.();
-    touchingCardSeller = atCardSeller;
+    visit("board", Math.hypot(player.x - TOWN_QUEST_BOARD_POSITION.x, player.y - (TOWN_QUEST_BOARD_POSITION.y - 30)), 55, openQuestBoard);
+    // Ox, the Smith and the Card Seller feet against feet.
+    visit("ox", feet(TOWN_OX_POSITION), TOWN_OX_REACH, openOxShop);
+    visit("smith", feet(TOWN_SMITH_POSITION), TOWN_SMITH_REACH, openSmith);
+    visit("cards", feet(TOWN_CARD_SELLER_POSITION), TOWN_CARD_SELLER_REACH, openCardSeller);
     // The Weapon and Armor Sellers the same way, each at its own stall.
     for (const [seller, at] of [["weapons", TOWN_WEAPON_SELLER_POSITION], ["armor", TOWN_ARMOR_SELLER_POSITION]] as const) {
-      const atSeller = isHome() && Math.hypot(player.x - at.x, player.y + TOWN_FEET_OFFSET - at.y) < TOWN_GEAR_SELLER_REACH;
-      if (atSeller && !touchingSeller[seller]) openGearSeller?.(seller);
-      touchingSeller[seller] = atSeller;
+      visit(seller, feet(at), TOWN_GEAR_SELLER_REACH, () => openGearSeller?.(seller));
     }
     // Each school from the floor under its sign, feet against its spot.
-    for (const school of WEAPON_SCHOOLS) {
-      const at = TOWN_SCHOOL_POSITIONS[school];
-      const atSchool = isHome() && Math.hypot(player.x - at.x, player.y + TOWN_FEET_OFFSET - at.y) < TOWN_SCHOOL_REACH;
-      if (atSchool && !touchingSchool[school]) openSchool?.(school);
-      touchingSchool[school] = atSchool;
-    }
+    for (const school of WEAPON_SCHOOLS) visit(`school-${school}`, feet(TOWN_SCHOOL_POSITIONS[school]), TOWN_SCHOOL_REACH, () => openSchool?.(school));
     updateSlotUpgrades();
   };
 }

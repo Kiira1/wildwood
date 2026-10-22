@@ -1,24 +1,23 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { parseHTML } from "linkedom";
 import { FROST_BOW, MAX_SLOT_UPGRADE_TIER, itemUpgradeStatChanges } from "../../shared/items";
-import { SLOT_UPGRADES_TOUCH_OFFSET_Y, UPGRADE_CANCEL_CONFIRMATION, createSlotUpgradesController, playerTouchesSlotUpgrades, slotUpgradeCanStart, slotUpgradesTouchTransition, upgradePickerPreview, queueAfterPickerDismiss, upgradesFinishedSinceLastPoll } from "./slot-upgrades-controller";
+import { SLOT_UPGRADES_TOUCH_OFFSET_Y, UPGRADE_CANCEL_CONFIRMATION, createSlotUpgradesController, playerTouchesSlotUpgrades, slotUpgradeCanStart, upgradePickerPreview, queueAfterPickerDismiss, upgradesFinishedSinceLastPoll } from "./slot-upgrades-controller";
 import type { ActiveItemUpgrade } from "../wildstat-coop";
 import { createInventoryNotice } from "./inventory-notice";
+import { createStationLatch } from "./station-reach";
 
 afterEach(() => vi.unstubAllGlobals());
 
 describe("Slot Upgrades touch latch", () => {
-  it("requires leaving before a closed station can open again", () => {
-    const entered = slotUpgradesTouchTransition(false, true);
-    expect(entered).toEqual({ touching: true, shouldOpen: true });
-
-    // Closing the window does not change contact with the station.
-    const stillTouching = slotUpgradesTouchTransition(entered.touching, true);
-    expect(stillTouching).toEqual({ touching: true, shouldOpen: false });
-
-    const left = slotUpgradesTouchTransition(stillTouching.touching, false);
-    expect(left).toEqual({ touching: false, shouldOpen: false });
-    expect(slotUpgradesTouchTransition(left.touching, true)).toEqual({ touching: true, shouldOpen: true });
+  it("requires walking well away before a closed station can open again", () => {
+    const latch = createStationLatch();
+    expect(latch(true, false)).toBe(true);
+    // Closing the window and sliding along the edge does not reopen it.
+    expect(latch(true, false)).toBe(false);
+    expect(latch(false, false)).toBe(false);
+    expect(latch(true, false)).toBe(false);
+    expect(latch(false, true)).toBe(false);
+    expect(latch(true, false)).toBe(true);
   });
 
   it("centers the interaction collision above the decor depth point", () => {
