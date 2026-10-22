@@ -1302,6 +1302,12 @@ export function createPresenceService(dependencies: PresenceServiceDependencies)
         ) return false;
         return sendMapChange(mapId, () => connection.reducers.changeMap({ mapId, x, y }));
       },
+      /** The Map Guide's Travel: straight to an open map from any map, as through the Town's travel portal. */
+      async travelToMap(mapId: string) {
+        const connection = dependencies.reducers.connection();
+        if (dependencies.reducers.protocolBlocked() || dependencies.reducers.worldEntryBlocked() || !connection) return false;
+        return sendMapChange(mapId, () => connection.reducers.travelToMap({ mapId }));
+      },
       /** The Town button in the Copper Hills or Timberwood: back to the Town's square. */
       async teleportToTownSquare() {
         const connection = dependencies.reducers.connection();

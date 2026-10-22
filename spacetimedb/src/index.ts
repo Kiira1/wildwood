@@ -190,7 +190,7 @@ import { MAINTENANCE_INTERVAL_MICROS, VIRTUAL_PLAYER_RUN_LIFETIME_MICROS, adjust
 import { autoEquip } from "./player-power";
 import { publishPlayerDeathFrame, resetProgressToDefaults, resetWholeSave, startFreshRun, respawnWithProgress, transitionPlayerMap } from "./character-reset";
 import { saveSubmittedProgress } from "./progress-save";
-import { WORLD, VALID_MAP_IDS, canonicalMapId, MAP_ARRIVALS, changePlayerMap, hasEndlessTravelAccess, teleportToResearchRoom, teleportToTownSquare as teleportToSquare, travelOnward } from "./map-travel";
+import { WORLD, VALID_MAP_IDS, canonicalMapId, MAP_ARRIVALS, changePlayerMap, hasEndlessTravelAccess, teleportToResearchRoom, teleportToTownSquare as teleportToSquare, travelOnward, travelToMap as travelStraightToMap } from "./map-travel";
 import { startItemUpgradeFor } from "./item-upgrade-runtime";
 import { devResetDailyBonus, devCopyCombatStats, devUpdateSave } from "./dev-save-tools";
 import { setMotionInterest, setPlayerSpeed } from "./movement-requests";
@@ -3670,6 +3670,7 @@ export const changeMap = spacetimedb.reducer(
 /** Research Ready's tap: the Town teleport into the Research building (map-travel.ts). */
 export const teleportToResearch = spacetimedb.reducer({ x: t.f64(), y: t.f64() }, (ctx, args) => teleportToResearchRoom(ctx, args));
 export const teleportToTownSquare = spacetimedb.reducer({}, (ctx) => teleportToSquare(ctx));
+export const travelToMap = spacetimedb.reducer({ mapId: t.string() }, (ctx, args) => travelStraightToMap(ctx, args));
 
 export const setSpeed = spacetimedb.reducer(
   { speed: t.f32() },

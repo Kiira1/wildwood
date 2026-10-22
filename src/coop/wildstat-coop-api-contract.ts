@@ -93,6 +93,7 @@ type ExpectedApiKey =
   | "changeMap"
   | "teleportToResearch"
   | "teleportToTownSquare"
+  | "travelToMap"
   | "chatMessages"
   | "chatRevision"
   | "claimItemGift"

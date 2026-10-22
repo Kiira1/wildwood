@@ -82,7 +82,7 @@ type MapGuideDependencies = {
   /** What the Next Goal reads for Prestige: the coop session, and whether its level cap is lifted. */
   progress?: MapGuideProgress | null;
   prestigeExpanded?: () => boolean;
-  /** The Travel button: by the Town's travel portal, teleporting to the Town first from elsewhere. */
+  /** The Travel button: straight to the map, with the Town travel portal's checks. */
   travel?: MapGuideTravelPort;
 };
 export type MapGuideProgress = {
@@ -91,12 +91,9 @@ export type MapGuideProgress = {
   proceduralCompleted?: () => number;
 };
 export type MapGuideTravelPort = {
-  inTown: () => boolean;
   /** The map the Travel picker opens on next. */
   prefer: (mapId: MapId) => void;
-  /** Presses the toolbar's Town button; false while it is cooling down. */
-  teleportToTown: () => boolean;
-  /** Travels from the Town to the map; false when it could not. */
+  /** Travels to the map; false when it could not. */
   travel: (mapId: MapId) => Promise<boolean>;
 };
 
@@ -288,7 +285,6 @@ export function createMapGuideController(elements: MapGuideElements, dependencie
   const travelButton = goalPart<HTMLButtonElement>(".map-guide-travel-button"), travelHint = goalPart(".map-guide-travel-hint");
   /** What the last Travel tap said, for the map it was for. */
   let travelNote: { mapId: MapId; text: string } | null = null;
-  let travelWatch = 0;
   function renderGoal(mapId: MapId) {
     const { goal, prestige } = mapGuideNextGoal(unlocked, dependencies.mapName, dependencies.progress, dependencies.prestigeExpanded?.() ?? false);
     goalPart(".map-guide-goal-text").textContent = goal;
@@ -305,38 +301,19 @@ export function createMapGuideController(elements: MapGuideElements, dependencie
     const note = travelNote?.mapId === mapId ? travelNote.text : "";
     Object.assign(travelHint, { textContent: note, hidden: !note });
   }
-  /** Takes the player to the map: from the Town at once, from elsewhere by the Town teleport first. */
+  /** Takes the player straight to the map; says so when it could not. */
   function travelTo(mapId: MapId) {
     const port = dependencies.travel;
     if (!port || !unlocked(mapId)) return;
     port.prefer(mapId);
-    const go = (retry = true) => {
-      close();
-      void port.travel(mapId).then(arrived => {
-        if (arrived) return;
-        // Just arrived in the Town, the arrival may still be settling: one more try.
-        if (retry) { setTimeout(() => go(false), 600); return; }
-        open();
-        viewed = mapId === dependencies.currentMapId() ? null : mapId;
-        travelNote = { mapId, text: "Travel failed. Try again in a moment." };
-        render();
-      });
-    };
-    if (port.inTown()) { go(); return; }
-    if (!port.teleportToTown()) travelNote = { mapId, text: "The Town teleport is cooling down. Try again in a moment." };
-    else {
-      travelNote = null;
-      const watch = ++travelWatch, started = Date.now();
-      const check = () => {
-        if (watch !== travelWatch || overlay.hidden) return;
-        // The Town's map has to be in hand before the next move; a moment more covers its arrival.
-        if (port.inTown()) { setTimeout(() => { if (watch === travelWatch && !overlay.hidden) go(); }, 300); return; }
-        if (Date.now() - started < 10_000) setTimeout(check, 100);
-        else { travelNote = null; render(); }
-      };
-      setTimeout(check, 100);
-    }
-    render();
+    close();
+    void port.travel(mapId).then(arrived => {
+      if (arrived) return;
+      open();
+      viewed = mapId === dependencies.currentMapId() ? null : mapId;
+      travelNote = { mapId, text: "Travel failed. Try again in a moment." };
+      render();
+    });
   }
   travelButton.addEventListener("click", () => travelTo(shown()));
 

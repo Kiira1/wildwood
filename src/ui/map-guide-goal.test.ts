@@ -48,7 +48,7 @@ describe("the Map Guide's Travel button", () => {
 describe("the Map Guide window", () => {
   afterEach(() => { vi.unstubAllGlobals(); vi.useRealTimers(); });
 
-  function setup(current: MapId, inTownAtFirst: boolean, teleportReady = true) {
+  function setup(current: MapId, arrives = true) {
     const { document, window } = parseHTML(`<html><body><button id="trigger"></button><div id="mapGuide" hidden>
       <button id="mapGuidePrev"></button><p id="mapGuideKicker"></p><h2 id="title"></h2><button id="mapGuideNext"></button>
       <div class="map-guide-content"><div><canvas id="canvas"></canvas><div id="zones"></div></div>
@@ -59,8 +59,8 @@ describe("the Map Guide window", () => {
     vi.stubGlobal("requestAnimationFrame", () => 0);
     const canvas = document.getElementById("canvas") as unknown as HTMLCanvasElement;
     Object.assign(canvas, { getContext: () => null, getBoundingClientRect: () => ({ width: 100, height: 100 }) });
-    const state = { current, inTown: inTownAtFirst };
-    const prefer = vi.fn(), teleportToTown = vi.fn(() => teleportReady), travel = vi.fn(async () => true);
+    const state = { current };
+    const prefer = vi.fn(), travel = vi.fn(async () => arrives);
     const get = <T>(id: string) => document.getElementById(id) as unknown as T;
     const guide = createMapGuideController({
       trigger: get("trigger"), overlay: get("mapGuide"), title: get("title"), canvas, zoneLabels: get("zones"), dropItems: get("drops"), back: get("back"),
@@ -68,15 +68,15 @@ describe("the Map Guide window", () => {
       currentMapId: () => state.current, mapName: id => NAMES[id] ?? id, paths: [], spawnSites: [], player: { x: 0, y: 0 },
       boss: () => null, portals: () => [], beforeOpen: () => {}, clearPlayerInput: () => {},
       mapUnlocked: opened(3), power: () => 4_200_000,
-      travel: { inTown: () => state.inTown, prefer, teleportToTown, travel },
+      travel: { prefer, travel },
     });
     const q = <T extends Element = HTMLElement>(selector: string) => document.querySelector(selector) as unknown as T;
     const click = (selector: string) => q(selector).dispatchEvent(new window.Event("click", { bubbles: true }));
-    return { guide, state, prefer, teleportToTown, travel, q, click };
+    return { guide, state, prefer, travel, q, click };
   }
 
   it("shows the Next Goal and the shown map's recommended power at the top", () => {
-    const s = setup("beginner_desert", false);
+    const s = setup("beginner_desert");
     s.guide.open();
     const block = s.q(".map-guide-content > .map-guide-goal");
     expect(block.querySelector("h3")!.textContent).toBe("Next Goal");
@@ -86,41 +86,29 @@ describe("the Map Guide window", () => {
     expect(s.q<HTMLElement>(".map-guide-travel").hidden).toBe(true);
   });
 
-  it("from a map, teleports to the Town and then travels on to the map", async () => {
-    vi.useFakeTimers();
-    const s = setup("beginner_desert", false);
+  it("travels straight to the shown map, closing the window; says so and reopens when it could not", async () => {
+    const s = setup("beginner_desert");
     s.guide.open();
     s.click("#mapGuidePrev");
     s.click(".map-guide-travel-button");
-    expect(s.teleportToTown).toHaveBeenCalledTimes(1);
-    expect(s.travel).not.toHaveBeenCalled();
-    Object.assign(s.state, { current: "town", inTown: true });
-    await vi.advanceTimersByTimeAsync(600);
     expect(s.travel).toHaveBeenCalledWith("tutorial_forest");
+    expect(s.prefer).toHaveBeenCalledWith("tutorial_forest");
     expect(s.guide.isOpen()).toBe(false);
-  });
-
-  it("in Town, travels at once; while the Town button cools down it stays put", () => {
-    const s = setup("town", true);
-    s.guide.open();
-    s.click(".map-guide-travel-button");
-    expect(s.teleportToTown).not.toHaveBeenCalled();
-    expect(s.travel).toHaveBeenCalledWith("intermediate_snowlands");
-    const cooling = setup("beginner_desert", false, false);
-    cooling.guide.open();
-    cooling.click("#mapGuidePrev");
-    cooling.click(".map-guide-travel-button");
-    expect(cooling.travel).not.toHaveBeenCalled();
-    expect(cooling.guide.isOpen()).toBe(true);
+    const failing = setup("beginner_desert", false);
+    failing.guide.open();
+    failing.click("#mapGuidePrev");
+    failing.click(".map-guide-travel-button");
+    await Promise.resolve(); await Promise.resolve();
+    expect(failing.guide.isOpen()).toBe(true);
   });
 
   it("locks the button on the map past the furthest open", () => {
-    const s = setup("intermediate_snowlands", false);
+    const s = setup("intermediate_snowlands");
     s.guide.open();
     s.click("#mapGuideNext");
     const button = s.q<HTMLButtonElement>(".map-guide-travel-button");
     expect([button.textContent, button.disabled]).toEqual(["Locked", true]);
     s.click(".map-guide-travel-button");
-    expect(s.teleportToTown).not.toHaveBeenCalled();
+    expect(s.travel).not.toHaveBeenCalled();
   });
 });

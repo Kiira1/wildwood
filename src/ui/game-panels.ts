@@ -262,10 +262,10 @@ export function createMapGuidePanel(deps: MapGuidePanelDeps) {
     clearPlayerInput: deps.clearInput, power: deps.power, progress: coop.client, prestigeExpanded: deps.prestigeExpanded,
     lootFilter: coop.client,
     travel: {
-      inTown: () => deps.currentMapId() === "town",
       prefer: deps.preferTravel,
-      teleportToTown: () => !e.townButton.disabled && (e.townButton.click(), true),
-      travel: mapId => mapController.travelFromHome(mapId, true),
+      // From the Town through its portal at once; from anywhere else straight there, with the portal's checks.
+      travel: mapId => deps.currentMapId() === "town" ? mapController.travelFromHome(mapId, true)
+        : mapController.teleportToMap(mapId, async () => Boolean(await coop.client?.travelToMap?.(mapId))),
     },
   });
 }

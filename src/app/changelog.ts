@@ -1,4 +1,7 @@
 export const RELEASE_NOTES: Record<string, string[]> = {
+  "0.916.32.10": [
+    "Map Guide's Travel goes straight to the map, with no stop in the Town",
+  ],
   "0.916.32.9": [
     "iPhones and iPads draw the world on the graphics card again",
     "When the graphics reset, the game reloads itself instead of showing an empty world",
@@ -3879,6 +3882,7 @@ const RELEASE_DATES: Record<string, string> = {
 };
 
 export const RELEASE_DAYS: Record<string, string> = {
+  "0.916.32.10": "2026-10-22",
   "0.916.32.9": "2026-10-22",
   "0.916.32.8": "2026-10-22",
   "0.916.32.7": "2026-10-21",
