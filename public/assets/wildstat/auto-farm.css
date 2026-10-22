@@ -799,7 +799,7 @@
 /* The Smith's button is gold, the refine's own color, and button-sized, not the
    card's full width. Its text stays white with the black outline every button's text has: dark text under that
    outline read as black on black. */
-.smith-sheet .farm-start.smith-refine { justify-self: center; min-width: 150px; height: 44px; min-height: 44px; padding: 0 18px 2px; border-color: #5a3c00; background: linear-gradient(#ffe07a, #e2a628); box-shadow: 0 3px 0 #5a3c00; font-size: 15px; text-transform: none; }
+.smith-sheet .farm-start.smith-refine { justify-self: center; min-width: 150px; height: 44px; min-height: 44px; padding: 0 18px 2px; border-color: #5a3c00; background: linear-gradient(#d4b052, #a27a22); box-shadow: 0 3px 0 #5a3c00; font-size: 15px; text-transform: none; }
 .smith-sheet .farm-start.smith-refine:active:not(:disabled) { box-shadow: 0 1px 0 #5a3c00; }
 .smith-sheet .smith-outcome { margin: 0; text-align: center; font-size: 14px; font-weight: 900; }
 .smith-sheet .smith-outcome.is-good { color: #ffd75e; }
@@ -882,7 +882,7 @@
 .smith-sheet .smith-offer.craft-line { flex-direction: column; align-items: stretch; gap: 8px; }
 .smith-sheet .craft-head { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; }
 .smith-sheet .craft-next { color: var(--muted); font-size: 13px; line-height: 1.3; }
-.smith-sheet .farm-start.smith-refine.smith-shop-buy.craft-action { max-width: none; white-space: normal; text-wrap: balance; }
+.smith-sheet .farm-start.smith-refine.smith-shop-buy.craft-action { align-self: center; justify-self: center; width: auto; min-width: 150px; max-width: 100%; min-height: 44px; margin: 0 auto; padding: 0 18px 2px; font-size: 15px; white-space: normal; text-wrap: balance; }
 /* The Smith's tabs as a pill toggle, as the Cards tab's: Buy, Craft, Refine, Upgrade. */
 .smith-sheet .smith-views-bar { display: flex; justify-content: center; margin: 0 14px 12px; }
 .smith-sheet .smith-views-bar[hidden], .smith-sheet .smith-view[hidden] { display: none; }
@@ -903,7 +903,7 @@
 .smith-sheet .slot-upgrades-queue > .inventory-upgrade-level { font-size: 13px; line-height: 15px; }
 .smith-sheet .slot-upgrades-stat-row span, .smith-sheet .slot-upgrades-picker-stat span:last-child { color: #fff; }
 .smith-sheet .slot-upgrades-timer { color: #fff; font-size: 14px; }
-.smith-sheet .slot-upgrades-action { width: min(220px, 100%); border-color: #5a3c00; background: linear-gradient(#ffe07a, #e2a628); box-shadow: 0 3px 0 #5a3c00; font-size: 15px; }
+.smith-sheet .slot-upgrades-action { width: auto; min-width: 150px; max-width: 100%; border-color: #5a3c00; background: linear-gradient(#d4b052, #a27a22); box-shadow: 0 3px 0 #5a3c00; font-size: 15px; }
 .smith-sheet .slot-upgrades-action.is-cancel { border-color: #492020; background: linear-gradient(#cf6868, #953c3c); box-shadow: 0 3px 0 #431d1d; }
 .smith-sheet .slot-upgrades-action.slot-upgrades-speed-up { border-color: #65354f; background: linear-gradient(#d86f9f, #a84573); box-shadow: 0 3px 0 #53243d; }
 .smith-sheet .slot-upgrades-action:disabled { border-color: rgba(255,255,255,.18); background: rgba(255,255,255,.08); box-shadow: none; color: var(--muted); }
