@@ -1,6 +1,6 @@
 export const RELEASE_NOTES: Record<string, string[]> = {
   "0.916.28.1": [
-    "Chat and guild buttons are dark grey instead of white",
+    "Chat and guild buttons are green again",
   ],
   "0.916.28": [
     "The Smith and the Sellers show your items as a grid, with the picked item and its button always on top",
