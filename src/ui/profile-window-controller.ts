@@ -75,13 +75,15 @@ export function createProfileWindowController(elements: {
   guildTag: (identity: string) => string;
   findGuild: (name: string) => Promise<KnownGuild | undefined>;
   openGuild: (id: string) => void;
+  /** Opens the private chat with this player. */
+  openPrivateChat: (identity: string, name: string) => void;
   /** Invite to Guild, for a President or Vice President looking at a player with no guild. */
   guildInvite?: { available: (identity: string) => boolean; send: (identity: string) => Promise<{ ok: boolean; error?: string }> };
 }) {
   let identity = "";
   let profileData: Profile | null = null;
   const loading = createProfileLoading(elements.loading, elements.statGrid);
-  const actionsMenu = createProfileActionsMenu(api);
+  const actionsMenu = createProfileActionsMenu({ ...api, openPrivateChat: (target, name) => { close(); api.openPrivateChat(target, name); } });
   let guildShown: string | null = null;
   const bonuses = elements.bonusesPanel && elements.bonuses ? createProfileBonusToggles(elements.bonusesPanel, elements.bonuses) : null;
   const equipmentElements: Record<ProfileEquipmentSlot, HTMLButtonElement> = {

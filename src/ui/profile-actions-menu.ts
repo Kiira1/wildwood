@@ -1,10 +1,11 @@
 import { copyText } from "./chat-message-actions";
 
-/** The ⋯ menu on another player's profile: Copy Name, Invite to Guild, Report and Block, one per row. */
+/** The ⋯ menu on another player's profile: Message, Copy Name, Invite to Guild, Report and Block, one per row. */
 export function createProfileActionsMenu(api: {
   isBlocked: (identity: string) => boolean;
   openSafety: (identity: string, name: string, action: "report" | "block") => void;
   showMessage: (text: string, color: string) => void;
+  openPrivateChat: (identity: string, name: string) => void;
   guildInvite?: { available: (identity: string) => boolean; send: (identity: string) => Promise<{ ok: boolean; error?: string }> };
 }, doc: Document = document) {
   const dialog = doc.createElement("dialog");
@@ -28,6 +29,7 @@ export function createProfileActionsMenu(api: {
     dialog.append(button);
     return { button, text };
   }
+  row("profileMenuMessageBtn", "✉", "Message", false, () => api.openPrivateChat(target, name));
   row("profileMenuCopyNameBtn", "⧉", "Copy Name", false, () => {
     void copyText(name).then(() => api.showMessage("NAME COPIED", "#c9f5c2"), () => api.showMessage("COULD NOT COPY", "#ff9b91"));
   });

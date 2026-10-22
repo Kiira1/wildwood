@@ -240,7 +240,7 @@ async function profileWindow(own: boolean) {
   byId("settingsBtn").hidden = !own;
   byId("profileMoreBtn").hidden = own;
   byId("profileDuelBtn").hidden = own;
-  if (!own) createProfileActionsMenu({ isBlocked: () => false, openSafety: () => {}, showMessage: () => {} }).open("p-moss", "Moss");
+  if (!own) createProfileActionsMenu({ isBlocked: () => false, openSafety: () => {}, showMessage: () => {}, openPrivateChat: () => {} }).open("p-moss", "Moss");
   await settleCssImages();
 }
 

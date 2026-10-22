@@ -3788,8 +3788,8 @@
   .dev-load-test-actions input { width: 66px; min-height: 32px; padding: 0 6px; border: 1px solid rgba(145,207,160,.32); border-radius: 4px; color: var(--cream); background: #171717; font: inherit; font-size: 8px; }
   .dev-load-test-actions input:disabled { opacity: .5; }
   .dev-audit-help { margin: 4px 0 9px; font-size: 8px; }
-  .profile-duel-button { display: block; min-width: 112px; margin: 7px auto 0; padding: 7px 12px; font-size: 10px; }
-  .profile-duel-button.is-cooling-down { background: linear-gradient(#676f70, #454b4c); color: #d1d7d5; cursor: not-allowed; }
+  .profile-duel-button { display: flex; align-items: center; justify-content: center; width: min(150px, 44vw); height: 44px; min-height: 44px; margin: 7px auto 0; padding: 0 8px 2px; border: 2px solid #18371b; border-radius: 8px; background: linear-gradient(#63ad5c, #347536); box-shadow: 0 3px 0 #18371b; color: #fff; font: 900 11px/1 var(--font-rounded); -webkit-text-stroke: var(--text-outline-width) #000; paint-order: stroke fill; text-shadow: var(--text-shadow); }
+  .profile-duel-button.is-cooling-down { border-color: #2d2d2d; background: linear-gradient(#5d6a61, #3e3e3e); box-shadow: none; color: rgba(236,240,236,.62); cursor: not-allowed; }
   .profile-duel-button[hidden] { display: none; }
   /* Half the height and roughly half the width of the full-size pair they
      replaced: these are rarely used, and they live inside the INFO tab now. */

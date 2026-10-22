@@ -642,7 +642,7 @@ import { MAX_PLAYER_STAT, PLAYER_SPAWN } from "../shared/rules";
     coop: coopAccess, e: gameElements, inventory, isDueling, soulInPlay: () => soulDimension.inPlay(),
     mapName: mapNameForPresence, powerForEquipment, profileCharacterPreview, inventoryCharacterPreview,
     applyProfileIcon, renderName: renderDomPlayerName, expansionNotice, runPrestige, openIconPicker: openProfileIconPicker,
-    minimizeChat: () => chatRuntime.minimize(), guildPanel: () => guildPanel, clearInput: playerInput.clear,
+    chat: () => chatRuntime, guildPanel: () => guildPanel, clearInput: playerInput.clear,
     itemInspection: itemInspectionController, destructionActions: inventoryController.destructionActions, showMessage,
   });
   const { playerSafety, profileWindow } = profile;

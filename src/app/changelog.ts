@@ -1,6 +1,7 @@
 export const RELEASE_NOTES: Record<string, string[]> = {
-  "0.916.30.1": [
-    "Patreon supporters who come back after their membership ran out are thanked in chat again",
+  "0.916.31": [
+    "The profile Duel button matches the game's green buttons",
+    "Message in a player's profile ⋯ menu opens a private chat with them",
   ],
   "0.916.30": [
     "The trash can in the item window sells the item and shows how much",
@@ -3837,6 +3838,7 @@ const RELEASE_DATES: Record<string, string> = {
 };
 
 export const RELEASE_DAYS: Record<string, string> = {
+  "0.916.31": "2026-10-21",
   "0.916.30.1": "2026-10-21",
   "0.916.30": "2026-10-21",
   "0.916.29.1": "2026-10-21",

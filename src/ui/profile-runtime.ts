@@ -37,7 +37,7 @@ export type ProfileRuntimeDeps = {
   expansionNotice: ReturnType<typeof createPrestigeExpansionRuntime>;
   runPrestige: () => Promise<unknown>;
   openIconPicker: () => void;
-  minimizeChat: () => void;
+  chat: () => { minimize: () => void; openPrivate: (name: string, identity?: string) => void };
   guildPanel: () => { close: () => void; openGuildPreview: (id: string) => void } | undefined;
   clearInput: () => void;
   itemInspection: ReturnType<typeof createItemInspectionController>;
@@ -97,6 +97,7 @@ export function createProfileRuntime(deps: ProfileRuntimeDeps) {
       send: async identity => await client?.social?.inviteToGuild?.(identity) ?? { ok: false, error: "Not Connected" },
     },
     openGuild: id => deps.guildPanel()?.openGuildPreview(id),
+    openPrivateChat: (identity, name) => deps.chat().openPrivate(name, identity),
     onOwnProfile: (own: boolean) => prestigePanel.refresh(own),
     prestigeLevel: coop.prestigeLevel,
     weaponMastery: () => client?.weaponMastery?.(),
@@ -133,7 +134,7 @@ export function createProfileRuntime(deps: ProfileRuntimeDeps) {
     releaseProfile: () => { client?.releasePlayerProfile?.(); },
     isDueling: deps.isDueling, duelCooldownMs: () => client?.duelCooldownRemainingMs?.() ?? 0,
     requestDuel: async identity => {
-      deps.minimizeChat();
+      deps.chat().minimize();
       const result = await client?.requestDuel?.(identity);
       if (result?.ok) deps.guildPanel()?.close();
       return result;

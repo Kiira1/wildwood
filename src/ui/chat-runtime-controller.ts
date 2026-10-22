@@ -76,6 +76,7 @@ export function createChatRuntimeController(options: Pick<ChatOptions, "getCoop"
     refresh: chat.refresh,
     requestRefresh,
     minimize: chat.minimize,
+    openPrivate: chat.openPrivate,
     isMaximized: chat.isMaximized,
     isInteracting: chat.isInteracting,
   };
