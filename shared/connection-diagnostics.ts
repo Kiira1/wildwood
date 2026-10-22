@@ -1,5 +1,5 @@
 /** Only operational fields cross this boundary; never credentials or full URLs. */
-export const CONNECTION_EVENT_KINDS = ["socket-close", "socket-error", "connect-error", "decompression-error", "lifecycle-failure", "reconnected", "session-blocked", "title-screen", "update-reload", "user-sign-out", "map-retry", "page-hidden", "page-visible", "page-exit", "offline", "online", "connection-reset", "portal-start", "portal-complete", "portal-failed", "wake-resume", "wake-reconnect", "rewards-discarded", "rewards-throttled", "rewards-stalled", "autofarm-death", "latency-spike", "app-update", "graphics"] as const;
+export const CONNECTION_EVENT_KINDS = ["socket-close", "socket-error", "connect-error", "decompression-error", "lifecycle-failure", "reconnected", "session-blocked", "title-screen", "update-reload", "user-sign-out", "map-retry", "page-hidden", "page-visible", "page-exit", "offline", "online", "connection-reset", "portal-start", "portal-complete", "portal-failed", "wake-resume", "wake-reconnect", "rewards-discarded", "rewards-throttled", "rewards-stalled", "autofarm-death", "latency-spike", "app-update", "graphics", "canvas-purge"] as const;
 export type ConnectionEventKind = typeof CONNECTION_EVENT_KINDS[number];
 export type ConnectionDiagnostic = {
   eventId: string; kind: ConnectionEventKind; occurredAtMs: number;
@@ -53,7 +53,7 @@ export function normalizeConnectionDiagnostic(value: unknown): ConnectionDiagnos
   const activity = ["foreground", "background", "tab-return"].includes(String(v.activity)) ? String(v.activity) : v.hidden === true ? "background" : "unknown";
   const graphics = v.kind === "graphics" ? normalizeGraphics(v.graphics) : null;
   if (v.kind === "graphics" && !graphics) return null;
-  const category = v.kind === "graphics" ? "graphics" : v.kind === "decompression-error" || v.kind === "socket-close" && [1002, 1003, 1007].includes(Number(v.code)) ? "protocol-error"
+  const category = v.kind === "graphics" || v.kind === "canvas-purge" ? "graphics" : v.kind === "decompression-error" || v.kind === "socket-close" && [1002, 1003, 1007].includes(Number(v.code)) ? "protocol-error"
     : v.intentional === true && v.detail === "route-change" ? "portal-transition"
     : activity === "background" || activity === "tab-return" ? "tab-away"
     : v.intentional === true ? "intentional-reset"

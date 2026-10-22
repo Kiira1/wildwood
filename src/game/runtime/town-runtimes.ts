@@ -3,13 +3,14 @@ import {
   createCardSellerRuntime, createGearSellerRuntime, createHomeStationTouchHandler, createSchoolWindowRuntime, createSmithRuntime, createStarterChestRuntime,
 } from "../../ui/game-ui-runtime";
 import type { createGameElements } from "../../ui/game-elements";
-import { bindTownTeleportButton } from "../../ui/town-teleport-button";
+import { bindTownTeleportButton, paintTownTeleportButton } from "../../ui/town-teleport-button";
 import { createOxShopRuntime } from "../../ui/ox-shop-controller";
 import { createSlotUpgradesController } from "../../ui/slot-upgrades-controller";
 import { closeStationsOutOfReach } from "../../ui/station-reach";
 import {
   TOWN_ARMOR_SELLER_POSITION, TOWN_CARD_SELLER_POSITION, TOWN_CARD_SELLER_SERVER_REACH, TOWN_GEAR_SELLER_SERVER_REACH, TOWN_SMITH_POSITION,
   TOWN_SMITH_SERVER_REACH, TOWN_WEAPON_SELLER_POSITION, TOWN_DOORS, TOWN_RESEARCH_POSITION, townRoomAt,
+  TOWN_ARRIVAL, inTownGrove, inTownHills,
 } from "../../../shared/town";
 import { TUTORIAL_FOREST_MAP_ID, SLOT_UPGRADES_POSITION, type MapId } from "../world";
 import type { CoopAccess } from "./coop-access";
@@ -48,6 +49,11 @@ export function createTownRuntimes(deps: TownRuntimeDeps) {
   const { coop, e, player, inventory, clearInput, showMessage } = deps;
   const client = () => coop.client;
   const inTown = () => deps.currentMapId() === "town";
+  /** Out mining or chopping, where the Town button goes back to the square rather than to the fight. */
+  const gathering = () => inTown() && (inTownHills(player.x, player.y) || inTownGrove(player.x, player.y));
+  const toSquare = () => deps.teleportToMap("town", async () =>
+    await coop.client?.teleportToTownSquare?.() ? { mapId: "town", ...TOWN_ARRIVAL, facing: 0 } : false);
+  let gatheringShown = false;
 
   const townTeleport = bindTownTeleportButton(e.townButton, {
     beforeTeleport: () => {
@@ -60,7 +66,7 @@ export function createTownRuntimes(deps: TownRuntimeDeps) {
       gearSellers.close();
       schools.close();
     },
-    teleport: () => deps.inTutorial() ? Promise.resolve(false) : deps.teleportHome(),
+    teleport: () => deps.inTutorial() ? Promise.resolve(false) : gathering() ? toSquare() : deps.teleportHome(),
     showFailure: failed => showMessage(failed ? "TELEPORT FAILED · TRY AGAIN" : "TELEPORT UNAVAILABLE", "#ffbc91"),
     showBlocked: text => showMessage(text, "#ffbc91"),
   });
@@ -155,6 +161,10 @@ export function createTownRuntimes(deps: TownRuntimeDeps) {
     /** Opens a station the player walked up to, and moves the Starter Chest's prompt. */
     update() {
       updateHomeStations();
+      if (gathering() !== gatheringShown) {
+        gatheringShown = !gatheringShown;
+        paintTownTeleportButton(e.townButton, deps.currentMapId(), gatheringShown);
+      }
       closeStationsOutOfReach(player, inTown() && !deps.isMapTransitioning(), [
         [smith, TOWN_SMITH_POSITION, TOWN_SMITH_SERVER_REACH],
         [cardSeller, TOWN_CARD_SELLER_POSITION, TOWN_CARD_SELLER_SERVER_REACH],

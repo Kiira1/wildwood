@@ -92,6 +92,7 @@ type ExpectedApiKey =
   | "cancelItemUpgrade"
   | "changeMap"
   | "teleportToResearch"
+  | "teleportToTownSquare"
   | "chatMessages"
   | "chatRevision"
   | "claimItemGift"

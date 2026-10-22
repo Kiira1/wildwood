@@ -1,6 +1,6 @@
 import { createWebGLSpritePass } from "./webgl-sprite-pass";
 import { worldSpritesWanted } from "./world-sprites-wanted";
-import { worldPowerPreference } from "./gpu-power-preference";
+import { webGLWorldWanted, worldPowerPreference } from "./gpu-power-preference";
 import type { SpriteRecording } from "./sprite-recorder";
 
 export type StaticWorldTileFrame = {
@@ -63,6 +63,8 @@ export type StaticWorldLayer = {
   recover?: () => boolean;
   /** Makes the layer again on a fresh context (the Dedicated GPU setting changed); true when WebGL is drawing. */
   rebuild?: () => boolean;
+  /** The WebGL Drawing setting: off hands the whole world to the 2D canvas, on makes the layer again. */
+  setWanted?: (on: boolean) => void;
 };
 type WebGLWorldLayer = StaticWorldLayer & { lost: () => boolean; destroy: () => void; overlay: { draw: StaticWorldGroundOverlay | null } };
 
@@ -263,13 +265,16 @@ export function parseHexColor(color: string): [number, number, number] {
 export function createWebGLStaticWorldLayer(overlayCanvas: HTMLCanvasElement): StaticWorldLayer | null {
   if (!webGLWorldRequested(window.location.search)) return null;
   let layer: WebGLWorldLayer | null | undefined;
-  let prepared = false;
+  let prepared = false, wanted = webGLWorldWanted();
   const overlay: WebGLWorldLayer["overlay"] = { draw: null };
   const prepare = () => {
     prepared = true;
+    if (!wanted) return false;
     if (layer === undefined) layer = initializeWebGLStaticWorldLayer(overlayCanvas, overlay);
     return Boolean(layer?.active());
   };
+  /** Draws every ground tile again, on whichever of WebGL and the canvas now draws them. */
+  const redraw = () => window.dispatchEvent(new CustomEvent(STATIC_WORLD_LAYER_RESET_EVENT, { detail: "lost" }));
   return {
     setGroundOverlay: (draw) => { overlay.draw = draw; },
     prepare,
@@ -292,9 +297,16 @@ export function createWebGLStaticWorldLayer(overlayCanvas: HTMLCanvasElement): S
       layer?.destroy();
       layer = undefined;
       const drawing = prepare();
-      // Every ground tile is drawn again on the new context.
-      window.dispatchEvent(new CustomEvent(STATIC_WORLD_LAYER_RESET_EVENT, { detail: "lost" }));
+      redraw();
       return drawing;
+    },
+    setWanted(on) {
+      if (on === wanted) return;
+      wanted = on;
+      layer?.destroy();
+      layer = undefined;
+      if (prepared) prepare();
+      redraw();
     },
   };
 }
@@ -717,7 +729,8 @@ function initializeWebGLStaticWorldLayer(overlayCanvas: HTMLCanvasElement, overl
     spritePaths: () => spritePaths,
     renderer: "webgl",
     lost: () => lost,
-    destroy: () => canvas.remove(),
+    // Hands the world back to the 2D canvas before it goes, as a failure does.
+    destroy: () => { disable(); canvas.remove(); },
     overlay,
   };
 }

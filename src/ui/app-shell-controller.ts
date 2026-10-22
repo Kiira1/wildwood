@@ -1,5 +1,5 @@
 import { installKeepScreenOnSettings } from "./keep-screen-on-settings";
-import { DEDICATED_GPU_KEY } from "../game/runtime/render/gpu-power-preference";
+import { DEDICATED_GPU_KEY, WEBGL_WORLD_KEY } from "../game/runtime/render/gpu-power-preference";
 import { setLightStaffEffects } from "../game/staff-look";
 import { installFeedbackSettings } from "./feedback-settings";
 import type { MapMusicController } from "../game/runtime/audio";
@@ -42,6 +42,8 @@ type AppShellDependencies = {
   onLowPerformanceChanged: () => void;
   /** The Dedicated GPU setting changed: the WebGL world is made again on the card it asks for. */
   onGpuChanged?: () => void;
+  /** The WebGL Drawing setting changed: off, the 2D canvas draws the whole world. */
+  onWebGLChanged?: (on: boolean) => void;
   showMessage: (message: string, color: string) => void;
 };
 
@@ -61,6 +63,7 @@ export function createAppShellController(dependencies: AppShellDependencies) {
   const lowPerformanceToggle = requiredElement<HTMLButtonElement>("lowPerformanceToggle");
   const idleThrottleToggle = requiredElement<HTMLButtonElement>("idleThrottleToggle");
   const dedicatedGpuToggle = requiredElement<HTMLButtonElement>("dedicatedGpuToggle");
+  const webglWorldToggle = requiredElement<HTMLButtonElement>("webglWorldToggle");
   const fpsToggle = requiredElement<HTMLButtonElement>("fpsToggle");
   const fpsStatus = requiredElement("fpsStatus");
   const gameFpsStatus = requiredElement("gameFpsStatus");
@@ -89,6 +92,8 @@ export function createAppShellController(dependencies: AppShellDependencies) {
   let idleThrottle = readBoolean("wildstat-idle-throttle-v1", true);
   // Off by default: a dedicated card heats a laptop by being awake.
   let dedicatedGpu = readBoolean(DEDICATED_GPU_KEY, false);
+  // On by default; off is for a machine WebGL lags on.
+  let webglWorld = readBoolean(WEBGL_WORLD_KEY, true);
   let fpsVisible = readBoolean(dependencies.storageKeys.fps, false);
   let latencyVisible = readBoolean(dependencies.storageKeys.latency, false);
   let lastAudibleMusicVolume = dependencies.mapMusic.volume > 0 ? dependencies.mapMusic.volume : .35;
@@ -112,6 +117,7 @@ export function createAppShellController(dependencies: AppShellDependencies) {
     renderBooleanSetting(lowPerformanceToggle, lowPerformanceMode);
     renderBooleanSetting(idleThrottleToggle, idleThrottle);
     renderBooleanSetting(dedicatedGpuToggle, dedicatedGpu);
+    renderBooleanSetting(webglWorldToggle, webglWorld);
     renderBooleanSetting(fpsToggle, fpsVisible);
     gameFpsStatus.hidden = !fpsVisible;
     renderBooleanSetting(latencyToggle, latencyVisible);
@@ -203,6 +209,12 @@ export function createAppShellController(dependencies: AppShellDependencies) {
   idleThrottleToggle.addEventListener("click", () => {
     idleThrottle = !idleThrottle;
     writeBoolean("wildstat-idle-throttle-v1", idleThrottle);
+    refreshSettings();
+  });
+  webglWorldToggle.addEventListener("click", () => {
+    webglWorld = !webglWorld;
+    writeBoolean(WEBGL_WORLD_KEY, webglWorld);
+    dependencies.onWebGLChanged?.(webglWorld);
     refreshSettings();
   });
   dedicatedGpuToggle.addEventListener("click", () => {

@@ -1,4 +1,12 @@
 export const RELEASE_NOTES: Record<string, string[]> = {
+  "0.916.32.9": [
+    "iPhones and iPads draw the world on the graphics card again",
+    "When the graphics reset, the game reloads itself instead of showing an empty world",
+    "New players get the faster world drawing from their first visit",
+    "Town button takes you to the Town square while mining or chopping",
+    "New setting: WebGL Drawing (turn it off if the game lags)",
+    "Clearer Warden II card text",
+  ],
   "0.916.32.8": [
     "Map Guide's Travel button takes you straight to the map",
     "Inspecting another player's refined gear shows its right look",
@@ -3871,6 +3879,7 @@ const RELEASE_DATES: Record<string, string> = {
 };
 
 export const RELEASE_DAYS: Record<string, string> = {
+  "0.916.32.9": "2026-10-22",
   "0.916.32.8": "2026-10-22",
   "0.916.32.7": "2026-10-21",
   "0.916.32.6": "2026-10-21",

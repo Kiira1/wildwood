@@ -37,7 +37,7 @@ export function createWorldSpriteCapture(context: SwitchableContext | undefined,
   const capture: WorldSpriteCapture = {
     begin() {
       if (waitFrames > 0) { waitFrames -= 1; stats.canvas += 1; return false; }
-      if (!layer()?.drawSprites) { stats.canvas += 1; return false; }
+      if (!layer()?.drawSprites || !layer()?.active()) { stats.canvas += 1; return false; }
       // From the facade, which keeps a font as it was set (see switchable-context.ts).
       recorder.begin(context.context, layer()?.spritePaths?.() ?? false);
       context.use(recorder.context);

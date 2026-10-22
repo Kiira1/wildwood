@@ -80,7 +80,7 @@ export function cardEffectText(effect: CardEffect): string {
     starshardFind: () => `${signed(v)}% chance of a second Starshard`,
     woodcuttingSpeed: () => `Chop speed ${signed(v)}%`,
     logFind: () => `${abs}% chance for an extra log`,
-    onward: () => "Beat a boss that opens the next map: you go straight there",
+    onward: () => "Beating your furthest map's boss teleports you to the next map",
   };
   return lines[effect.effect]?.() ?? effect.effect;
 }

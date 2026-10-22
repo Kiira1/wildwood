@@ -28,6 +28,14 @@ export const WATCH_INTERVAL_MS = 1_000;
 export const LOST_GRACE_MS = 3_000;
 /** Never reload for this more than once in this long, whatever the checks say: a loop is worse than the bug. */
 export const RELOAD_COOLDOWN_MS = 5 * 60_000;
+/**
+ * How often the sentinel is looked at while in view. A phone restarts its graphics process under memory pressure
+ * (WebKit, checked in the iOS Simulator), and Firefox after a driver fault, wiping every canvas and bitmap without
+ * the page going to the background: the world then showed only its ground and freshly drawn signs.
+ */
+export const IN_VIEW_CHECK_MS = 5_000;
+/** After a WebGL context is lost, the sentinel is read this long later, once the graphics process is back. */
+const AFTER_CONTEXT_LOSS_MS = 500;
 const RELOADED_AT_KEY = "wildstat:canvas-purge-reloaded-at";
 
 type SentinelContext = Pick<CanvasRenderingContext2D, "fillRect" | "getImageData" | "clearRect"> & { fillStyle: unknown; isContextLost?: () => boolean;
@@ -64,6 +72,10 @@ export function installCanvasPurgeRecovery(options: {
   now?: () => number;
   /** Remembers the last reload across it (sessionStorage), so a reload cannot loop. */
   session?: () => SessionStore | undefined;
+  /** A window event sent when a WebGL context is lost or restored (webgl-static-world-layer.ts). */
+  contextEvent?: string;
+  /** Says why it reloads, just before it does (a "canvas-purge" diagnostic). */
+  report?: (detail: string) => void;
 }) {
   const doc = options.doc ?? (document as unknown as NonNullable<typeof options.doc>);
   const now = options.now ?? (() => Date.now());
@@ -89,23 +101,42 @@ export function installCanvasPurgeRecovery(options: {
   const recentlyReloaded = () => {
     try { const at = Number(session()?.getItem(RELOADED_AT_KEY)); return Number.isFinite(at) && at > 0 && now() - at < RELOAD_COOLDOWN_MS; } catch { return false; }
   };
-  const recover = () => {
+  let contextLostAt: number | null = null, visibleSince = now();
+  /** What found it, and what the page looked like then, for the report. */
+  const why = (cause: string) => {
+    const nav = (typeof navigator === "undefined" ? {} : navigator) as { deviceMemory?: number; userAgent?: string };
+    const heap = (typeof performance === "undefined" ? undefined : (performance as { memory?: { usedJSHeapSize: number } }).memory)?.usedJSHeapSize;
+    const world = typeof document === "undefined" ? "" : document.documentElement?.dataset?.worldRenderer ?? "";
+    return [cause, watchedLostSince !== null ? "game canvas lost" : "sentinel wiped",
+      contextLostAt !== null ? `context lost ${Math.round((now() - contextLostAt) / 1000)}s ago` : "no context loss",
+      `in view ${Math.round((now() - visibleSince) / 1000)}s`, world && `world ${world}`,
+      nav.deviceMemory ? `device ${nav.deviceMemory} GB` : "", heap ? `heap ${Math.round(heap / 1048576)} MB` : ""].filter(Boolean).join("; ");
+  };
+  const recover = (cause = "return") => {
     if (reloading || doc.hidden || recentlyReloaded() || !lost()) return;
     reloading = true;
+    try { options.report?.(why(cause)); } catch { /* The reload matters more than the report. */ }
     try { session()?.setItem(RELOADED_AT_KEY, String(now())); } catch { /* The cooldown then lasts this page only. */ }
     // Not saved, not reloaded: the cooldown is for reloads that happen, so the retry may go ahead.
     const retry = () => { try { session()?.setItem(RELOADED_AT_KEY, "0"); } catch { /* No cooldown was kept. */ }
-      setTimeout(() => { reloading = false; recover(); }, RETRY_MS); };
+      setTimeout(() => { reloading = false; recover(cause); }, RETRY_MS); };
     void options.reload().then(done => { if (!done) retry(); }, retry);
   };
-  doc.addEventListener("visibilitychange", recover);
-  if (typeof window !== "undefined") window.addEventListener("pageshow", recover);
+  doc.addEventListener("visibilitychange", () => { if (!doc.hidden) visibleSince = now(); recover("return"); });
+  if (typeof window !== "undefined") {
+    window.addEventListener("pageshow", () => recover("return"));
+    if (options.contextEvent) window.addEventListener(options.contextEvent, () => {
+      contextLostAt = now();
+      setTimeout(() => recover("context lost"), AFTER_CONTEXT_LOSS_MS);
+    });
+  }
+  setInterval(() => { if (!doc.hidden) recover("in view"); }, IN_VIEW_CHECK_MS);
   // After a GPU crash Chrome left the game canvas lost without firing contextlost (checked in headless Chrome).
   if (watched.length) setInterval(() => {
     if (doc.hidden) return;
     if (!watchedLost()) { watchedLostSince = null; return; }
     watchedLostSince ??= now();
-    recover();
+    recover("game canvas");
   }, WATCH_INTERVAL_MS);
   return { lost, recover };
 }

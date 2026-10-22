@@ -124,6 +124,16 @@ export function teleportToResearchRoom(ctx: ModuleReducerCtx, { x, y }: { x: num
   persistWorldLocation(ctx, ctx.db.player.identity.find(ctx.sender));
 }
 
+/** The Town button from the Copper Hills or Timberwood: back to the square, inside the Town only. */
+export function teleportToTownSquare(ctx: ModuleReducerCtx) {
+  const current = requireControllingPlayer(ctx);
+  if (!isTownMap(current.mapId)) throw new SenderError("Teleport to the Town first.");
+  if (activeDuelFor(ctx, ctx.sender)) throw new SenderError("Finish the duel before using a portal.");
+  if (current.hp <= 0) throw new SenderError("Respawn before teleporting to the Town.");
+  transitionPlayerMap(ctx, current, TOWN_MAP_ID, TOWN_ARRIVAL);
+  persistWorldLocation(ctx, ctx.db.player.identity.find(ctx.sender));
+}
+
 /** Why a campaign or Endless map is still shut to the caller, or null when it is open. */
 function lockedReason(ctx: ModuleReducerCtx, mapId: string) {
   const currentProgress = readPlayerProgress(ctx, ctx.sender);

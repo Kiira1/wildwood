@@ -325,7 +325,7 @@ export function createMapGuideController(elements: MapGuideElements, dependencie
     if (port.inTown()) { go(); return; }
     if (!port.teleportToTown()) travelNote = { mapId, text: "The Town teleport is cooling down. Try again in a moment." };
     else {
-      travelNote = { mapId, text: `Going to Town, then on to ${baseName(mapId, dependencies.mapName)}.` };
+      travelNote = null;
       const watch = ++travelWatch, started = Date.now();
       const check = () => {
         if (watch !== travelWatch || overlay.hidden) return;

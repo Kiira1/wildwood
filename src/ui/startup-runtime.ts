@@ -1,4 +1,6 @@
 import { installCanvasPurgeRecovery } from "../app/canvas-purge-recovery";
+import { recordConnectionDiagnostic } from "../coop/services/connection-diagnostic-runtime";
+import { STATIC_WORLD_LAYER_RESET_EVENT } from "../game/runtime/render/webgl-static-world-layer";
 import { enforceLatestVersion, reloadAtVersion } from "../app/version";
 import type { CoopAccess } from "../game/runtime/coop-access";
 import { createScheduledUpdateController, createScheduledUpdateView } from "./scheduled-update-controller";
@@ -140,6 +142,8 @@ export function createStartupCoordination(deps: StartupCoordinationDeps) {
   const updateHandoff = { canReload: scheduledUpdate.canReload, beforeReload: scheduledUpdate.prepareReload };
   installCanvasPurgeRecovery({
     watch: [deps.canvas],
+    contextEvent: STATIC_WORLD_LAYER_RESET_EVENT,
+    report: detail => recordConnectionDiagnostic("canvas-purge", { detail }),
     reload: async () => {
       if (!await updateHandoff.beforeReload(version)) return false;
       reloadAtVersion(version);

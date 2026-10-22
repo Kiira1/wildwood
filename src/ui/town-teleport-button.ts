@@ -9,19 +9,19 @@ export const TOWN_TELEPORT_CHAT_CLOSE_HOLD_MS = 1_000;
 export const CHAT_CLOSED_EVENT = "wildwood:chat-closed";
 
 /**
- * The toolbar teleport names where it goes: the Town from anywhere else, and Fight in the Town (back to
- * the spot the player left). Both send the same Town request; the server picks which.
+ * The toolbar teleport names where it goes: the Town from anywhere else, Fight in the Town (back to the spot the
+ * player left), and the Town's square from the Copper Hills or Timberwood, where a gatherer wants the shops.
  */
-export function townTeleportLook(mapId: string) {
+export function townTeleportLook(mapId: string, gathering = false) {
   const inTown = mapId === "town";
-  return inTown
+  return inTown && !gathering
     ? { label: "Fight", ariaLabel: "Return to enemy map", icon: "assets/wildstat/icons/Icon_AutoFarm.svg" }
-    : { label: "Town", ariaLabel: "Teleport to Town", icon: "assets/wildstat/icons/Icon_Home.svg" };
+    : { label: "Town", ariaLabel: inTown ? "Teleport to the Town square" : "Teleport to Town", icon: "assets/wildstat/icons/Icon_Home.svg" };
 }
 
-/** Paints the toolbar teleport button for the map the player is on. */
-export function paintTownTeleportButton(button: HTMLElement, mapId: string) {
-  const look = townTeleportLook(mapId);
+/** Paints the toolbar teleport button for the map the player is on, and where in the Town. */
+export function paintTownTeleportButton(button: HTMLElement, mapId: string, gathering = false) {
+  const look = townTeleportLook(mapId, gathering);
   button.setAttribute("aria-label", look.ariaLabel);
   const icon = button.querySelector<HTMLImageElement>(".toolbar-icon");
   if (icon) icon.src = look.icon;
