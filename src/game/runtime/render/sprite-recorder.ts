@@ -162,6 +162,8 @@ export function createSpriteRecorder(measure: () => CanvasRenderingContext2D | n
     };
   }
 
+  const defaults = blankState();
+
   function copyState(into: State, from: State) {
     Object.assign(into, from);
     into.lineDash = from.lineDash;
@@ -507,7 +509,8 @@ export function createSpriteRecorder(measure: () => CanvasRenderingContext2D | n
       canvas = from.canvas;
       const current = from.getTransform();
       setTransform(current.a, current.b, current.c, current.d, current.e, current.f);
-      for (const name of COPIED_PROPERTIES) (state as Record<string, unknown>)[name] = from[name];
+      // A property the browser lacks (WebKit has no filter) keeps its default: undefined read as a filter on every draw.
+      for (const name of COPIED_PROPERTIES) (state as Record<string, unknown>)[name] = from[name] ?? defaults[name];
       state.lineDash = from.getLineDash();
     },
     /** The first call it could not record this frame, if any. */
