@@ -28,11 +28,14 @@ export function probeGraphics(create: CanvasFactory = () => document.createEleme
   let renderer = ""; let vendor = "";
   if (gl) {
     try {
-      const info = gl.getExtension("WEBGL_debug_renderer_info");
-      renderer = String((info && gl.getParameter(info.UNMASKED_RENDERER_WEBGL)) || "");
-      vendor = String((info && gl.getParameter(info.UNMASKED_VENDOR_WEBGL)) || "");
-      if (isGenericRenderer(renderer)) renderer = String(gl.getParameter(gl.RENDERER) || renderer);
-      if (isGenericRenderer(vendor)) vendor = String(gl.getParameter(gl.VENDOR) || vendor);
+      // Firefox names the card in RENDERER and warns that the debug extension is going; Chrome names it only there.
+      renderer = String(gl.getParameter(gl.RENDERER) || "");
+      vendor = String(gl.getParameter(gl.VENDOR) || "");
+      if (isGenericRenderer(renderer)) {
+        const info = gl.getExtension("WEBGL_debug_renderer_info");
+        if (info) renderer = String(gl.getParameter(info.UNMASKED_RENDERER_WEBGL) || renderer);
+        if (info && isGenericRenderer(vendor)) vendor = String(gl.getParameter(info.UNMASKED_VENDOR_WEBGL) || vendor);
+      }
     } catch { /* keeps what was read */ }
   }
   // A context that refuses a major performance caveat is a software one.
