@@ -49,8 +49,14 @@ type PlayerAppearanceWarmupOptions = {
 
 const PLAYER_BODY_WIDTH = 180;
 const PLAYER_BODY_HEIGHT = 171;
-const PLAYER_BODY_CACHE_LIMIT = 128;
-const playerBodyCaches = new WeakMap<PlayerAppearanceAssets, Map<string, FrozenImage>>();
+/** Bodies kept with few players around: one look's idle and walk frames are 16. */
+const PLAYER_BODY_CACHE_MIN = 128;
+/** A crowd's ceiling, about 60 MB of 180 × 171 bodies. */
+const PLAYER_BODY_CACHE_MAX = 512;
+/** One idle bob cycle: every frame a standing or walking look shows comes round within it. */
+const PLAYER_BODY_WINDOW_MS = 2_000;
+type PlayerBodyCache = { bodies: Map<string, FrozenImage>; limit: number; used: Set<string>; since: number };
+const playerBodyCaches = new WeakMap<PlayerAppearanceAssets, PlayerBodyCache>();
 
 /** A layer is either loaded artwork or a canvas we tinted from it. */
 export type PlayerLayerAsset = HTMLImageElement | HTMLCanvasElement;
@@ -66,10 +72,34 @@ function readyImage(asset: PlayerLayerAsset | undefined) {
 function playerBodyCache(assets: PlayerAppearanceAssets) {
   let cache = playerBodyCaches.get(assets);
   if (!cache) {
-    cache = new Map();
+    cache = { bodies: new Map(), limit: PLAYER_BODY_CACHE_MIN, used: new Set(), since: performance.now() };
     playerBodyCaches.set(assets, cache);
   }
   return cache;
+}
+
+function trimPlayerBodies(cache: PlayerBodyCache) {
+  while (cache.bodies.size > cache.limit) {
+    const oldest = cache.bodies.keys().next().value;
+    if (oldest === undefined) break;
+    releaseFrozen(cache.bodies.get(oldest));
+    cache.bodies.delete(oldest);
+  }
+}
+
+/**
+ * Sizes the cache to the bodies drawn in the last idle cycle: a crowd of walking players needs more than the
+ * minimum, and an oldest-first cache smaller than that rebuilt every body on every frame.
+ */
+function notePlayerBodyUse(cache: PlayerBodyCache, key: string) {
+  const now = performance.now();
+  if (now - cache.since >= PLAYER_BODY_WINDOW_MS || now < cache.since) {
+    cache.limit = Math.min(PLAYER_BODY_CACHE_MAX, Math.max(PLAYER_BODY_CACHE_MIN, Math.ceil(cache.used.size * 1.25)));
+    cache.used.clear();
+    cache.since = now;
+    trimPlayerBodies(cache);
+  }
+  cache.used.add(key);
 }
 
 function cachedPlayerBody(
@@ -79,10 +109,12 @@ function cachedPlayerBody(
   resolution = 1,
 ) {
   const cache = playerBodyCache(assets);
-  const existing = cache.get(key);
+  notePlayerBodyUse(cache, key);
+  const { bodies } = cache;
+  const existing = bodies.get(key);
   if (existing) {
-    cache.delete(key);
-    cache.set(key, existing);
+    bodies.delete(key);
+    bodies.set(key, existing);
     return existing;
   }
   if (typeof document === "undefined") return null;
@@ -95,15 +127,10 @@ function cachedPlayerBody(
   context.imageSmoothingQuality = "high";
   context.scale(resolution, resolution);
   draw(context);
-  cache.set(key, canvas);
+  bodies.set(key, canvas);
   // Drawn every frame for every player in view, so each finished body is frozen into a bitmap.
-  freezeEntry(cache, key, canvas);
-  while (cache.size > PLAYER_BODY_CACHE_LIMIT) {
-    const oldest = cache.keys().next().value;
-    if (oldest === undefined) break;
-    releaseFrozen(cache.get(oldest));
-    cache.delete(oldest);
-  }
+  freezeEntry(bodies, key, canvas);
+  trimPlayerBodies(cache);
   return canvas;
 }
 
