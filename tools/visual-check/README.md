@@ -27,6 +27,7 @@ Picked by URL hash in `visual-check.html`:
 | `wordmark` | The start screen with the wordmark |
 | `profile-own`, `profile-other` | The profile window's header: your own with the pencil and gear, another player's with the guild row and the ⋯ menu open |
 | `shops` | The Smith on Craft, Reforge and Refine, the Weapon Seller on Sell and the Armor Seller on Buy, each at its real size with its pinned detail and grid, stacked, at phone and desktop width |
+| `item-window`, `item-window-worn` | The item window on a graded bow: its skills, Equip, and the trash can that sells it, greyed while the bow is worn |
 | `gem-shop` | The gem Shop at phone width: the Patreon rows and the dev note's Silver, Gold and Diamond frames, with the Diamond Galaxy set under Diamond |
 | `server-boost` | The Server Boost's timer under the minimap, and the Shop's Server Boost row for a supporter on cooldown during a boost, a supporter ready, and a non-supporter |
 

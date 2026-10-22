@@ -34,6 +34,8 @@ const VIEWPORTS = {
   "server-boost": [{ width: 390, height: 844, full: true }],
   "chat-announcement": [{ width: 390, height: 844, full: true }, { width: 1280, height: 800, full: true }],
   "profile-own": [{ width: 390, height: 844, full: false }],
+  "item-window": [{ width: 390, height: 844, full: false }],
+  "item-window-worn": [{ width: 390, height: 844, full: false }],
   "profile-other": [{ width: 390, height: 844, full: false }],
 };
 const DEFAULT_VIEWPORT = [{ width: 1280, height: 800, full: true }];

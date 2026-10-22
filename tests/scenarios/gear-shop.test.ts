@@ -310,12 +310,11 @@ describe("the gear sellers and the Smith", () => {
     const tab = await playAs(world, "Ann");
     const session = tab.network.players.get("Ann")!;
     const bowEntries = () => bagItems(tab).filter(item => item.itemId === "crude_bow");
-    /** Opens a bag entry's window and sells it at the price on its button. */
+    /** Opens a bag entry's window and sells it with the trash can, at the price it names. */
     async function sell(entry: { node: HTMLElement }) {
       press(tab, entry.node);
-      const actions = [...tab.element("itemInspectionPanel").querySelectorAll<HTMLButtonElement>("[class*=action] button")];
-      const sale = actions.at(-1)!;
-      const price = shownNumber(sale.textContent);
+      const sale = tab.element("itemInspectionPanel").querySelector<HTMLButtonElement>(".item-inspection-tools button")!;
+      const price = shownNumber(sale.getAttribute("aria-label"));
       const before = goldOf(world, ann);
       press(tab, sale);
       await answerConfirm(tab, true);

@@ -17,6 +17,8 @@ import { createGemShopController } from "../../src/ui/gem-shop-controller";
 import { createChatAnnouncementLine } from "../../src/ui/chat-announcement-line";
 import { createDiamondLookDrawer } from "../../src/game/runtime/diamond-look-preview";
 import { installServerBoostHud } from "../../src/ui/server-boost-hud";
+import { createItemInspectionController } from "../../src/ui/item-inspection-controller";
+import { gradeShopSalePrice } from "../../shared/grade-shop";
 import { settleFrames, settleImages } from "./determinism";
 import { GROUND, playerAppearance } from "./world";
 
@@ -317,6 +319,27 @@ async function chatAnnouncement() {
   await settleCssImages();
 }
 
+/** The item window on a graded bow from the bag: its skills, Equip, and the trash can that sells it (greyed while worn). */
+async function itemWindow(worn: boolean) {
+  const doc = await gameMarkup();
+  document.body.style.background = GROUND;
+  for (const node of doc.body.children) document.body.append(document.importNode(node, true));
+  await import("../../src/ui/game-shell");
+  const itemId = "rare_bow";
+  const controller = createItemInspectionController({
+    panel: byId("itemInspectionPanel"), title: byId("itemInspectionTitle"), content: byId("itemInspectionContent"),
+    back: byId<HTMLButtonElement>("itemInspectionBack"),
+  });
+  controller.open({
+    itemId, refine: 7, ownItem: true, skills: { arrowStorm: 2.4, ricochet: 1.1, piercingShot: 3.2 },
+    actions: [
+      { label: worn ? "Unequip" : "Equip", kind: worn ? "SECONDARY" : "PRIMARY", onActivate: () => {} },
+      { label: worn ? "Take It Off Before Selling It" : `Sell for ${gradeShopSalePrice(itemId)} Gold`, kind: "DESTROY", blocked: worn, onActivate: () => {} },
+    ],
+  });
+  await settleCssImages();
+}
+
 export const DOM_SCENES: Record<string, () => Promise<void>> = { icons, hud, wordmark, shops, "gem-shop": gemShop, "server-boost": serverBoost,
-  "chat-announcement": chatAnnouncement,
+  "chat-announcement": chatAnnouncement, "item-window": () => itemWindow(false), "item-window-worn": () => itemWindow(true),
   "profile-own": () => profileWindow(true), "profile-other": () => profileWindow(false) };

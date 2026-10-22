@@ -26,6 +26,8 @@ export type ItemInspectionAction = {
   label: string;
   kind?: "PRIMARY" | "SECONDARY" | "DESTROY";
   disabled?: boolean;
+  /** Greyed out but still tappable, so its onActivate can say why on screen. */
+  blocked?: boolean;
   onActivate: () => void | Promise<void>;
 };
 
@@ -108,10 +110,7 @@ function section(title: string, count?: string) {
   return block;
 }
 
-/**
- * A weapon's skills: each one's chance, and a bar for where it sits between the worst and best roll this
- * weapon can have, with that range written under it, so a roll can be judged at a glance.
- */
+/** A weapon's skills: each one's chance, and a bar for where it sits between the worst and best roll. */
 function skillSection(itemId: string, roll: Parameters<typeof itemSkillDetails>[1]) {
   const skills = itemSkillDetails(itemId, roll);
   if (!skills.length) return null;
@@ -133,10 +132,7 @@ function skillSection(itemId: string, roll: Parameters<typeof itemSkillDetails>[
     const fill = document.createElement("span");
     fill.style.width = `${Math.round(8 + skill.quality * 92)}%`;
     bar.append(fill);
-    const note = document.createElement("span");
-    note.className = "item-skill-note";
-    note.textContent = `${skill.quality >= 1 ? "Best Roll" : skill.quality <= 0 ? "Lowest Roll" : `${Math.round(skill.quality * 100)}% of Best`} · ${skill.min}–${skill.max}%`;
-    row.append(head, bar, note);
+    row.append(head, bar);
     block.append(row);
   }
   return block;
@@ -325,6 +321,7 @@ export function createItemInspectionController(elements: ItemInspectionElements)
         button.innerHTML = '<svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18M9 6V3h6v3M5 6l1 15h12l1-15M10 10v7M14 10v7"/></svg>';
       } else button.textContent = itemInspectionButtonLabel(action.label);
       button.disabled = action.disabled === true;
+      if (action.blocked) button.setAttribute("aria-disabled", "true");
       button.addEventListener("click", async () => {
         if (button.disabled) return;
         button.disabled = true;

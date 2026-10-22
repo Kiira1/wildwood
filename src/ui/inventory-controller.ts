@@ -339,7 +339,7 @@ export function createInventoryController(dependencies: InventoryDependencies) {
       ...(mode === "COSMETICS" ? { context: `Cosmetic · ${cosmeticReach(itemId)}` } : {}),
       ...(copy ? { skills: copy.roll } : {}),
       actions: [...(copy ? copyEquipActions(copy) : moves),
-        ...conversionActions(itemId), ...saleActions(itemId, copyId), ...destructionActions(itemId, copyId)],
+        ...conversionActions(itemId), ...trashActions(itemId, copyId)],
     });
   }
 
@@ -408,16 +408,21 @@ export function createInventoryController(dependencies: InventoryDependencies) {
     }];
   }
 
-  /** Graded gear in the bag sells for gold, as at the sellers' stalls; worn or locked gear does not. */
-  function saleActions(itemId: string, copyId = 0n) {
+  /**
+   * The trash can sells graded gear for gold, as at the sellers' stalls (sell_graded_item); worn gear says to take it
+   * off first. Gear the Smith does not buy is still destroyed or salvaged.
+   */
+  function trashActions(itemId: string, copyId = 0n) {
     const sell = dependencies.sellGradedItem, price = gradeShopSalePrice(itemId), inventory = dependencies.inventory;
+    if (mode !== "EQUIPMENT" || !sell || price === undefined) return destructionActions(itemId, copyId);
+    if (!inventory.itemIds.includes(itemId) || dependencies.equipmentLocked?.(itemId, copyId)) return [];
     const worn = copyId === 0n && [inventory.equippedHead, inventory.equippedChest, inventory.equippedFeet, inventory.equippedRightHand, inventory.equippedLeftHand].includes(itemId);
-    if (mode !== "EQUIPMENT" || !sell || price === undefined || worn || !inventory.itemIds.includes(itemId) ||
-        dependencies.equipmentLocked?.(itemId, copyId)) return [];
     return [{
-      label: `Sell for ${price} Gold`,
-      kind: "SECONDARY" as const,
+      label: worn ? "Take It Off Before Selling It" : `Sell for ${price} Gold`,
+      kind: "DESTROY" as const,
+      blocked: worn,
       onActivate: async () => {
+        if (worn) { dependencies.showMessage("Take It Off Before Selling It", "#ff9b91"); return; }
         const refine = dependencies.refineLevel?.(itemId, copyId) ?? 0;
         if (!await ask(confirmDestroy, {
           message: `Sell ${withRefineStars(itemDisplayName(itemId), refine)} for ${price} Gold?`,
@@ -429,7 +434,7 @@ export function createInventoryController(dependencies: InventoryDependencies) {
         if (result?.ok) {
           clearInventorySelection(inventory);
           render();
-          dependencies.showMessage(`Sold · +${price} Gold`, "#ffd75e");
+          dependencies.showMessage(`Sold for ${price} Gold`, "#ffd75e");
         } else dependencies.showMessage(result?.error ?? "Not Connected", "#ff9b91");
       },
     }];
