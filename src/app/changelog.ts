@@ -1,4 +1,7 @@
 export const RELEASE_NOTES: Record<string, string[]> = {
+  "0.916.28": [
+    "A crowded Town uses less CPU",
+  ],
   "0.916.27": [
     "Sword swings move the hilt along with the blade",
   ],
