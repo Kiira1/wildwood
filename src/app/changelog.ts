@@ -1,4 +1,7 @@
 export const RELEASE_NOTES: Record<string, string[]> = {
+  "0.916.32": [
+    "The world is drawn on the graphics card, so the game uses far less CPU, most of all in Town",
+  ],
   "0.916.31": [
     "The profile Duel button matches the game's green buttons",
     "Message in a player's profile ⋯ menu opens a private chat with them",
@@ -3840,6 +3843,7 @@ const RELEASE_DATES: Record<string, string> = {
 };
 
 export const RELEASE_DAYS: Record<string, string> = {
+  "0.916.32": "2026-10-21",
   "0.916.31": "2026-10-21",
   "0.916.30.1": "2026-10-21",
   "0.916.30": "2026-10-21",
