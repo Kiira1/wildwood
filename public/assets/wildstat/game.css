@@ -5013,8 +5013,9 @@ html.text-outline-shadow .death-countdown { text-shadow: var(--text-outline-ring
 
 /* Server announcements in chat (chat-announcement-line.ts): a full-width banner, never a player's bubble. */
 #chatPanel .chat-line.chat-announcement { display: grid; grid-template-columns: auto minmax(0, 1fr); grid-template-areas: "icon head" "icon text"; align-items: center; gap: 2px 10px; width: 100%; min-height: 0; margin: 8px 0; padding: 10px 12px; border: 1px solid rgba(255,255,255,.14); border-radius: 8px; background: #1c1d20; box-shadow: none; color: #fff; font-family: var(--player-name-font); overflow-wrap: anywhere; }
-#chatPanel.is-large .chat-line.chat-announcement { max-width: 715px; margin: 27px auto 10px; padding: 12px 16px; }
+#chatPanel.is-large .chat-line.chat-announcement { max-width: 715px; margin: 27px auto 10px; padding: 8px 12px; }
 .chat-announcement-icon { grid-area: icon; }
+#chatPanel.is-large .chat-announcement .chat-profile-icon { width: 40px; height: 40px; }
 .chat-announcement-head { grid-area: head; display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 8px; min-width: 0; }
 .chat-announcement-label { color: #fff; font-size: 13px; font-weight: 900; letter-spacing: .02em; }
 .chat-announcement-name { color: #d9dce0; font-size: 13px; font-weight: 900; }
