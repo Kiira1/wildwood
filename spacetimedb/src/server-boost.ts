@@ -40,8 +40,8 @@ export function triggerServerBoost(ctx: Ctx) {
   if (trigger) ctx.db.serverBoostTrigger.identity.update(stamp); else ctx.db.serverBoostTrigger.insert(stamp);
   // Marked in chat_announcement, which no chat reducer writes, so the client draws it as a banner and typed text never is.
   const announced = insertChatMessage(ctx, ctx.sender, name, extending
-    ? "Extended a Server Boost: +15 min of 2x Rewards, Wood and Ore for everyone online. Thank you for supporting WildStat! ♥"
-    : "Started a Server Boost: 2x Rewards, Wood and Ore for everyone online for 15 min. Thank you for supporting WildStat! ♥");
+    ? "Extended a Server Boost by 15 min"
+    : "Started a Server Boost: 2x Rewards for 15 min");
   markChatAnnouncement(ctx, announced.id, "server-boost");
 }
 

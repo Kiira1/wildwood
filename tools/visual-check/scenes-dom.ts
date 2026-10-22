@@ -284,7 +284,7 @@ async function chatAnnouncement() {
   `;
   document.head.append(unpin);
   const sentAtMs = Date.UTC(2026, 9, 21, 15, 42);
-  const boost = "Started a Server Boost: 2x Rewards, Wood and Ore for everyone online for 15 min. Thank you for supporting WildStat! ♥";
+  const boost = "Started a Server Boost: 2x Rewards for 15 min";
   const playerLine = (name: string, words: string) => {
     const line = document.createElement("div");
     line.className = "chat-line";
@@ -308,7 +308,7 @@ async function chatAnnouncement() {
       playerLine("Moss", "anyone up for the boss?"),
       createChatAnnouncementLine({ id: 1n, senderName: "Oogway", message: boost, sentAtMs }, "server-boost", large, portrait(3)),
       createChatAnnouncementLine({ id: 2n, senderName: "Oogway",
-        message: "Extended a Server Boost: +15 min of 2x Rewards, Wood and Ore for everyone online. Thank you for supporting WildStat! ♥", sentAtMs }, "server-boost", large, portrait(3)),
+        message: "Extended a Server Boost by 15 min", sentAtMs }, "server-boost", large, portrait(3)),
       createChatAnnouncementLine({ id: 3n, senderName: "Fern", message: "Became a Gold supporter on Patreon. Thank you for supporting WildStat! ♥", sentAtMs }, "patreon", large, portrait(5)),
       playerLine("Faker", boost),
     ];
