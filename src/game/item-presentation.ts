@@ -371,10 +371,12 @@ export function itemArtMarkup(itemId: string, hidden = true, refineLevel: unknow
  */
 export function galaxyArtStyle(source: string, finish: SkyFinish = "GALAXY") {
   applyGalaxyArtTexture(finish);
+  // Absolute, because a url in a custom property resolves against the stylesheet that uses it (assets/h/).
+  const absolute = typeof document === "undefined" ? source : new URL(source, document.baseURI).href;
   return [
     // The sky here; game.css .has-galaxy-finish lays the art over it in grey from --galaxy-art,
     // and the solid outline from --galaxy-outline (made once per art; none until it loads).
-    `--galaxy-art: url(${source})`,
+    `--galaxy-art: url(${absolute})`,
     `--galaxy-outline: var(${galaxyIconOutlineVariable(source)}, none)`,
     `background-image: var(${skyFinishCssVariable(finish)}, ${skyFinishCssFallback(finish)})`,
     `-webkit-mask-image: url(${source})`,
