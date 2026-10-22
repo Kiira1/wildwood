@@ -17,6 +17,12 @@ const AUTO_MINE_ORES_V1_KEY = 'wildstat:automine-ores:v1';
 export const AUTO_MINE_RESUME_KEY = 'wildstat:automine-resume:v1';
 type Store = Pick<Storage, 'getItem' | 'setItem'>;
 
+/** What Auto Mine can be set to: an ore's rocks, or the Starshard, which only Mysterious rocks give. */
+export type MinePick = RockOreId | typeof STARSHARD;
+const STARSHARD = 'starshard';
+/** Whether a rock gives a picked ore: its own, or a Starshard when it is Mysterious. */
+const givesPick = (node: MiningNode, picks: ReadonlySet<MinePick>) => picks.has(node.ore) || (node.kind === 'mysterious' && picks.has(STARSHARD));
+
 /** What Auto Mine reads of the session: Mining, the player's bare rocks and the server's clock. */
 export type AutoMineSource = {
   mining?: () => number;
@@ -46,8 +52,8 @@ export function miningStandSpot(node: MiningNode): TownPoint | null {
  */
 export function chooseMiningRock(options: {
   feet: TownPoint;
-  /** The ores picked: a vein's ore, or Arcane Crystal for the crystal rocks. */
-  ores: ReadonlySet<RockOreId>;
+  /** The ores picked: a vein's ore, Arcane Crystal for the crystal rocks, or the Starshard for Mysterious rocks. */
+  ores: ReadonlySet<MinePick>;
   /** Whether the player may mine this rock now: Mining enough for it, room in the bag. */
   open: (node: MiningNode) => boolean;
   /** When a rock grows back for the player, or null when it stands now. */
@@ -56,7 +62,7 @@ export function chooseMiningRock(options: {
   let nearest: MiningNode | null = null, nearestDistance = Infinity;
   let soonest: MiningNode | null = null, soonestAt = Infinity;
   for (const node of MINING_NODES) {
-    if (!options.ores.has(node.ore) || !options.open(node)) continue;
+    if (!givesPick(node, options.ores) || !options.open(node)) continue;
     const spot = miningStandSpot(node);
     if (!spot) continue;
     const until = options.bareUntil(node);
@@ -69,10 +75,10 @@ export function chooseMiningRock(options: {
   return soonest ? { node: soonest, readyAt: soonestAt } : null;
 }
 
-/** Every ore it can be set to mine, in the window's order: the veins', then the crystal rocks'. */
-const PICKABLE: readonly RockOreId[] = [...MINING_VEINS.map(vein => vein.ore), ARCANE_CRYSTAL];
-const FIRST_PICKS: RockOreId[] = ['copper_ore', ARCANE_CRYSTAL];
-function readOres(storage: () => Store | undefined): RockOreId[] {
+/** Every ore it can be set to mine, in the window's order: the veins', the crystal rocks', then the Starshard. */
+const PICKABLE: readonly MinePick[] = [...MINING_VEINS.map(vein => vein.ore), ARCANE_CRYSTAL, STARSHARD];
+const FIRST_PICKS: MinePick[] = ['copper_ore', ARCANE_CRYSTAL];
+function readOres(storage: () => Store | undefined): MinePick[] {
   try {
     const saved = storage()?.getItem(AUTO_MINE_ORES_KEY), old = saved == null ? storage()?.getItem(AUTO_MINE_ORES_V1_KEY) : null;
     if (saved == null && old == null) return FIRST_PICKS;
@@ -95,14 +101,14 @@ export function createAutoMine(options: AutoGatherOptions & {
   storage?: () => Store | undefined;
 }) {
   const storage = options.storage ?? (() => { try { return window.localStorage; } catch { return undefined; } });
-  let picked = new Set<RockOreId>(readOres(storage));
+  let picked = new Set<MinePick>(readOres(storage));
   /** What a rock gives, for rocks found with no bag room this run: passed over until it is started again. */
   const full = new Set<string>();
   const bagKey = (node: MiningNode) => rockOreKinds(node).join('+');
   const serverNow = () => options.source()?.serverNowMs?.() ?? Date.now();
   /** The shared gate, as the mining runtime and the server check it: the rock's Mining. */
   const allowed = (node: MiningNode) => canMineRock(node, options.source()?.mining?.() ?? 0);
-  const minable = (node: MiningNode) => picked.has(node.ore) && allowed(node);
+  const minable = (node: MiningNode) => givesPick(node, picked) && allowed(node);
   const open = (node: MiningNode) => allowed(node) && !full.has(bagKey(node));
   function bareUntil(node: MiningNode, at = serverNow()) {
     const respawn = gatherRespawnMs(MINING_NODE_KINDS[node.kind].respawnSeconds, options.source()?.research?.().resourceRespawn ?? 0);
@@ -117,7 +123,7 @@ export function createAutoMine(options: AutoGatherOptions & {
     },
     started: () => full.clear(),
     choose: feet => chooseMiningRock({ feet, ores: picked, open, bareUntil: node => bareUntil(node) }),
-    stale: target => !picked.has(target.node.ore) || !open(target.node) || (target.readyAt === null && bareUntil(target.node) !== null),
+    stale: target => !givesPick(target.node, picked) || !open(target.node) || (target.readyAt === null && bareUntil(target.node) !== null),
     spot: node => miningStandSpot(node)!,
     arrived(target) {
       if (target.readyAt !== null) return { status: `Waiting for Rocks to Grow Back · ${gatherClock(target.readyAt - serverNow())}` };
@@ -135,14 +141,14 @@ export function createAutoMine(options: AutoGatherOptions & {
 
   return {
     ...gather,
-    picked: (ore: RockOreId) => picked.has(ore),
-    setPicked(ore: RockOreId, on: boolean) {
+    picked: (ore: MinePick) => picked.has(ore),
+    setPicked(ore: MinePick, on: boolean) {
       const next = new Set(picked);
       if (on) next.add(ore); else next.delete(ore);
       picked = new Set(PICKABLE.filter(id => next.has(id)));
       try { storage()?.setItem(AUTO_MINE_ORES_KEY, JSON.stringify([...picked])); } catch { /* The picks still apply this session. */ }
       const target = gather.state().target;
-      if (target && !picked.has(target.ore)) gather.forget();
+      if (target && !givesPick(target, picked)) gather.forget();
     },
     /**
      * Each ore for the window, the veins' then the crystal rocks': whether any of its rocks may be mined (or what opens
@@ -151,7 +157,7 @@ export function createAutoMine(options: AutoGatherOptions & {
     veins: () => {
       const at = serverNow();
       return PICKABLE.map(ore => {
-        const rocks = MINING_NODES.filter(node => node.ore === ore), mayMine = rocks.filter(allowed);
+        const rocks = MINING_NODES.filter(node => ore === STARSHARD ? node.kind === 'mysterious' : node.ore === ore), mayMine = rocks.filter(allowed);
         // The lowest Mining that opens any of its rocks: a crystal's first vein.
         const opensWith = `Mining ${Math.min(...rocks.map(miningRockNeed)).toLocaleString('en-US')}`;
         return { ore, name: REFINE_ORES[ore].name, open: mayMine.length > 0, opensWith, locked: `Opens at ${opensWith}`, picked: picked.has(ore),

@@ -1,6 +1,8 @@
 export const RELEASE_NOTES: Record<string, string[]> = {
   "0.916.32.4": [
     "Galaxy item icons show their art again",
+    "Auto Mine can mine for Starshards",
+    "The Town button works 1 second after closing chat, and right away when Esc closes it",
   ],
   "0.916.32.1": [
     "Fixed the world drawing wrongly, and the game crashing, on phones and iPads",

@@ -2,8 +2,9 @@ const TOWN_TELEPORT_COOLDOWN_MS = 5_000;
 /**
  * After chat closes, the Town teleport ignores taps this long, so the tap
  * that closes chat, or the next one, cannot send a player home by accident.
+ * Chat closed with the Escape key holds nothing: no tap is on its way.
  */
-export const TOWN_TELEPORT_CHAT_CLOSE_HOLD_MS = 3_000;
+export const TOWN_TELEPORT_CHAT_CLOSE_HOLD_MS = 1_000;
 /** Dispatched on window by chat when its expanded panel closes. */
 export const CHAT_CLOSED_EVENT = "wildwood:chat-closed";
 
@@ -43,8 +44,12 @@ export function bindTownTeleportButton(
   cooldown.hidden = true;
   cooldown.setAttribute("aria-hidden", "true");
   button.append(cooldown);
-  let heldUntil = 0;
-  button.ownerDocument.defaultView?.addEventListener(CHAT_CLOSED_EVENT, () => {
+  let heldUntil = 0, escapeAt = Number.NEGATIVE_INFINITY;
+  const view = button.ownerDocument.defaultView;
+  // Captured, so it is seen before the chat box's own Escape handling stops it.
+  view?.addEventListener("keydown", event => { if (event.key === "Escape") escapeAt = performance.now(); }, true);
+  view?.addEventListener(CHAT_CLOSED_EVENT, () => {
+    if (performance.now() - escapeAt < 500) return;
     heldUntil = performance.now() + TOWN_TELEPORT_CHAT_CLOSE_HOLD_MS;
   });
 
