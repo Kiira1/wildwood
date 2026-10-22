@@ -1,4 +1,13 @@
 export const RELEASE_NOTES: Record<string, string[]> = {
+  "0.916.32.8": [
+    "Map Guide's Travel button takes you straight to the map",
+    "Inspecting another player's refined gear shows its right look",
+    "World names and labels are bold again on iPhone, iPad and Safari",
+    "Music and Sound Effects sliders line up",
+    "iPhones and iPads go back to the old world drawing while disappearing graphics are fixed",
+    "Fewer stutters when a boss first shows up or attacks",
+    "New setting: Dedicated GPU (off by default) for computers with a second graphics card",
+  ],
   "0.916.32.7": [
     "Boss attacks and skill effects are drawn on the graphics card: smoother on phones",
     "New setting: Idle 30 FPS (turn it off to stay at 60 FPS when idle)",
@@ -3862,6 +3871,7 @@ const RELEASE_DATES: Record<string, string> = {
 };
 
 export const RELEASE_DAYS: Record<string, string> = {
+  "0.916.32.8": "2026-10-22",
   "0.916.32.7": "2026-10-21",
   "0.916.32.6": "2026-10-21",
   "0.916.32.5": "2026-10-21",

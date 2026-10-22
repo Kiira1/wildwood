@@ -1,4 +1,5 @@
 import { drawVerdantAttacks } from "./verdant-attack-art";
+import { decodedImage } from "../render/decoded-image";
 import { drawIonAttacks } from "./ion-attack-art";
 import { drawNeonAttacks } from "./neon-attack-art";
 import { BOSS_ART } from "./boss-art";
@@ -715,7 +716,7 @@ export function createBossRenderer(options: {
       ctx.translate(x, visualY);
       look.groundShadow?.(ctx);
       if (facing && Math.cos(facing.angle) > 0) ctx.scale(-1, 1);
-      if (pages.ready() && page?.naturalWidth > 0) drawBossAtlasFrame(ctx, page, frame, look.atlasId);
+      if (pages.ready() && page?.naturalWidth > 0) drawBossAtlasFrame(ctx, decodedImage(page), frame, look.atlasId);
       else look.fallback(ctx);
       ctx.restore();
       return visualY + (look.artTop ?? frame.top) + (bossFrameCrop(look.atlasId, frame.tuningFrame).statusOffsetY ?? 0);

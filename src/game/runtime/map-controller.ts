@@ -54,7 +54,8 @@ export type MapController = {
   teleportHome: () => Promise<boolean>;
   teleportToMap: (destination: MapId, request: () => Promise<boolean | TeleportArrival>) => Promise<boolean>;
   /** Leaves the Town through its travel portal for a destination the picker chose. */
-  travelFromHome: (destination: MapId) => Promise<boolean>;
+  /** From the Town's travel portal; `anywhere` sends it from the portal's spot wherever in the Town the player is (the Map Guide's Travel). */
+  travelFromHome: (destination: MapId, anywhere?: boolean) => Promise<boolean>;
   /** The map the toolbar teleport last left for the Town, while this page has seen it. */
   homeDeparture: () => MapId | null;
   activePortal: () => MapPortal | null;
@@ -410,10 +411,10 @@ export function createMapController(options: {
    * the portal back. Their movement is held from the server until it confirms the move (presence-service), then
    * where they stand is sent. A refusal puts the player back in the portal they walked into.
    */
-  function travelThroughPortal(portal: MapPortal | null, destination: MapId): Promise<boolean> {
+  function travelThroughPortal(portal: MapPortal | null, destination: MapId, sentFrom?: { x: number; y: number }): Promise<boolean> {
     const departure = { mapId: getCurrentMapId(), x: player.x, y: player.y, facing: player.facing };
     const arrival = arrivalFrom(destination, departure.mapId, departure);
-    const move = Promise.resolve(changeMap(destination, departure.x, departure.y));
+    const move = Promise.resolve(changeMap(destination, sentFrom?.x ?? departure.x, sentFrom?.y ?? departure.y));
     loadMap(destination, arrival.x, arrival.y, departure.facing);
     guardUntilStepOff = true;
     // The camera moves as far as the player did, so the arch holds its place on screen and the follow keeps its ease.
@@ -530,17 +531,20 @@ export function createMapController(options: {
   return {
     teleportHome: () => teleport(),
     teleportToMap: (destination, request) => teleport(destination, request),
-    travelFromHome: async (destination) => {
+    travelFromHome: async (destination, anywhere = false) => {
       if (getCurrentMapId() !== "town" || destination === "town" || destination === "home_exterior") return false;
+      // The server takes a Town travel from the portal's middle, as the walk-in trigger measures it.
+      const pad = mapConfig.town.portal;
+      const sentFrom = anywhere && pad ? { x: pad.x, y: pad.y - pad.height * .32 } : undefined;
       // A campaign or Endless map whose art is in hand opens straight away, as a walk-in portal does.
       const plain = (MAP_IDS as readonly string[]).includes(destination) || isProceduralMap(destination);
       if (plain && options.instantTravelReady?.(destination) && running() && player.hp > 0 && !isDueling() && !mapTransitioning && !arrivalPending && !portalCutscene.active) {
         options.onTravelStarted?.();
         keys.clear(); stopTouchMove(); player.moving = false;
         // Out of the picker's pad, as from a walk-in portal: the server measures from the same pad.
-        return travelThroughPortal(mapConfig.town.portal, destination);
+        return travelThroughPortal(mapConfig.town.portal, destination, sentFrom);
       }
-      return teleport(destination, async () => Boolean(await changeMap(destination, player.x, player.y)));
+      return teleport(destination, async () => Boolean(await changeMap(destination, sentFrom?.x ?? player.x, sentFrom?.y ?? player.y)));
     },
     homeDeparture: () => homeDeparture,
     activePortal,

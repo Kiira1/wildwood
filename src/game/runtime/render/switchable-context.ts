@@ -30,6 +30,20 @@ export function createSwitchableContext(real: CanvasRenderingContext2D) {
           // eslint-disable-next-line prefer-rest-params
           return method.apply(target, arguments as unknown as unknown[]);
         };
+      } else if (descriptor.get && name === "font") {
+        // WebKit reads a font back without its weight ("900 15px Arial" comes back "15px Arial"), and text
+        // cached by its font would then be drawn thin: each font is read back as it was set.
+        const asSet = new Map<string, string>();
+        Object.defineProperty(facade, name, {
+          get: () => (target === real ? asSet.get(real.font) : undefined) ?? target.font,
+          set: (value: string) => {
+            target.font = value;
+            if (target !== real) return;
+            if (asSet.size > 64) asSet.clear();
+            asSet.set(real.font, String(value));
+          },
+          enumerable: true,
+        });
       } else if (descriptor.get) {
         Object.defineProperty(facade, name, {
           get: () => (target as unknown as Record<string, unknown>)[name],

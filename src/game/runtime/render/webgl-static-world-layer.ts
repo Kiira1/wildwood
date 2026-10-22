@@ -1,4 +1,6 @@
 import { createWebGLSpritePass } from "./webgl-sprite-pass";
+import { worldSpritesWanted } from "./world-sprites-wanted";
+import { worldPowerPreference } from "./gpu-power-preference";
 import type { SpriteRecording } from "./sprite-recorder";
 
 export type StaticWorldTileFrame = {
@@ -59,6 +61,8 @@ export type StaticWorldLayer = {
   renderer: "webgl";
   /** Rebuilds a layer whose GPU context was lost, on a fresh canvas; true when WebGL is drawing again. */
   recover?: () => boolean;
+  /** Makes the layer again on a fresh context (the Dedicated GPU setting changed); true when WebGL is drawing. */
+  rebuild?: () => boolean;
 };
 type WebGLWorldLayer = StaticWorldLayer & { lost: () => boolean; destroy: () => void; overlay: { draw: StaticWorldGroundOverlay | null } };
 
@@ -283,6 +287,15 @@ export function createWebGLStaticWorldLayer(overlayCanvas: HTMLCanvasElement): S
       layer = undefined;
       return prepare();
     },
+    rebuild() {
+      if (!prepared) return false;
+      layer?.destroy();
+      layer = undefined;
+      const drawing = prepare();
+      // Every ground tile is drawn again on the new context.
+      window.dispatchEvent(new CustomEvent(STATIC_WORLD_LAYER_RESET_EVENT, { detail: "lost" }));
+      return drawing;
+    },
   };
 }
 
@@ -339,13 +352,12 @@ function initializeWebGLStaticWorldLayer(overlayCanvas: HTMLCanvasElement, overl
     alpha: false,
     antialias: false,
     depth: false,
-    // World sprites draw paths through it (webgl-sprite-pass.ts).
-    stencil: true,
+    // World sprites draw paths through it (webgl-sprite-pass.ts); other browsers keep the context they had.
+    stencil: typeof window !== "undefined" && worldSpritesWanted(window.location.search, navigator),
     premultipliedAlpha: false,
     preserveDrawingBuffer: false,
     failIfMajorPerformanceCaveat: true,
-    // "high-performance" woke the discrete GPU on dual-GPU laptops for a static world layer.
-    powerPreference: "default",
+    powerPreference: worldPowerPreference(),
   });
   if (!context) {
     canvas.remove();

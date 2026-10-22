@@ -129,6 +129,15 @@ export function profileLookRefine(
   return lookRefine(itemId => itemRefines?.[itemId] ?? 0, itemId => cosmeticRefines?.[itemId] ?? 0)(presentation.displayItemId);
 }
 
+/** The inspection window's art refine: a look alone keeps its look's, real gear draws at its own refine. */
+export function profileInspectionLookRefine(
+  presentation: ProfileEquipmentPresentation,
+  itemRefines: Readonly<Record<string, number>> | undefined,
+  cosmeticRefines: Readonly<Record<string, number>> | undefined,
+) {
+  return wearsGear(presentation) ? undefined : profileLookRefine(presentation, itemRefines, cosmeticRefines);
+}
+
 /** A slot with real gear in it, shown as itself or under a look. */
 const wearsGear = (presentation: ProfileEquipmentPresentation) =>
   presentation.kind !== "COSMETIC" || presentation.inspectionItemId !== presentation.displayItemId;

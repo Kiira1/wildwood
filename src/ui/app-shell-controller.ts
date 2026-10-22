@@ -1,4 +1,5 @@
 import { installKeepScreenOnSettings } from "./keep-screen-on-settings";
+import { DEDICATED_GPU_KEY } from "../game/runtime/render/gpu-power-preference";
 import { setLightStaffEffects } from "../game/staff-look";
 import { installFeedbackSettings } from "./feedback-settings";
 import type { MapMusicController } from "../game/runtime/audio";
@@ -39,6 +40,8 @@ type AppShellDependencies = {
   signOut: () => void;
   canPlayMusic: () => boolean;
   onLowPerformanceChanged: () => void;
+  /** The Dedicated GPU setting changed: the WebGL world is made again on the card it asks for. */
+  onGpuChanged?: () => void;
   showMessage: (message: string, color: string) => void;
 };
 
@@ -57,6 +60,7 @@ export function createAppShellController(dependencies: AppShellDependencies) {
   const highResolutionToggle = requiredElement<HTMLButtonElement>("highResolutionToggle");
   const lowPerformanceToggle = requiredElement<HTMLButtonElement>("lowPerformanceToggle");
   const idleThrottleToggle = requiredElement<HTMLButtonElement>("idleThrottleToggle");
+  const dedicatedGpuToggle = requiredElement<HTMLButtonElement>("dedicatedGpuToggle");
   const fpsToggle = requiredElement<HTMLButtonElement>("fpsToggle");
   const fpsStatus = requiredElement("fpsStatus");
   const gameFpsStatus = requiredElement("gameFpsStatus");
@@ -83,6 +87,8 @@ export function createAppShellController(dependencies: AppShellDependencies) {
   setLightStaffEffects(lowPerformanceMode);
   // On by default: an idle game drops to 30 fps to save battery.
   let idleThrottle = readBoolean("wildstat-idle-throttle-v1", true);
+  // Off by default: a dedicated card heats a laptop by being awake.
+  let dedicatedGpu = readBoolean(DEDICATED_GPU_KEY, false);
   let fpsVisible = readBoolean(dependencies.storageKeys.fps, false);
   let latencyVisible = readBoolean(dependencies.storageKeys.latency, false);
   let lastAudibleMusicVolume = dependencies.mapMusic.volume > 0 ? dependencies.mapMusic.volume : .35;
@@ -105,6 +111,7 @@ export function createAppShellController(dependencies: AppShellDependencies) {
     document.body.classList.toggle("camera-zoom-hidden", !cameraZoomVisible);
     renderBooleanSetting(lowPerformanceToggle, lowPerformanceMode);
     renderBooleanSetting(idleThrottleToggle, idleThrottle);
+    renderBooleanSetting(dedicatedGpuToggle, dedicatedGpu);
     renderBooleanSetting(fpsToggle, fpsVisible);
     gameFpsStatus.hidden = !fpsVisible;
     renderBooleanSetting(latencyToggle, latencyVisible);
@@ -196,6 +203,12 @@ export function createAppShellController(dependencies: AppShellDependencies) {
   idleThrottleToggle.addEventListener("click", () => {
     idleThrottle = !idleThrottle;
     writeBoolean("wildstat-idle-throttle-v1", idleThrottle);
+    refreshSettings();
+  });
+  dedicatedGpuToggle.addEventListener("click", () => {
+    dedicatedGpu = !dedicatedGpu;
+    writeBoolean(DEDICATED_GPU_KEY, dedicatedGpu);
+    dependencies.onGpuChanged?.();
     refreshSettings();
   });
   fpsToggle.addEventListener("click", () => {

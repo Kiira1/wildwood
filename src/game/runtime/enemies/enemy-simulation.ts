@@ -100,9 +100,12 @@ export function createEnemySimulation(
 
   const playerReach = () => shared.playerAttackRange?.() ?? player.attackRange;
 
+  /** The player's move speed, read once a tick: working it out builds the player's stats, and every enemy asks. */
+  let playerSpeed = Number.NaN;
+
   /** Chase speed tracks the player in front of the enemy, a step ahead of them. */
   function chaseSpeedFor(enemy: EnemyState) {
-    return enemyChaseSpeed(enemy.speed, shared.playerMovementSpeed?.() ?? Number.NaN);
+    return enemyChaseSpeed(enemy.speed, playerSpeed);
   }
 
   function currentServerNowMs() {
@@ -119,7 +122,6 @@ export function createEnemySimulation(
     const base = regularEnemyAggroRetainRadius(regularEnemyAggroRadius(enemy), authoredLeash);
     // A runner opens a temporary gap while a newly alerted enemy accelerates.
     // Keep that gap inside the leash so the enemy gets to reach chase speed.
-    const playerSpeed = shared.playerMovementSpeed?.() ?? 0;
     const rampGap = Number.isFinite(playerSpeed)
       ? Math.max(0, playerSpeed - ENEMY_HIT_MIN_MOVE_SPEED) * ENEMY_HIT_SPEED_RECOVERY_SECONDS / 2
       : 0;
@@ -195,6 +197,7 @@ export function createEnemySimulation(
   }
 
   function update(dt: number) {
+    playerSpeed = shared.playerMovementSpeed?.() ?? Number.NaN;
     const mapId = shared.currentMapId?.() ?? "tutorial_forest";
     const serverNowMs = currentServerNowMs();
     const serverTick = regularEnemySimulationTick(serverNowMs);

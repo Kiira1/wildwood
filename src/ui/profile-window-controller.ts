@@ -19,7 +19,7 @@ import { renderProfileGuild, type KnownGuild } from "./profile-guild";
 import {
   PROFILE_EQUIPMENT_SLOTS,
   profileEquipmentPresentation,
-  profileEquipmentRefine, profileLookRefine,
+  profileEquipmentRefine, profileInspectionLookRefine, profileLookRefine,
   profileEquipmentActiveCards,
   renderProfileEquipmentSlot,
   type ProfileEquipmentSlot,
@@ -150,7 +150,7 @@ export function createProfileWindowController(elements: {
       itemId: presentation.inspectionItemId,
       upgradeLevel: slotUpgradeLevelFor(profileData.itemUpgradeLevels, presentation.inspectionItemId),
       refine: profileEquipmentRefine(presentation, profileData.itemRefines),
-      lookRefine: profileLookRefine(presentation, profileData.itemRefines, profileData.cosmeticRefines),
+      lookRefine: profileInspectionLookRefine(presentation, profileData.itemRefines, profileData.cosmeticRefines),
       activeCards: profileEquipmentActiveCards(presentation, profileActiveCardIds(profileData)),
       skills: profileData.wornSkill?.itemId === presentation.inspectionItemId ? profileData.wornSkill.roll : undefined,
       context: presentation.context,

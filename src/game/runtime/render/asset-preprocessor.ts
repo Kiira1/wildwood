@@ -166,7 +166,11 @@ export function createAssetPreprocessor(onWorldAssetReady: () => void) {
    */
   function createBossArt(source: BossArtSource) {
     if ("pages" in source) {
-      const pages = source.pages.map((page) => createLazyImageAsset(page));
+      // Decoded off the main thread like the Town's sheets: drawn from the <img>, a page's first frame decoded on it.
+      const pages = source.pages.map((page) => {
+        const asset: LazyImageAsset = createLazyImageAsset(page, (image, settle) => { void decodeOffThread(image).then(settle); }, () => releaseDecoded(asset.image));
+        return asset;
+      });
       const used = source.used.map((index) => pages[index]);
       return {
         assets: used,

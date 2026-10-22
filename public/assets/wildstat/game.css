@@ -889,6 +889,8 @@
   .setting-row + .setting-row { margin-top: 9px; }
 
   .setting-volume { align-items: center; }
+  /* One label width for both volume rows: on a narrow screen the bars shrink, and they start in line. */
+  .setting-volume > label { flex: 0 0 auto; min-width: 8.5em; }
 
   .volume-control {
     display: flex;

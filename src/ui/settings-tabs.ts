@@ -10,7 +10,7 @@ const SETTINGS_GROUPS: readonly { id: string; label: string; sections: readonly 
     { title: "Display", selectors: ["#attackRangeToggle", "#remoteGhostsToggle", "#cameraZoomToggle", "#ownNamePlateToggle", "#guildTagsToggle", "#enemyHpNumbersToggle", "#damageNumbersToggle", "#cardFoundPopupsToggle", "#statPopupsToggle", "#baseStatRewardsToggle", "#scientificNotationToggle", "#statTrackerToggle", "#questTrackerToggle", "#gameTickerToggle"] },
     { title: "Chat", selectors: ["#chatToggle", "#chatTimestampsToggle"] },
     { title: "Device", selectors: ["#toolbarHapticsToggle", "#selfProfileTapToggle", "#fullscreenToggle", "#keepScreenOnToggle"] },
-    { title: "Performance", selectors: ["#highResolutionToggle", "#lowPerformanceToggle", "#idleThrottleToggle", "#fpsToggle", "#latencyToggle"] },
+    { title: "Performance", selectors: ["#highResolutionToggle", "#lowPerformanceToggle", "#idleThrottleToggle", "#dedicatedGpuToggle", "#fpsToggle", "#latencyToggle"] },
     { title: "Graphics", selectors: ["#graphicsInfo"] },
     { title: "Help", selectors: ["#replayTutorialRow"] },
   ] },

@@ -288,6 +288,7 @@ import { MAX_PLAYER_STAT, PLAYER_SPAWN } from "../shared/rules";
     signOut: () => { coop?.signOut?.(); },
     canPlayMusic: () => !gameplayPauseReasons.has("rewarded-ad"),
     onLowPerformanceChanged: () => { session.resetFrameSchedule(); },
+    onGpuChanged: () => { staticWorldLayer?.rebuild?.(); },
     showMessage,
   });
 

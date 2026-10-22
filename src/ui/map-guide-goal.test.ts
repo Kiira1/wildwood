@@ -3,7 +3,7 @@ import { parseHTML } from "linkedom";
 import { MAP_IDS } from "../../shared/rules";
 import { CAMPAIGN_UNLOCK_FIELDS } from "../../shared/equipment-access";
 import type { MapId } from "../game/world";
-import { createMapGuideController, mapGuideNextGoal, mapGuideTravelButton, MAP_GUIDE_PORTAL_HINT, type MapGuideProgress } from "./map-guide-controller";
+import { createMapGuideController, mapGuideNextGoal, mapGuideTravelButton, type MapGuideProgress } from "./map-guide-controller";
 
 const NAMES: Record<string, string> = { tutorial_forest: "Tutorial Forest", beginner_desert: "Beginner Desert", intermediate_snowlands: "Intermediate Snowlands", advanced_lava_wastes: "Advanced Lava Wastes" };
 const mapName = (mapId: MapId) => NAMES[mapId] ?? "";
@@ -38,11 +38,10 @@ describe("the Map Guide's Next Goal", () => {
 });
 
 describe("the Map Guide's Travel button", () => {
-  it("is not shown on the player's own map, is Locked past the open ones, and goes by the Town from elsewhere", () => {
-    expect(mapGuideTravelButton("beginner_desert", "beginner_desert", true, false)).toBeNull();
-    expect(mapGuideTravelButton("advanced_lava_wastes", "town", false, true)).toEqual({ label: "Locked", disabled: true });
-    expect(mapGuideTravelButton("beginner_desert", "town", true, true)).toEqual({ label: "Travel", disabled: false });
-    expect(mapGuideTravelButton("tutorial_forest", "beginner_desert", true, false)).toEqual({ label: "Travel From Town", disabled: false });
+  it("is not shown on the player's own map and is Locked past the open ones", () => {
+    expect(mapGuideTravelButton("beginner_desert", "beginner_desert", true)).toBeNull();
+    expect(mapGuideTravelButton("advanced_lava_wastes", "town", false)).toEqual({ label: "Locked", disabled: true });
+    expect(mapGuideTravelButton("tutorial_forest", "beginner_desert", true)?.disabled).toBe(false);
   });
 });
 
@@ -61,7 +60,7 @@ describe("the Map Guide window", () => {
     const canvas = document.getElementById("canvas") as unknown as HTMLCanvasElement;
     Object.assign(canvas, { getContext: () => null, getBoundingClientRect: () => ({ width: 100, height: 100 }) });
     const state = { current, inTown: inTownAtFirst };
-    const prefer = vi.fn(), teleportToTown = vi.fn(() => teleportReady);
+    const prefer = vi.fn(), teleportToTown = vi.fn(() => teleportReady), travel = vi.fn(async () => true);
     const get = <T>(id: string) => document.getElementById(id) as unknown as T;
     const guide = createMapGuideController({
       trigger: get("trigger"), overlay: get("mapGuide"), title: get("title"), canvas, zoneLabels: get("zones"), dropItems: get("drops"), back: get("back"),
@@ -69,11 +68,11 @@ describe("the Map Guide window", () => {
       currentMapId: () => state.current, mapName: id => NAMES[id] ?? id, paths: [], spawnSites: [], player: { x: 0, y: 0 },
       boss: () => null, portals: () => [], beforeOpen: () => {}, clearPlayerInput: () => {},
       mapUnlocked: opened(3), power: () => 4_200_000,
-      travel: { inTown: () => state.inTown, prefer, teleportToTown },
+      travel: { inTown: () => state.inTown, prefer, teleportToTown, travel },
     });
     const q = <T extends Element = HTMLElement>(selector: string) => document.querySelector(selector) as unknown as T;
     const click = (selector: string) => q(selector).dispatchEvent(new window.Event("click", { bubbles: true }));
-    return { guide, state, prefer, teleportToTown, q, click };
+    return { guide, state, prefer, teleportToTown, travel, q, click };
   }
 
   it("shows the Next Goal and the shown map's recommended power at the top", () => {
@@ -87,35 +86,32 @@ describe("the Map Guide window", () => {
     expect(s.q<HTMLElement>(".map-guide-travel").hidden).toBe(true);
   });
 
-  it("from a map, presses the Town button and points to the Travel portal once there, the picker set on the map", async () => {
+  it("from a map, teleports to the Town and then travels on to the map", async () => {
     vi.useFakeTimers();
     const s = setup("beginner_desert", false);
     s.guide.open();
     s.click("#mapGuidePrev");
-    expect(s.q(".map-guide-travel-button").textContent).toBe("Travel From Town");
     s.click(".map-guide-travel-button");
     expect(s.teleportToTown).toHaveBeenCalledTimes(1);
-    expect(s.prefer).toHaveBeenCalledWith("tutorial_forest");
-    expect(s.q(".map-guide-travel-hint").textContent).toBe(`Going to Town. ${MAP_GUIDE_PORTAL_HINT}. It opens on Tutorial Forest.`);
+    expect(s.travel).not.toHaveBeenCalled();
     Object.assign(s.state, { current: "town", inTown: true });
-    await vi.advanceTimersByTimeAsync(200);
-    expect(s.q(".map-guide-travel-button").textContent).toBe("Travel");
-    expect(s.q(".map-guide-travel-hint").textContent).toBe(`${MAP_GUIDE_PORTAL_HINT}. It opens on Tutorial Forest.`);
+    await vi.advanceTimersByTimeAsync(600);
+    expect(s.travel).toHaveBeenCalledWith("tutorial_forest");
+    expect(s.guide.isOpen()).toBe(false);
   });
 
-  it("in Town, sets the picker and points to the portal without teleporting; says so while the Town button cools down", () => {
+  it("in Town, travels at once; while the Town button cools down it stays put", () => {
     const s = setup("town", true);
     s.guide.open();
-    expect(s.q(".map-guide-travel-button").textContent).toBe("Travel");
     s.click(".map-guide-travel-button");
     expect(s.teleportToTown).not.toHaveBeenCalled();
-    expect(s.prefer).toHaveBeenCalledWith("intermediate_snowlands");
-    expect(s.q(".map-guide-travel-hint").textContent).toContain(MAP_GUIDE_PORTAL_HINT);
+    expect(s.travel).toHaveBeenCalledWith("intermediate_snowlands");
     const cooling = setup("beginner_desert", false, false);
     cooling.guide.open();
     cooling.click("#mapGuidePrev");
     cooling.click(".map-guide-travel-button");
-    expect(cooling.q(".map-guide-travel-hint").textContent).toBe("The Town teleport is cooling down. Try again in a moment.");
+    expect(cooling.travel).not.toHaveBeenCalled();
+    expect(cooling.guide.isOpen()).toBe(true);
   });
 
   it("locks the button on the map past the furthest open", () => {

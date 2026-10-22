@@ -82,7 +82,7 @@ type MapGuideDependencies = {
   /** What the Next Goal reads for Prestige: the coop session, and whether its level cap is lifted. */
   progress?: MapGuideProgress | null;
   prestigeExpanded?: () => boolean;
-  /** The Travel button: the Town's travel portal is the only way to a chosen map. */
+  /** The Travel button: by the Town's travel portal, teleporting to the Town first from elsewhere. */
   travel?: MapGuideTravelPort;
 };
 export type MapGuideProgress = {
@@ -96,6 +96,8 @@ export type MapGuideTravelPort = {
   prefer: (mapId: MapId) => void;
   /** Presses the toolbar's Town button; false while it is cooling down. */
   teleportToTown: () => boolean;
+  /** Travels from the Town to the map; false when it could not. */
+  travel: (mapId: MapId) => Promise<boolean>;
 };
 
 export type MapGuideDrop = {
@@ -171,13 +173,12 @@ export function mapGuideNextGoal(unlocked: (mapId: MapId) => boolean, mapName: (
   return { goal: `Defeat the Endless ${stage} boss to unlock Endless ${stage + 1}`, prestige };
 }
 
-/** The Travel button for the shown map: none on the player's own map, Locked past the open ones, and from outside the Town it goes there first. */
-export function mapGuideTravelButton(shown: MapId, current: MapId, unlocked: boolean, inTown: boolean) {
+/** The Travel button for the shown map: none on the player's own map, Locked past the open ones. */
+export function mapGuideTravelButton(shown: MapId, current: MapId, unlocked: boolean) {
   if (shown === current) return null;
   if (!unlocked) return { label: "Locked", disabled: true };
-  return { label: inTown ? "Travel" : "Travel From Town", disabled: false };
+  return { label: "Travel", disabled: false };
 }
-export const MAP_GUIDE_PORTAL_HINT = "Walk into the Travel portal north of the square";
 
 /** What the map's regular enemies drop. Gear is not among it: that is bought at the Smith. */
 export function mapGuideDrops(mapId: MapId): readonly MapGuideDrop[] {
@@ -296,7 +297,7 @@ export function createMapGuideController(elements: MapGuideElements, dependencie
     Object.assign(goalPart(".map-guide-goal-power"), { hidden: recommended === null,
       textContent: recommended === null ? "" : `Your Power ${formatCompactNumber(dependencies.power!())} · Recommended ${formatCompactNumber(recommended)}` });
     const port = dependencies.travel;
-    const button = port ? mapGuideTravelButton(mapId, dependencies.currentMapId(), unlocked(mapId), port.inTown()) : null;
+    const button = port ? mapGuideTravelButton(mapId, dependencies.currentMapId(), unlocked(mapId)) : null;
     goalPart(".map-guide-travel").hidden = !button;
     if (!button) return;
     travelButton.textContent = button.label;
@@ -304,21 +305,32 @@ export function createMapGuideController(elements: MapGuideElements, dependencie
     const note = travelNote?.mapId === mapId ? travelNote.text : "";
     Object.assign(travelHint, { textContent: note, hidden: !note });
   }
+  /** Takes the player to the map: from the Town at once, from elsewhere by the Town teleport first. */
   function travelTo(mapId: MapId) {
     const port = dependencies.travel;
     if (!port || !unlocked(mapId)) return;
     port.prefer(mapId);
-    const inTown = port.inTown();
-    const portal = `${MAP_GUIDE_PORTAL_HINT}. It opens on ${baseName(mapId, dependencies.mapName)}.`;
-    if (inTown) travelNote = { mapId, text: portal };
-    else if (!port.teleportToTown()) travelNote = { mapId, text: "The Town teleport is cooling down. Try again in a moment." };
+    const go = (retry = true) => {
+      close();
+      void port.travel(mapId).then(arrived => {
+        if (arrived) return;
+        // Just arrived in the Town, the arrival may still be settling: one more try.
+        if (retry) { setTimeout(() => go(false), 600); return; }
+        open();
+        viewed = mapId === dependencies.currentMapId() ? null : mapId;
+        travelNote = { mapId, text: "Travel failed. Try again in a moment." };
+        render();
+      });
+    };
+    if (port.inTown()) { go(); return; }
+    if (!port.teleportToTown()) travelNote = { mapId, text: "The Town teleport is cooling down. Try again in a moment." };
     else {
-      travelNote = { mapId, text: `Going to Town. ${portal}` };
-      // Once in Town the button reads Travel; the hint stays.
+      travelNote = { mapId, text: `Going to Town, then on to ${baseName(mapId, dependencies.mapName)}.` };
       const watch = ++travelWatch, started = Date.now();
       const check = () => {
         if (watch !== travelWatch || overlay.hidden) return;
-        if (port.inTown()) { travelNote = { mapId, text: portal }; render(); return; }
+        // The Town's map has to be in hand before the next move; a moment more covers its arrival.
+        if (port.inTown()) { setTimeout(() => { if (watch === travelWatch && !overlay.hidden) go(); }, 300); return; }
         if (Date.now() - started < 10_000) setTimeout(check, 100);
         else { travelNote = null; render(); }
       };

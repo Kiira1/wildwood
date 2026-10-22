@@ -265,6 +265,7 @@ export function createMapGuidePanel(deps: MapGuidePanelDeps) {
       inTown: () => deps.currentMapId() === "town",
       prefer: deps.preferTravel,
       teleportToTown: () => !e.townButton.disabled && (e.townButton.click(), true),
+      travel: mapId => mapController.travelFromHome(mapId, true),
     },
   });
 }

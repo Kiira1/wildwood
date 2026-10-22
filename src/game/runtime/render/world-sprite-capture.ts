@@ -1,6 +1,7 @@
 import { createSpriteRecorder, SpriteRecorderUnsupported } from "./sprite-recorder";
 import type { SwitchableContext } from "./switchable-context";
 import type { StaticWorldLayer } from "./webgl-static-world-layer";
+import { worldSpritesWanted } from "./world-sprites-wanted";
 
 /** Frames drawn on the canvas after one the recorder could not draw, before it tries again. */
 const RETRY_AFTER_FRAMES = 120;
@@ -13,20 +14,6 @@ export type WorldSpriteCapture = {
   /** Stops recording after a throw; true when the throw was the recorder's, so the canvas can draw the world. */
   abort: (error: unknown) => boolean;
 };
-
-/**
- * Chromium browsers (desktop and Android) and every iPhone and iPad browser draw the world as sprites; desktop Safari
- * and Firefox keep the canvas. ?sprites=1 turns it on anywhere, ?sprites=0 off (?renderer=canvas turns the whole
- * WebGL layer off).
- */
-export function worldSpritesWanted(search: string, browser: Pick<Navigator, "userAgent" | "maxTouchPoints"> & { platform?: string }) {
-  const asked = new URLSearchParams(search).get("sprites");
-  if (asked === "1") return true;
-  if (asked === "0") return false;
-  const agent = browser.userAgent;
-  const apple = /iPad|iPhone|iPod/.test(agent) || (browser.platform === "MacIntel" && browser.maxTouchPoints > 1);
-  return apple || /(Chrome|Chromium)\/\d/.test(agent);
-}
 
 /**
  * The world part of a frame (decor, actors, bosses, portals) recorded as sprites and drawn by the WebGL world
@@ -51,7 +38,8 @@ export function createWorldSpriteCapture(context: SwitchableContext | undefined,
     begin() {
       if (waitFrames > 0) { waitFrames -= 1; stats.canvas += 1; return false; }
       if (!layer()?.drawSprites) { stats.canvas += 1; return false; }
-      recorder.begin(context.real, layer()?.spritePaths?.() ?? false);
+      // From the facade, which keeps a font as it was set (see switchable-context.ts).
+      recorder.begin(context.context, layer()?.spritePaths?.() ?? false);
       context.use(recorder.context);
       recording = true;
       return true;
