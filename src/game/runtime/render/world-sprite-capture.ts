@@ -51,7 +51,7 @@ export function createWorldSpriteCapture(context: SwitchableContext | undefined,
     begin() {
       if (waitFrames > 0) { waitFrames -= 1; stats.canvas += 1; return false; }
       if (!layer()?.drawSprites) { stats.canvas += 1; return false; }
-      recorder.begin(context.real);
+      recorder.begin(context.real, layer()?.spritePaths?.() ?? false);
       context.use(recorder.context);
       recording = true;
       return true;

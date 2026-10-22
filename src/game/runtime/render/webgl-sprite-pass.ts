@@ -1,8 +1,6 @@
-import { SPRITE_VERTEX_FLOATS, type SpriteRecording, type SpriteSource } from "./sprite-recorder";
+import { MAX_BATCH_QUADS, SPRITE_VERTEX_FLOATS, STENCIL, type SpriteRecording, type SpriteSource } from "./sprite-recorder";
 import { canvasVersion } from "./frozen-canvas";
 
-/** Quads per draw call: their vertex numbers must fit a 16-bit index. */
-export const MAX_SPRITE_QUADS = 16_384;
 /** A texture not drawn for this many frames is released. */
 const TEXTURE_IDLE_FRAMES = 180;
 /** Texture memory kept past one frame: phones and tablets close a page that holds too much. */
@@ -28,6 +26,7 @@ void main() {
 // A radial batch's uv is the point's offset from the gradient's centre in outer radii, and its texture is the
 // gradient's colour ramp, drawn by a 2D context so its colours blend exactly as the canvas blends them.
 // A ring batch's uv is the same offset; its edges are antialiased over one device pixel (u_feather) as a canvas's are.
+// A linear batch reads its ramp at u, a linear gradient's position along its line.
 // highp: on phone and tablet GPUs mediump is 16-bit, too coarse to address one pixel of a large sprite sheet.
 const FRAGMENT_SHADER = `
 precision highp float;
@@ -41,7 +40,9 @@ varying vec4 v_tint;
 
 void main() {
   vec4 texel;
-  if (u_radial > 1.5) {
+  if (u_radial > 2.5) {
+    texel = texture2D(u_texture, vec2((clamp(v_uv.x, 0.0, 1.0) * 255.0 + 0.5) / 256.0, 0.5));
+  } else if (u_radial > 1.5) {
     float d = length(v_uv);
     float coverage = clamp((1.0 - d) / u_feather + 0.5, 0.0, 1.0);
     if (u_inner > 0.0) coverage *= clamp((d - u_inner) / u_feather + 0.5, 0.0, 1.0);
@@ -89,8 +90,8 @@ export function createWebGLSpritePass(
     gl.deleteProgram(program);
     return null;
   }
-  const indices = new Uint16Array(MAX_SPRITE_QUADS * 6);
-  for (let quad = 0, vertex = 0; quad < MAX_SPRITE_QUADS; quad += 1, vertex += 4) {
+  const indices = new Uint16Array(MAX_BATCH_QUADS * 6);
+  for (let quad = 0, vertex = 0; quad < MAX_BATCH_QUADS; quad += 1, vertex += 4) {
     indices.set([vertex, vertex + 1, vertex + 2, vertex + 2, vertex + 1, vertex + 3], quad * 6);
   }
   gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, indexBuffer);
@@ -215,6 +216,44 @@ export function createWebGLSpritePass(
     }
   }
 
+  /**
+   * The stencil state for a step of a path (sprite-recorder.ts STENCIL). The low seven bits count the fill; the top
+   * bit marks pixels its soft edge has drawn, so overlapping edges draw once.
+   */
+  function useStencil(step: number) {
+    if (!step) {
+      gl.disable(gl.STENCIL_TEST);
+      gl.colorMask(true, true, true, true);
+      return;
+    }
+    gl.enable(gl.STENCIL_TEST);
+    if (step === STENCIL.nonzero || step === STENCIL.evenodd || step === STENCIL.union) {
+      gl.colorMask(false, false, false, false);
+      gl.stencilMask(0x7f);
+      gl.stencilFunc(gl.ALWAYS, 0, 0xff);
+      if (step === STENCIL.evenodd) gl.stencilOp(gl.KEEP, gl.KEEP, gl.INVERT);
+      // Any piece marks a pixel, whichever way it winds; one mark is all a union needs.
+      else if (step === STENCIL.union) {
+        gl.stencilFunc(gl.ALWAYS, 1, 0xff);
+        gl.stencilOp(gl.KEEP, gl.KEEP, gl.REPLACE);
+      } else {
+        gl.stencilOpSeparate(gl.FRONT, gl.KEEP, gl.KEEP, gl.INCR_WRAP);
+        gl.stencilOpSeparate(gl.BACK, gl.KEEP, gl.KEEP, gl.DECR_WRAP);
+      }
+      return;
+    }
+    gl.colorMask(true, true, true, true);
+    if (step === STENCIL.edge) {
+      gl.stencilMask(0x80);
+      gl.stencilFunc(gl.EQUAL, 0, 0xff);
+      gl.stencilOp(gl.KEEP, gl.KEEP, gl.INVERT);
+    } else {
+      gl.stencilMask(0xff);
+      gl.stencilFunc(gl.NOTEQUAL, 0, 0x7f);
+      gl.stencilOp(gl.ZERO, gl.ZERO, gl.ZERO);
+    }
+  }
+
   /** Draws the recording; true when it uploaded a texture, the only time an allocation error is worth checking for. */
   function draw(recording: SpriteRecording, backingWidth: number, backingHeight: number) {
     frame += 1;
@@ -226,9 +265,14 @@ export function createWebGLSpritePass(
     gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, indexBuffer);
     useAttributes(positionUv, tint);
     const stride = SPRITE_VERTEX_FLOATS * 4;
-    gl.vertexAttribPointer(positionUv, 4, gl.FLOAT, false, stride, 0);
-    gl.vertexAttribPointer(tint, 4, gl.FLOAT, false, stride, 16);
     gl.uniform2f(resolution, backingWidth, backingHeight);
+    // Paths mark the stencil buffer; it starts each frame clear.
+    if (recording.batches.some(batch => batch.stencil)) {
+      gl.stencilMask(0xff);
+      gl.clearStencil(0);
+      gl.clear(gl.STENCIL_BUFFER_BIT);
+    }
+    let stencilNow = 0;
     gl.activeTexture(gl.TEXTURE0);
     gl.enable(gl.BLEND);
     let blend = "";
@@ -243,7 +287,7 @@ export function createWebGLSpritePass(
       let straightBatch = 0;
       if (batch.source) straightBatch = bindSource(batch.source, batch.smooth).straight ? 1 : 0;
       else bindWhite();
-      const radialBatch = batch.ring ? 2 : batch.radial === null ? 0 : 1;
+      const radialBatch = batch.linear ? 3 : batch.ring ? 2 : batch.radial === null ? 0 : 1;
       const innerBatch = batch.ring ? batch.ring[0] : batch.radial;
       if (straightBatch !== straightNow) { gl.uniform1f(straight, straightBatch); straightNow = straightBatch; }
       if (radialBatch !== radialNow) { gl.uniform1f(radial, radialBatch); radialNow = radialBatch; }
@@ -259,8 +303,14 @@ export function createWebGLSpritePass(
           gl.scissor(left, backingHeight - bottom, right - left, bottom - top);
         }
       }
-      gl.drawElements(gl.TRIANGLES, batch.count * 6, gl.UNSIGNED_SHORT, batch.first * 12);
+      if (batch.stencil !== stencilNow) { useStencil(batch.stencil); stencilNow = batch.stencil; }
+      // Each batch's vertices are read from its own first quad, so the 16-bit index never runs out.
+      const offset = batch.first * 4 * stride;
+      gl.vertexAttribPointer(positionUv, 4, gl.FLOAT, false, stride, offset);
+      gl.vertexAttribPointer(tint, 4, gl.FLOAT, false, stride, offset + 16);
+      gl.drawElements(gl.TRIANGLES, batch.count * 6, gl.UNSIGNED_SHORT, 0);
     }
+    if (stencilNow) useStencil(0);
     gl.disable(gl.BLEND);
     gl.disable(gl.SCISSOR_TEST);
     if (frame % 30 === 0 || textureBytes > TEXTURE_BUDGET_BYTES) release(TEXTURE_IDLE_FRAMES);

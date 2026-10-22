@@ -1,3 +1,4 @@
+import { fillOutlines, flattenPath, signedArea, strokeOutlines, type Outline, type Subpath } from "./path-geometry";
 import {
   createVectorRasterCache, type Effects, type GradientRecord, type LineStyle, type Matrix, type PaintStyle, type PathCommand, type VectorOp,
 } from "./vector-raster-cache";
@@ -16,18 +17,30 @@ export type SpriteBlend = "normal" | "add";
  * Consecutive quads drawn with one texture, filter, blend and clip. A null source is a solid colour. `radial` is null for
  * an image, or a radial gradient's inner radius as a share of its outer one: the source is then its colour ramp.
  * `ring` is a solid circle or ring the shader draws: its inner radius as a share of its outer one, and one device
- * pixel in the same units. `scissor` is a clip rectangle in device pixels (left, top, right, bottom), or null.
+ * pixel in the same units. `linear` batches sample their colour ramp at u. `scissor` is a clip rectangle in device
+ * pixels (left, top, right, bottom), or null. `stencil` is the step of a path it draws (STENCIL), or 0.
  */
 export type SpriteBatch = {
   source: SpriteSource | null; smooth: boolean; blend: SpriteBlend; radial: number | null; ring: readonly [number, number] | null;
-  scissor: readonly number[] | null; first: number; count: number;
+  linear: boolean; scissor: readonly number[] | null; stencil: number; first: number; count: number;
 };
+
+/**
+ * A path is drawn in three steps (NanoVG's method): its triangles mark where it is in the stencil buffer under its
+ * fill rule (a stroke's pieces by their union), a soft edge is drawn where it is not, then one rectangle covers it
+ * and clears the marks.
+ */
+export const STENCIL = { nonzero: 1, evenodd: 2, union: 3, edge: 4, cover: 5 } as const;
+/** Path quads a frame may hold; past it a path is rastered instead. */
+const MAX_PATH_QUADS = 40_000;
 
 /** Floats per vertex: device x, y, texture u, v, and a premultiplied colour multiplier r, g, b, a. */
 export const SPRITE_VERTEX_FLOATS = 8;
 const QUAD_FLOATS = SPRITE_VERTEX_FLOATS * 4;
-/** The most quads one frame records: what the WebGL pass can index in one buffer. */
-const MAX_RECORDED_QUADS = 16_384;
+/** The most quads one batch holds: their vertex numbers must fit the WebGL pass's 16-bit index. */
+export const MAX_BATCH_QUADS = 16_384;
+/** The most quads one frame records. */
+const MAX_RECORDED_QUADS = 65_536;
 
 export class SpriteRecorderUnsupported extends Error {
   constructor(readonly operation: string) { super(`World sprite recorder cannot draw ${operation}`); }
@@ -145,8 +158,18 @@ export type SpriteRecording = { vertices: Float32Array; quads: number; batches: 
 /** Gradients made while recording: real ones, so they work anywhere, with their stops noted for the raster cache. */
 const gradientRecords = new WeakMap<CanvasGradient, GradientRecord>();
 
+/** A path's paint: a solid colour, or a gradient's ramp read at a uv worked out from each device point. */
+type PathPaint = {
+  source: SpriteSource | null; color: readonly number[]; radial: number | null; linear: boolean; uv: (x: number, y: number) => readonly [number, number];
+};
+const NO_UV = () => [0, 0] as const;
+
 export function createSpriteRecorder(measure: () => CanvasRenderingContext2D | null) {
   const rasters = createVectorRasterCache();
+  /** Whether the layer has a stencil buffer to draw paths with; without one they are rastered. */
+  let gpuPaths = false;
+  /** The step of the path being pushed, and whether its paint reads a linear ramp: part of each quad's batch. */
+  let pathStep = 0, pathLinear = false, pathQuads = 0;
   let vertices = new Float32Array(QUAD_FLOATS * 256);
   let quads = 0;
   const batches: SpriteBatch[] = [];
@@ -220,15 +243,16 @@ export function createSpriteRecorder(measure: () => CanvasRenderingContext2D | n
   function pushCorners(source: SpriteSource | null, smooth: boolean, blend: SpriteBlend,
     x0: number, y0: number, x1: number, y1: number, x2: number, y2: number, x3: number, y3: number,
     u0: number, v0: number, u1: number, v1: number, r: number, g: number, b: number, alpha: number,
-    radial: number | null = null, uv?: readonly number[], ring: readonly [number, number] | null = null) {
+    radial: number | null = null, uv?: readonly number[], ring: readonly [number, number] | null = null, fades?: readonly number[]) {
     if (quads >= MAX_RECORDED_QUADS) unsupported("more sprites than one frame holds");
-    const scissor = state.scissor;
+    const scissor = state.scissor, stencil = pathStep, linear = pathLinear;
     let batch = batchCount > 0 ? batches[batchCount - 1] : undefined;
     if (!batch || batch.source !== source || batch.blend !== blend || batch.radial !== radial || (source !== null && batch.smooth !== smooth)
-      || batch.scissor !== scissor || batch.ring?.[0] !== ring?.[0] || batch.ring?.[1] !== ring?.[1]) {
-      batch = batches[batchCount] ?? (batches[batchCount] = { source, smooth, blend, radial, ring, scissor, first: quads, count: 0 });
-      batch.source = source; batch.smooth = smooth; batch.blend = blend; batch.radial = radial; batch.ring = ring; batch.scissor = scissor;
-      batch.first = quads; batch.count = 0;
+      || batch.scissor !== scissor || batch.ring?.[0] !== ring?.[0] || batch.ring?.[1] !== ring?.[1] || batch.stencil !== stencil
+      || batch.linear !== linear || batch.count >= MAX_BATCH_QUADS) {
+      batch = batches[batchCount] ?? (batches[batchCount] = { source, smooth, blend, radial, ring, linear, scissor, stencil, first: quads, count: 0 });
+      batch.source = source; batch.smooth = smooth; batch.blend = blend; batch.radial = radial; batch.ring = ring; batch.linear = linear;
+      batch.scissor = scissor; batch.stencil = stencil; batch.first = quads; batch.count = 0;
       batchCount += 1;
     }
     if ((quads + 1) * QUAD_FLOATS > vertices.length) {
@@ -238,10 +262,12 @@ export function createSpriteRecorder(measure: () => CanvasRenderingContext2D | n
     }
     // Premultiplied: textures are premultiplied, so the colour scales with the alpha.
     const pr = r * alpha, pg = g * alpha, pb = b * alpha;
-    let cursor = quads * QUAD_FLOATS;
+    let cursor = quads * QUAD_FLOATS, index = 0;
     const corner = (x: number, y: number, u: number, v: number) => {
+      // A path's soft edge fades out per corner.
+      const fade = fades ? fades[index++] : 1;
       vertices[cursor++] = x; vertices[cursor++] = y; vertices[cursor++] = u; vertices[cursor++] = v;
-      vertices[cursor++] = pr; vertices[cursor++] = pg; vertices[cursor++] = pb; vertices[cursor++] = alpha;
+      vertices[cursor++] = pr * fade; vertices[cursor++] = pg * fade; vertices[cursor++] = pb * fade; vertices[cursor++] = alpha * fade;
     };
     if (uv) {
       corner(x0, y0, uv[0], uv[1]);
@@ -326,6 +352,157 @@ export function createSpriteRecorder(measure: () => CanvasRenderingContext2D | n
     pushCorners(null, false, blendNow(), px(x0, y0), py(x0, y0), px(x1, y0), py(x1, y0), px(x0, y1), py(x0, y1), px(x1, y1), py(x1, y1),
       0, 0, 1, 1, color[0], color[1], color[2], alpha, null, [-edge, -edge, edge, -edge, -edge, edge, edge, edge],
       [Math.max(0, inner) / outer, 1 / (outer * circle.scale)]);
+  }
+
+  /** The paint of a style for a path drawn now; null for one only a raster can draw (a pattern, a conic or offset radial gradient). */
+  function pathPaint(style: string | CanvasGradient | CanvasPattern): PathPaint | null {
+    if (typeof style === "string") {
+      const color = parseSolidColor(style);
+      return color ? { source: null, color, radial: null, linear: false, uv: NO_UV } : null;
+    }
+    const record = gradientRecords.get(style as CanvasGradient);
+    if (!record || !record.stops.length) return null;
+    // A gradient lies in the user space of the transform it is painted under.
+    const { a, b, c, d, e, f } = state;
+    const determinant = a * d - b * c;
+    if (!determinant) return null;
+    const user = (x: number, y: number) => [(d * (x - e) - c * (y - f)) / determinant, (-b * (x - e) + a * (y - f)) / determinant];
+    const ramp = rampFor(record.stops);
+    if (record.kind === "linear") {
+      const [x0, y0, x1, y1] = record.args;
+      const vx = x1 - x0, vy = y1 - y0, length = vx * vx + vy * vy;
+      if (!length) return null;
+      return { source: ramp, color: [1, 1, 1, 1], radial: null, linear: true, uv: (x, y) => {
+        const [ux, uy] = user(x, y);
+        return [((ux - x0) * vx + (uy - y0) * vy) / length, 0];
+      } };
+    }
+    const gradient = concentric(record);
+    if (!gradient) return null;
+    const [cx, cy, r0, , , r1] = gradient.args;
+    return { source: ramp, color: [1, 1, 1, 1], radial: r0 / r1, linear: false, uv: (x, y) => {
+      const [ux, uy] = user(x, y);
+      return [(ux - cx) / r1, (uy - cy) / r1];
+    } };
+  }
+
+  /** A path the GPU draws in this frame's stencil steps, or false when it must be rastered. */
+  function pathOnGpu(subpaths: Subpath[] | null, outlinesOf: (subpaths: Subpath[]) => Outline[], rule: CanvasFillRule | "union", paint: PathPaint | null, fade = 1) {
+    if (!gpuPaths || !paint || !subpaths || group || hasEffects()) return false;
+    const outlines = outlinesOf(subpaths);
+    const alpha = state.globalAlpha * paint.color[3] * fade;
+    if (!outlines.length || !(alpha > 0)) return true;
+    let left = Infinity, top = Infinity, right = -Infinity, bottom = -Infinity, cost = 1;
+    for (const { points } of outlines) {
+      cost += points.length * 1.5;
+      for (let index = 0; index < points.length; index += 2) {
+        left = Math.min(left, points[index]); right = Math.max(right, points[index]);
+        top = Math.min(top, points[index + 1]); bottom = Math.max(bottom, points[index + 1]);
+      }
+    }
+    const target = canvas ?? { width: Infinity, height: Infinity };
+    if (right < -1 || bottom < -1 || left > target.width + 1 || top > target.height + 1) return true;
+    if (pathQuads + cost > MAX_PATH_QUADS) return false;
+    pathQuads += cost;
+    const blend = blendNow();
+    pathLinear = paint.linear;
+    const [r, g, b] = paint.color;
+    const quad = (xs: readonly number[], fades: readonly number[]) => {
+      const uv = [...paint.uv(xs[0], xs[1]), ...paint.uv(xs[2], xs[3]), ...paint.uv(xs[4], xs[5]), ...paint.uv(xs[6], xs[7])];
+      pushCorners(paint.source, true, blend, xs[0], xs[1], xs[2], xs[3], xs[4], xs[5], xs[6], xs[7], 0, 0, 1, 1, r, g, b, alpha, paint.radial, uv, null, fades);
+    };
+    // Each outline's edge is pulled in half a pixel for the fill, and fades across the true edge from there to half
+    // a pixel out: the coverage a canvas gives an edge. Edges inside a stroke stay put and get no fade.
+    const insets = outlines.map(({ points, inner }) => {
+      const count = points.length / 2, sign = signedArea(points) >= 0 ? 1 : -1;
+      const nx: number[] = [], ny: number[] = [], dx: number[] = [], dy: number[] = [];
+      for (let index = 0; index < count; index += 1) {
+        const next = (index + 1) % count;
+        const x = points[next * 2] - points[index * 2], y = points[next * 2 + 1] - points[index * 2 + 1], length = Math.hypot(x, y) || 1;
+        dx.push(x / length); dy.push(y / length);
+        nx.push(-y / length * sign); ny.push(x / length * sign);
+      }
+      const offsets: number[] = [];
+      for (let index = 0; index < count; index += 1) {
+        const previous = (index - 1 + count) % count;
+        const before = !inner?.[previous], after = !inner?.[index];
+        let ox = 0, oy = 0;
+        if (before && after) {
+          // Mitred, so the fade keeps its width round a corner; a very sharp one is held to two pixels.
+          const scale = .5 / Math.max(.25, 1 + nx[previous] * nx[index] + ny[previous] * ny[index]);
+          ox = (nx[previous] + nx[index]) * scale; oy = (ny[previous] + ny[index]) * scale;
+        } else if (before || after) {
+          // Along the inside edge, so it stays on its line.
+          const [ex, ey] = before ? [dx[index], dy[index]] : [-dx[previous], -dy[previous]];
+          const [fx, fy] = before ? [nx[previous], ny[previous]] : [nx[index], ny[index]];
+          const along = ex * fx + ey * fy;
+          if (Math.abs(along) > .2) { ox = ex * .5 / along; oy = ey * .5 / along; } else { ox = fx * .5; oy = fy * .5; }
+        }
+        offsets.push(ox, oy);
+      }
+      return offsets;
+    });
+    try {
+      // Mark: a fan from each pulled-in outline's first point, counted by the fill rule.
+      pathStep = STENCIL[rule];
+      outlines.forEach(({ points }, which) => {
+        const offsets = insets[which];
+        const x0 = points[0] + offsets[0], y0 = points[1] + offsets[1];
+        for (let index = 2; index + 3 < points.length; index += 2) {
+          const x1 = points[index] + offsets[index], y1 = points[index + 1] + offsets[index + 1];
+          const x2 = points[index + 2] + offsets[index + 2], y2 = points[index + 3] + offsets[index + 3];
+          pushCorners(null, false, blend, x0, y0, x1, y1, x2, y2, x2, y2, 0, 0, 0, 0, 1, 1, 1, 1);
+        }
+      });
+      // Edge: the fade, drawn once per pixel where the fill is not.
+      pathStep = STENCIL.edge;
+      outlines.forEach(({ points, inner }, which) => {
+        const offsets = insets[which], count = points.length / 2;
+        for (let index = 0; index < count; index += 1) {
+          if (inner?.[index]) continue;
+          const a = index * 2, z = ((index + 1) % count) * 2;
+          quad([points[a] + offsets[a], points[a + 1] + offsets[a + 1], points[a] - offsets[a], points[a + 1] - offsets[a + 1],
+            points[z] + offsets[z], points[z + 1] + offsets[z + 1], points[z] - offsets[z], points[z + 1] - offsets[z + 1]], [1, 0, 1, 0]);
+        }
+      });
+      // Cover: one rectangle over all of it, painting where it is marked and clearing every mark.
+      pathStep = STENCIL.cover;
+      left -= 2; top -= 2; right += 2; bottom += 2;
+      quad([left, top, right, top, left, bottom, right, bottom], [1, 1, 1, 1]);
+    } finally {
+      pathStep = 0;
+      pathLinear = false;
+    }
+    return true;
+  }
+
+  /**
+   * A stroke of `commands` the GPU draws, or false when it must be rastered. A canvas shapes a stroke in the user
+   * space it is drawn in (a squashed transform squashes the line too), so it is built there and then placed.
+   */
+  function strokeOnGpu(commands: readonly PathCommand[]) {
+    const { a, b, c, d, e, f } = state;
+    const determinant = a * d - b * c;
+    if (!gpuPaths || !(state.lineWidth > 0) || !determinant) return false;
+    // The transform's largest and smallest stretch.
+    const p = a * a + b * b, q = a * c + b * d, r = c * c + d * d;
+    const spread = Math.sqrt((p - r) * (p - r) + 4 * q * q);
+    const most = Math.sqrt((p + r + spread) / 2), least = Math.sqrt(Math.max(0, (p + r - spread) / 2));
+    // A line thinner than a pixel is drawn one pixel wide and fainter, as a canvas shows it.
+    const thinnest = state.lineWidth * least;
+    const style = { halfWidth: Math.max(state.lineWidth, 1 / least) / 2, cap: state.lineCap, join: state.lineJoin, miterLimit: state.miterLimit,
+      dash: state.lineDash, dashOffset: state.lineDashOffset, pixels: most };
+    const toUser = (points: number[]) => points.map((_, index) => {
+      const x = points[index - index % 2] - e, y = points[index - index % 2 + 1] - f;
+      return index % 2 ? (-b * x + a * y) / determinant : (d * x - c * y) / determinant;
+    });
+    const toDevice = (outline: Outline): Outline => ({ ...outline, points: outline.points.map((_, index) => {
+      const x = outline.points[index - index % 2], y = outline.points[index - index % 2 + 1];
+      return index % 2 ? b * x + d * y + f : a * x + c * y + e;
+    }) });
+    return pathOnGpu(flattenPath(commands, state.lineDash.length ? .02 : undefined),
+      subpaths => strokeOutlines(subpaths.map(subpath => ({ ...subpath, points: toUser(subpath.points) })), style).map(toDevice),
+      "union", pathPaint(state.strokeStyle), Math.min(1, thinnest));
   }
 
   /** Draws a vector op: into the open clip group, or rastered on its own as one quad. */
@@ -416,6 +593,8 @@ export function createSpriteRecorder(measure: () => CanvasRenderingContext2D | n
     const paint = paintStyle(style);
     const gradient = concentric(paint);
     if (gradient && !group && !hasEffects()) { pushRadial(gradient, x, y, w, h); return; }
+    const rect = [{ name: "rect", args: [x, y, w, h], m: matrix() }];
+    if (pathOnGpu(flattenPath(rect), fillOutlines, "nonzero", pathPaint(style))) return;
     drawVector({ type: "fill", path: [{ name: "rect", args: [x, y, w, h], m: matrix() }], rule: "nonzero", style: paint,
       m: matrix(), alpha: state.globalAlpha, composite: state.globalCompositeOperation, effects: effects() });
   }
@@ -484,6 +663,7 @@ export function createSpriteRecorder(measure: () => CanvasRenderingContext2D | n
     fillRect,
     strokeRect(x: number, y: number, w: number, h: number) {
       if (!Number.isFinite(x + y + w + h)) return;
+      if (strokeOnGpu([{ name: "rect", args: [x, y, w, h], m: matrix() }])) return;
       drawVector({ type: "stroke", path: [{ name: "rect", args: [x, y, w, h], m: matrix() }], style: paintStyle(state.strokeStyle), line: line(),
         m: matrix(), alpha: state.globalAlpha, composite: state.globalCompositeOperation, effects: effects() });
     },
@@ -509,6 +689,7 @@ export function createSpriteRecorder(measure: () => CanvasRenderingContext2D | n
       const circle = roundCircle();
       const color = circle && typeof state.fillStyle === "string" ? parseSolidColor(state.fillStyle) : null;
       if (circle && color) { pushRing(circle, 0, circle.radius, color); return; }
+      if (pathOnGpu(flattenPath(path), fillOutlines, fillRule(rule), pathPaint(state.fillStyle))) return;
       drawVector({ type: "fill", path: [...path], rule: fillRule(rule), style: paintStyle(state.fillStyle), m: matrix(), alpha: state.globalAlpha,
         composite: state.globalCompositeOperation, effects: effects() });
     },
@@ -519,6 +700,7 @@ export function createSpriteRecorder(measure: () => CanvasRenderingContext2D | n
       const color = circle && typeof state.strokeStyle === "string" && !state.lineDash.length && state.lineWidth > 0
         && circle.m.every((value, index) => value === now[index]) ? parseSolidColor(state.strokeStyle) : null;
       if (circle && color) { pushRing(circle, circle.radius - state.lineWidth / 2, circle.radius + state.lineWidth / 2, color); return; }
+      if (strokeOnGpu(path)) return;
       drawVector({ type: "stroke", path: [...path], style: paintStyle(state.strokeStyle), line: line(), m: matrix(), alpha: state.globalAlpha,
         composite: state.globalCompositeOperation, effects: effects() });
     },
@@ -569,9 +751,10 @@ export function createSpriteRecorder(measure: () => CanvasRenderingContext2D | n
 
   return {
     context: context as unknown as CanvasRenderingContext2D,
-    /** Starts a recording that continues from `from`'s transform and drawing state. */
-    begin(from: CanvasRenderingContext2D) {
+    /** Starts a recording that continues from `from`'s transform and drawing state; `stencil` when the layer can draw paths. */
+    begin(from: CanvasRenderingContext2D, stencil = false) {
       quads = 0; batchCount = 0; stack.length = 0; failure = null; path = []; group = null;
+      gpuPaths = stencil; pathQuads = 0;
       canvas = from.canvas;
       const current = from.getTransform();
       setTransform(current.a, current.b, current.c, current.d, current.e, current.f);

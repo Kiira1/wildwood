@@ -1,4 +1,9 @@
 export const RELEASE_NOTES: Record<string, string[]> = {
+  "0.916.32.7": [
+    "Boss attacks and skill effects are drawn on the graphics card: smoother on phones",
+    "New setting: Idle 30 FPS (turn it off to stay at 60 FPS when idle)",
+    "The attack range ring's dashes are all the same length",
+  ],
   "0.916.32.6": [
     "Endless boss attacks and well falls no longer slow down phones",
   ],
@@ -3857,6 +3862,7 @@ const RELEASE_DATES: Record<string, string> = {
 };
 
 export const RELEASE_DAYS: Record<string, string> = {
+  "0.916.32.7": "2026-10-21",
   "0.916.32.6": "2026-10-21",
   "0.916.32.5": "2026-10-21",
   "0.916.32.4": "2026-10-21",

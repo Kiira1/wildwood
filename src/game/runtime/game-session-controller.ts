@@ -94,6 +94,8 @@ type SessionDependencies = {
   connected: () => boolean;
   accountInConflict: () => boolean;
   lowPerformanceMode: () => boolean;
+  /** Whether an idle game drops to 30 fps (the Idle 30 FPS setting); on when not given. */
+  idleThrottle?: () => boolean;
   isReplayActive: () => boolean;
   presentationInputActive: () => boolean;
   /** Autofarm is fighting on the player's behalf: combat alone then is not a reason to draw at 60 fps. */
@@ -295,7 +297,7 @@ export function createGameSessionController(dependencies: SessionDependencies) {
       && presentationCombatActive(dependencies.player, dependencies.isDueling());
     const activityActive = presentationActivity(replayActive, uiActive, dependencies.presentationInputActive(), combatActive, dependencies.autoFarmActive?.() ?? false);
     if (activityActive) lastPresentationActivityAt = now;
-    const idleThrottled = !lowPerformanceMode
+    const idleThrottled = !lowPerformanceMode && (dependencies.idleThrottle?.() ?? true)
       && idlePresentationThrottleActive(activityActive, now, lastPresentationActivityAt);
     const reducedFrameRate = lowPerformanceMode || (!replayActive && !uiActive && (idleThrottled || paused || !running));
     fullFrameRate = !reducedFrameRate;

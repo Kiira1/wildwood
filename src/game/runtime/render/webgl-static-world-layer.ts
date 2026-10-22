@@ -54,6 +54,8 @@ export type StaticWorldLayer = {
   render: (frame: StaticWorldLayerFrame) => boolean;
   /** Draws recorded world sprites over this frame's render(); false when it could not, so the canvas does. */
   drawSprites?: (recording: SpriteRecording) => boolean;
+  /** Whether drawSprites can draw paths, which needs a stencil buffer. */
+  spritePaths?: () => boolean;
   renderer: "webgl";
   /** Rebuilds a layer whose GPU context was lost, on a fresh canvas; true when WebGL is drawing again. */
   recover?: () => boolean;
@@ -272,6 +274,7 @@ export function createWebGLStaticWorldLayer(overlayCanvas: HTMLCanvasElement): S
     invalidate: () => layer?.invalidate(),
     render: (frame) => layer?.render(frame) ?? false,
     drawSprites: (recording) => layer?.drawSprites?.(recording) ?? false,
+    spritePaths: () => layer?.spritePaths?.() ?? false,
     renderer: "webgl",
     recover() {
       // Only a lost context is rebuilt; a layer that turned itself off for an upload failure stays off.
@@ -336,7 +339,8 @@ function initializeWebGLStaticWorldLayer(overlayCanvas: HTMLCanvasElement, overl
     alpha: false,
     antialias: false,
     depth: false,
-    stencil: false,
+    // World sprites draw paths through it (webgl-sprite-pass.ts).
+    stencil: true,
     premultipliedAlpha: false,
     preserveDrawingBuffer: false,
     failIfMajorPerformanceCaveat: true,
@@ -421,6 +425,7 @@ function initializeWebGLStaticWorldLayer(overlayCanvas: HTMLCanvasElement, overl
   const spritePass = createWebGLSpritePass(gl, (vertex, fragment) => createProgram(gl, vertex, fragment), (...slots) => useAttributes(...slots));
   const attributeSlots = [...new Set([position, spritePosition, spriteTexturePosition, colorPosition, colorValue, ...(spritePass?.slots ?? [])])];
   if (spritePass) (window as unknown as { __worldSpriteTextures?: unknown }).__worldSpriteTextures = spritePass.stats;
+  const spritePaths = Boolean(spritePass) && (gl.getContextAttributes()?.stencil ?? false) && gl.getParameter(gl.STENCIL_BITS) >= 8;
 
   function useAttributes(...slots: number[]) {
     for (const slot of attributeSlots) {
@@ -697,6 +702,7 @@ function initializeWebGLStaticWorldLayer(overlayCanvas: HTMLCanvasElement, overl
     invalidate: () => { if (!lost) clearTextures(); },
     render,
     drawSprites,
+    spritePaths: () => spritePaths,
     renderer: "webgl",
     lost: () => lost,
     destroy: () => canvas.remove(),

@@ -110,7 +110,10 @@ export function createRenderController(options: {
 
   function strokeAttackRange(target: CanvasRenderingContext2D, x: number, y: number, radius: number) {
     target.save();
-    target.setLineDash([8, 14]);
+    // Stretched so a whole number of dashes fits the ring, or the last one comes out a different length.
+    const dashes = Math.max(1, Math.round(Math.PI * 2 * radius / 22));
+    const stretch = Math.PI * 2 * radius / (dashes * 22);
+    target.setLineDash([8 * stretch, 14 * stretch]);
     target.lineDashOffset = 0;
     target.lineCap = "round";
     target.beginPath();

@@ -56,6 +56,7 @@ export function createAppShellController(dependencies: AppShellDependencies) {
   const cameraZoomToggle = requiredElement<HTMLButtonElement>("cameraZoomToggle");
   const highResolutionToggle = requiredElement<HTMLButtonElement>("highResolutionToggle");
   const lowPerformanceToggle = requiredElement<HTMLButtonElement>("lowPerformanceToggle");
+  const idleThrottleToggle = requiredElement<HTMLButtonElement>("idleThrottleToggle");
   const fpsToggle = requiredElement<HTMLButtonElement>("fpsToggle");
   const fpsStatus = requiredElement("fpsStatus");
   const gameFpsStatus = requiredElement("gameFpsStatus");
@@ -80,6 +81,8 @@ export function createAppShellController(dependencies: AppShellDependencies) {
   setHighResolutionCanvas(highResolution);
   let lowPerformanceMode = readBoolean(dependencies.storageKeys.lowPerformance, false);
   setLightStaffEffects(lowPerformanceMode);
+  // On by default: an idle game drops to 30 fps to save battery.
+  let idleThrottle = readBoolean("wildstat-idle-throttle-v1", true);
   let fpsVisible = readBoolean(dependencies.storageKeys.fps, false);
   let latencyVisible = readBoolean(dependencies.storageKeys.latency, false);
   let lastAudibleMusicVolume = dependencies.mapMusic.volume > 0 ? dependencies.mapMusic.volume : .35;
@@ -101,6 +104,7 @@ export function createAppShellController(dependencies: AppShellDependencies) {
     // Hides the buttons only; the mouse wheel still zooms.
     document.body.classList.toggle("camera-zoom-hidden", !cameraZoomVisible);
     renderBooleanSetting(lowPerformanceToggle, lowPerformanceMode);
+    renderBooleanSetting(idleThrottleToggle, idleThrottle);
     renderBooleanSetting(fpsToggle, fpsVisible);
     gameFpsStatus.hidden = !fpsVisible;
     renderBooleanSetting(latencyToggle, latencyVisible);
@@ -187,6 +191,11 @@ export function createAppShellController(dependencies: AppShellDependencies) {
     writeBoolean(dependencies.storageKeys.lowPerformance, lowPerformanceMode);
     setLightStaffEffects(lowPerformanceMode);
     dependencies.onLowPerformanceChanged();
+    refreshSettings();
+  });
+  idleThrottleToggle.addEventListener("click", () => {
+    idleThrottle = !idleThrottle;
+    writeBoolean("wildstat-idle-throttle-v1", idleThrottle);
     refreshSettings();
   });
   fpsToggle.addEventListener("click", () => {
@@ -291,6 +300,7 @@ export function createAppShellController(dependencies: AppShellDependencies) {
     remoteGhostsEnabled: () => remoteGhostsEnabled,
     fpsVisible: () => fpsVisible,
     lowPerformanceMode: () => lowPerformanceMode,
+    idleThrottle: () => idleThrottle,
     selfProfileTapEnabled: feedback.selfProfileTapEnabled,
     refreshFullscreen,
     refreshSettings,

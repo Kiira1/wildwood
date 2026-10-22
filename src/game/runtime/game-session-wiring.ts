@@ -94,6 +94,7 @@ export function createGameSession(deps: GameSessionWiringDeps) {
     connected: coop.connected,
     accountInConflict: () => Boolean(client?.sessionConflict?.()),
     lowPerformanceMode: appShell.lowPerformanceMode,
+    idleThrottle: appShell.idleThrottle,
     presentationInputActive: () => deps.playerInput.movement().source !== "none", autoFarmActive: () => deps.autoFarm.state().active,
     presentationUiActive: () => later.chatInteracting() || deps.profileWindow.isOpen(),
     isReplayActive: () => deps.duelRuntime.isReplayActive(),
