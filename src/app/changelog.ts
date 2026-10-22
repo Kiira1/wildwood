@@ -1,4 +1,7 @@
 export const RELEASE_NOTES: Record<string, string[]> = {
+  "0.916.32.5": [
+    "Phones and iPads now draw the world on the graphics card, like computers",
+  ],
   "0.916.32.4": [
     "Galaxy item icons show their art again",
     "Auto Mine can mine for Starshards",
@@ -3851,6 +3854,7 @@ const RELEASE_DATES: Record<string, string> = {
 };
 
 export const RELEASE_DAYS: Record<string, string> = {
+  "0.916.32.5": "2026-10-21",
   "0.916.32.4": "2026-10-21",
   "0.916.32.3": "2026-10-21",
   "0.916.32.2": "2026-10-21",
