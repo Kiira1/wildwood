@@ -119,10 +119,16 @@ export function bagInventoryStacks(inventory: InventoryState): InventoryStack[] 
     .map(([itemId, quantity]) => ({ itemId, quantity }));
 }
 
+/** Starter gear every player keeps (the starter stone) is also a look, with no conversion. */
+export function isStarterLook(itemId: unknown) {
+  return itemDefinition(itemId as string)?.acquisition === "STARTER";
+}
+
 /** Cosmetic ownership is a separate, uncapped collection; active looks stay selectable. */
 export function cosmeticInventoryStacks(inventory: InventoryState): InventoryStack[] {
   return [...new Set([
     ...ownedInventoryStacks(inventory).filter(({ itemId }) => isCosmeticOnlyItem(itemId)).map(({ itemId }) => itemId),
+    ...inventory.itemIds.filter(isStarterLook),
     ...(inventory.cosmeticItemIds ?? []),
   ])].map(itemId => ({ itemId, quantity: 1 }));
 }
@@ -197,7 +203,7 @@ export function moveCosmeticInventoryItem(inventory: InventoryState, itemId: str
     return changed;
   };
   if (destination === "BAG") return clearItem();
-  if (!isCosmeticOnlyItem(itemId) && !inventory.cosmeticItemIds?.includes(itemId)) return false;
+  if (!isCosmeticOnlyItem(itemId) && !isStarterLook(itemId) && !inventory.cosmeticItemIds?.includes(itemId)) return false;
   if (!itemFitsEquipmentSlot(item.id, destination)) return false;
   const target = destination === "HEAD" ? "cosmeticHead"
     : destination === "CHEST" ? "cosmeticChest"

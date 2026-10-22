@@ -5,7 +5,7 @@ import { appendRefineBadge, withRefineStars } from "./refine-badge";
 import { oreIconSource } from "./ore-icon";
 import { oreKindsHeld, type OreCounts } from "../../shared/ore-bag";
 import { REFINE_ORES, type OreId } from "../../shared/refine";
-import { cosmeticInventoryStacks, bagInventoryStacks, ITEM_DEFINITIONS, type EquipmentSlot } from "../game/inventory";
+import { cosmeticInventoryStacks, bagInventoryStacks, isStarterLook, ITEM_DEFINITIONS, type EquipmentSlot } from "../game/inventory";
 import { itemArtMarkup } from "../game/item-presentation";
 import { formatCompactNumber } from "./number-format";
 import { appendPlayerGenderIcon } from "./player-gender";
@@ -204,7 +204,7 @@ export function inventoryMoveActions(
   if (location !== "BAG") {
     return [{ label: mode === "COSMETICS" ? "REMOVE COSMETIC" : "UNEQUIP", destination: "BAG" }];
   }
-  const appearanceOwned = isCosmeticOnlyItem(itemId) || inventory.cosmeticItemIds?.includes(itemId);
+  const appearanceOwned = isCosmeticOnlyItem(itemId) || isStarterLook(itemId) || inventory.cosmeticItemIds?.includes(itemId);
   if (mode === "COSMETICS" ? !appearanceOwned : isCosmeticOnlyItem(itemId)) return [];
   if (item.slot === "HAND") {
     const destination = inventoryWeaponSlot(inventory, mode);

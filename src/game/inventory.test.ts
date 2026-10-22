@@ -246,7 +246,7 @@ describe("inventory rules", () => {
   it("separates cosmetic-only ownership and rejects stat gear as a new cosmetic", () => {
     const inventory = inventoryFromSave(JSON.stringify([STARTER_BOW, WOODEN_ARMOR, SUPERIOR_GOLDEN_HELMET, BASIC_PAPER_HAT]),
       "", BASIC_PAPER_HAT, WOODEN_ARMOR, false, false, STARTER_STONE);
-    expect(cosmeticInventoryStacks(inventory).map(item => item.itemId)).toEqual([SUPERIOR_GOLDEN_HELMET, BASIC_PAPER_HAT]);
+    expect(cosmeticInventoryStacks(inventory).map(item => item.itemId)).toEqual([SUPERIOR_GOLDEN_HELMET, BASIC_PAPER_HAT, STARTER_STONE]);
     expect(bagInventoryStacks(inventory).map(item => item.itemId)).toEqual([STARTER_BOW]);
     expect(moveCosmeticInventoryItem(inventory, STARTER_BOW, "RIGHT_HAND")).toBe(false);
     expect(moveInventoryItem(inventory, SUPERIOR_GOLDEN_HELMET, "HEAD")).toBe(false);
@@ -254,7 +254,8 @@ describe("inventory rules", () => {
     expect(inventory.equippedChest).toBe(WOODEN_ARMOR);
     expect(inventory.equippedRightHand).toBe(STARTER_STONE);
     expect(equipmentAppearance(inventory).headItem).toBe(SUPERIOR_GOLDEN_HELMET);
-    expect(cosmeticInventoryStacks(inventory)).toHaveLength(2);
+    expect(cosmeticInventoryStacks(inventory)).toHaveLength(3);
+    expect(moveCosmeticInventoryItem(inventory, STARTER_STONE, "RIGHT_HAND")).toBe(true);
   });
 
   it("toggles inherited equipment art to nothing without changing stat equipment", () => {
