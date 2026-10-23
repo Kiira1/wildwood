@@ -268,10 +268,10 @@
   height: auto;
   max-height: min(600px, calc(100dvh - 16px));
   margin: 0;
-  border: 2px solid var(--hud-frame);
+  border: var(--hud-border) solid var(--hud-frame);
   border-radius: var(--hud-radius-small);
   background: var(--hud-surface);
-  box-shadow: var(--ui-shadow); outline: var(--ui-seam); outline-offset: -1px;
+  box-shadow: var(--ui-shadow); outline: var(--hud-seam); outline-offset: -1px;
   font: 700 13px/1.3 "Wildstat Chat", sans-serif;
   pointer-events: auto;
 }

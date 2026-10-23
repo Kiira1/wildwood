@@ -1,11 +1,11 @@
-  .stat-tracker { position: fixed; right: max(12px, env(safe-area-inset-right)); bottom: max(100px, calc(env(safe-area-inset-bottom) + 90px)); width: max-content; min-width: min(228px, calc(100vw - 24px)); max-width: calc(100vw - 24px); max-height: calc(100dvh - 24px); overflow: hidden auto; z-index: 4; pointer-events: auto; background: rgba(24, 24, 24, var(--stat-tracker-bg, .6)); color: var(--text, #f5f5e9); border: 2px solid var(--hud-frame); border-color: color-mix(in srgb, var(--hud-frame) calc(var(--stat-tracker-ink, 1) * 100%), transparent); border-radius: var(--hud-radius); box-shadow: 0 2px 0 color-mix(in srgb, var(--ui-outline) calc(var(--stat-tracker-bg, .6) * 100%), transparent); font: 12px/1.3 "Wildstat Chat", sans-serif; font-variant-numeric: tabular-nums; }
+  .stat-tracker { position: fixed; right: max(12px, env(safe-area-inset-right)); bottom: max(100px, calc(env(safe-area-inset-bottom) + 90px)); width: max-content; min-width: min(228px, calc(100vw - 24px)); max-width: calc(100vw - 24px); max-height: calc(100dvh - 24px); overflow: hidden auto; z-index: 4; pointer-events: auto; background: rgba(24, 24, 24, var(--stat-tracker-bg, .6)); color: var(--text, #f5f5e9); border: var(--hud-border) solid var(--hud-frame); border-color: color-mix(in srgb, var(--hud-frame) calc(var(--stat-tracker-ink, 1) * 100%), transparent); border-radius: var(--hud-radius-small); box-shadow: 0 2px 0 color-mix(in srgb, var(--ui-outline) calc(var(--stat-tracker-ink, 1) * 100%), transparent); outline: var(--hud-border) solid color-mix(in srgb, var(--ui-outline) calc(var(--stat-tracker-ink, 1) * 100%), transparent); outline-offset: -1px; font: 12px/1.3 "Wildstat Chat", sans-serif; font-variant-numeric: tabular-nums; }
   /* The slider fades the backdrop to nothing but keeps everything readable:
      text, frame and the slider itself bottom out at a quarter, never at zero. */
   .stat-tracker > header, .stat-tracker > table, .stat-tracker > footer, .stat-tracker > .stat-tracker-opacity { opacity: var(--stat-tracker-ink, 1); }
   /* Above HUD controls (5–8), below full-screen windows (10+). */
   #hud > .stat-tracker { z-index: 6; }
   /* Quest tracker: top left under the gem row until dragged. Three quests in play, this map's first and bright. */
-  .quest-tracker { position: fixed; top: calc(var(--hud-safe-top) + var(--player-hud-visual-height) + 40px); left: var(--hud-safe-left); z-index: 5; width: min(196px, 46vw); padding: 0 0 4px; border: 2px solid var(--hud-frame); border-radius: var(--hud-radius-small); background: var(--hud-surface); box-shadow: var(--ui-shadow); outline: var(--ui-seam); outline-offset: -1px; color: #fff; font: 700 11px/1.25 "Wildstat Chat", sans-serif; pointer-events: auto; }
+  .quest-tracker { position: fixed; top: calc(var(--hud-safe-top) + var(--player-hud-visual-height) + 40px); left: var(--hud-safe-left); z-index: 5; width: min(196px, 46vw); padding: 0 0 4px; border: var(--hud-border) solid var(--hud-frame); border-radius: var(--hud-radius-small); background: var(--hud-surface); box-shadow: var(--ui-shadow); outline: var(--hud-seam); outline-offset: -1px; color: #fff; font: 700 11px/1.25 "Wildstat Chat", sans-serif; pointer-events: auto; }
   .quest-tracker[hidden] { display: none; }
   /* Under the FPS readout when it shows, the same 4px apart. */
   body:has(#fpsStatus:not([hidden])) .quest-tracker { top: calc(var(--hud-safe-top) + var(--player-hud-visual-height) + 74px); }
@@ -147,6 +147,9 @@
     --ui-outline: #0f0f0f;
     --ui-shadow: 0 2px 0 var(--ui-outline);
     --ui-seam: 2px solid var(--ui-outline);
+    /* The HUD's frames (player card, gem row, minimap, trackers, timers): thinner than windows'. */
+    --hud-border: 1.5px;
+    --hud-seam: var(--hud-border) solid var(--ui-outline);
     --hud-frame: var(--ui-outline);
     --hud-radius: 9px;
     --hud-radius-small: 8px;
@@ -278,7 +281,7 @@
     padding: 0 3px 0 2px;
   }
 
-  .player-hud-card { position: relative; z-index: 3; isolation: isolate; display: grid; grid-template-columns: var(--hud-row-height) minmax(0, 1fr); grid-template-rows: minmax(0, 1fr); align-items: stretch; column-gap: 8px; width: 100%; height: 100%; min-height: 0; padding: 6px 8px 6px 6px; overflow: hidden; border: 2px solid var(--hud-frame); border-radius: var(--hud-radius); background: var(--hud-surface); box-shadow: var(--ui-shadow); outline: var(--ui-seam); outline-offset: -1px; transform: scale(var(--player-hud-scale)); transform-origin: top left; }
+  .player-hud-card { position: relative; z-index: 3; isolation: isolate; display: grid; grid-template-columns: var(--hud-row-height) minmax(0, 1fr); grid-template-rows: minmax(0, 1fr); align-items: stretch; column-gap: 8px; width: 100%; height: 100%; min-height: 0; padding: 6px 8px 6px 6px; overflow: hidden; border: var(--hud-border) solid var(--hud-frame); border-radius: var(--hud-radius); background: var(--hud-surface); box-shadow: var(--ui-shadow); outline: var(--hud-seam); outline-offset: -1px; transform: scale(var(--player-hud-scale)); transform-origin: top left; }
   .player-hud-content { display: grid; grid-template-rows: repeat(2, minmax(0, 1fr)); gap: 4px; min-width: 0; min-height: 0; }
   .profile-icon { flex: 0 0 auto; margin: 0; padding: 0; overflow: hidden; border: 2px solid var(--ui-outline); border-radius: 7px; background-color: #fff; background-repeat: no-repeat; background-size: var(--profile-portrait-sheet-size) var(--profile-portrait-sheet-size); background-clip: padding-box; -webkit-text-stroke: 0; text-shadow: none; }
   .profile-icon-button { width: 100%; height: 100%; align-self: stretch; border-radius: 5px; cursor: pointer; }
@@ -397,7 +400,7 @@
   #settingsBtn[aria-expanded="true"] { background: transparent; box-shadow: none; }
   .settings-button:active { filter: brightness(1.16); transform: none; }
 
-  .fps-status { position: fixed; top: calc(var(--hud-safe-top) + var(--player-hud-visual-height) + 40px); bottom: auto; left: var(--hud-safe-left); z-index: 5; display: flex; align-items: center; gap: 7px; height: 30px; padding: 0 8px; border: 2px solid var(--hud-frame); border-radius: var(--hud-radius-small); background: var(--hud-surface); box-shadow: var(--ui-shadow); outline: var(--ui-seam); outline-offset: -1px; color: #fff; font: 700 13px/1.25 "Wildstat Chat", sans-serif; white-space: nowrap; pointer-events: none; }
+  .fps-status { position: fixed; top: calc(var(--hud-safe-top) + var(--player-hud-visual-height) + 40px); bottom: auto; left: var(--hud-safe-left); z-index: 5; display: flex; align-items: center; gap: 7px; height: 30px; padding: 0 8px; border: var(--hud-border) solid var(--hud-frame); border-radius: var(--hud-radius-small); background: var(--hud-surface); box-shadow: var(--ui-shadow); outline: var(--hud-seam); outline-offset: -1px; color: #fff; font: 700 13px/1.25 "Wildstat Chat", sans-serif; white-space: nowrap; pointer-events: none; }
   .fps-status[hidden] { display: none; }
 
   .card.settings-panel {
@@ -1027,7 +1030,7 @@
     height: 100%;
     margin: 0;
     overflow: hidden;
-    border: 2px solid var(--hud-frame);
+    border: var(--hud-border) solid var(--hud-frame);
     border-radius: var(--hud-radius-small);
     background: #000;
     box-shadow: inset 0 1px 0 rgba(255,255,255,.12);
@@ -1136,10 +1139,10 @@
     width: 35px;
     height: var(--hud-map-size);
     padding: 5px 0;
-    border: 2px solid var(--hud-frame);
+    border: var(--hud-border) solid var(--hud-frame);
     border-radius: 5px;
     background: rgba(8,13,10,.32);
-    box-shadow: var(--ui-shadow); outline: var(--ui-seam); outline-offset: -1px;
+    box-shadow: var(--ui-shadow); outline: var(--hud-seam); outline-offset: -1px;
     pointer-events: auto;
   }
   .camera-zoom-button {
@@ -1179,10 +1182,10 @@
     height: var(--hud-map-size);
     margin: 0;
     padding: 0;
-    border: 2px solid var(--hud-frame);
+    border: var(--hud-border) solid var(--hud-frame);
     border-radius: 5px;
     background: transparent;
-    box-shadow: var(--ui-shadow); outline: var(--ui-seam); outline-offset: -1px;
+    box-shadow: var(--ui-shadow); outline: var(--hud-seam); outline-offset: -1px;
     color: #fff;
     cursor: pointer;
     pointer-events: auto;
@@ -1213,10 +1216,10 @@
   .hud-progress-timer {
     box-sizing: border-box;
     padding: 4px 2px;
-    border: 2px solid var(--hud-frame);
+    border: var(--hud-border) solid var(--hud-frame);
     border-radius: var(--hud-radius-small);
     background: var(--hud-surface);
-    box-shadow: var(--ui-shadow); outline: var(--ui-seam); outline-offset: -1px;
+    box-shadow: var(--ui-shadow); outline: var(--hud-seam); outline-offset: -1px;
     font: 900 var(--font-readable-min)/1.2 var(--font-rounded);
     letter-spacing: .025em;
     text-align: center;
@@ -1229,7 +1232,7 @@
   .hud-progress-timer-slot { color: #ffd367; }
   .hud-progress-timer.hud-server-boost { color: #fff; }
   /* Research Ready and Smith upgrades under the timers; away from the Town a tap goes there. */
-  .hud-reminder { box-sizing: border-box; width: 100%; min-height: 0; margin: 0; padding: 4px 3px; border: 2px solid var(--hud-frame); border-radius: var(--hud-radius-small); background: var(--hud-surface); box-shadow: var(--ui-shadow); outline: var(--ui-seam); outline-offset: -1px; color: #fff; font: 900 13px/1.2 var(--font-rounded); letter-spacing: .02em; text-align: center; text-shadow: 1px 2px 0 #000; white-space: normal; pointer-events: auto; cursor: pointer; }
+  .hud-reminder { box-sizing: border-box; width: 100%; min-height: 0; margin: 0; padding: 4px 3px; border: var(--hud-border) solid var(--hud-frame); border-radius: var(--hud-radius-small); background: var(--hud-surface); box-shadow: var(--ui-shadow); outline: var(--hud-seam); outline-offset: -1px; color: #fff; font: 900 13px/1.2 var(--font-rounded); letter-spacing: .02em; text-align: center; text-shadow: 1px 2px 0 #000; white-space: normal; pointer-events: auto; cursor: pointer; }
   .hud-reminder[hidden], .hud-reminder.is-switched-off { display: none; }
   .hud-reminder:active { transform: none; background: rgba(70, 70, 70, .78); }
   .hud-reminder.is-in-town { cursor: default; }
@@ -1335,10 +1338,10 @@
     height: auto;
     margin: 0;
     padding: 4px 2px;
-    border: 2px solid var(--hud-frame);
+    border: var(--hud-border) solid var(--hud-frame);
     border-radius: var(--hud-radius-small);
     background: var(--hud-surface);
-    box-shadow: var(--ui-shadow); outline: var(--ui-seam); outline-offset: -1px;
+    box-shadow: var(--ui-shadow); outline: var(--hud-seam); outline-offset: -1px;
   }
 
   .respawn-ad-button:is([data-state="cooldown"], [data-state="limit"]) .respawn-ad-video-icon { display: none; }
@@ -1658,7 +1661,7 @@
     z-index: 6;
   }
 
-  .hud-gem-wallet { position: fixed; top: calc(var(--hud-safe-top) + var(--player-hud-visual-height) + 6px); left: var(--hud-safe-left); z-index: 5; display: flex; align-items: center; gap: 4px; min-height: 28px; padding: 3px 8px 3px 5px; border: 2px solid var(--hud-frame); border-radius: var(--hud-radius-small); background: var(--hud-surface); box-shadow: var(--ui-shadow); outline: var(--ui-seam); outline-offset: -1px; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; line-height: 1; pointer-events: none; }
+  .hud-gem-wallet { position: fixed; top: calc(var(--hud-safe-top) + var(--player-hud-visual-height) + 6px); left: var(--hud-safe-left); z-index: 5; display: flex; align-items: center; gap: 4px; min-height: 28px; padding: 3px 8px 3px 5px; border: var(--hud-border) solid var(--hud-frame); border-radius: var(--hud-radius-small); background: var(--hud-surface); box-shadow: var(--ui-shadow); outline: var(--hud-seam); outline-offset: -1px; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; line-height: 1; pointer-events: none; }
   .hud-gem-icon { display: block; width: 20px; height: 20px; object-fit: contain; }
   .hud-gem-balance { color: #fff; font-size: 11px; font-weight: 900; text-shadow: 0 1px #071c29; }
   .hud-secondary-controls { position: fixed; top: calc(var(--hud-safe-top) + var(--player-hud-visual-height) + 6px); left: var(--hud-safe-left); z-index: 5; display: flex; align-items: center; gap: 3px; pointer-events: auto; }
@@ -1670,7 +1673,7 @@
   .player-visibility-toggle[aria-pressed="true"] .player-visibility-slash { display: none; }
   .player-visibility-toggle:focus-visible { outline: 2px solid #fff; outline-offset: 1px; }
   /* Eye and mail sit in cards like the gem balance beside them, the same height. */
-  .hud-secondary-controls .player-visibility-toggle { width: 36px; height: 30px; padding: 0; border: 2px solid var(--hud-frame); border-radius: var(--hud-radius-small); background: var(--hud-surface); box-shadow: var(--ui-shadow); outline: var(--ui-seam); outline-offset: -1px; }
+  .hud-secondary-controls .player-visibility-toggle { width: 36px; height: 30px; padding: 0; border: var(--hud-border) solid var(--hud-frame); border-radius: var(--hud-radius-small); background: var(--hud-surface); box-shadow: var(--ui-shadow); outline: var(--hud-seam); outline-offset: -1px; }
   .hud-secondary-controls .player-visibility-toggle svg { width: 18px; height: 18px; }
   .hud-secondary-controls .player-visibility-toggle[aria-pressed="false"]:not(:disabled) { opacity: 1; }
   .hud-secondary-controls .player-visibility-toggle[aria-pressed="false"]:not(:disabled) svg { opacity: .65; }

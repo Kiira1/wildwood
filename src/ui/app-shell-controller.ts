@@ -6,6 +6,8 @@ import type { MapMusicController } from "../game/runtime/audio";
 import type { AccountAudioRemote } from "../coop/services/account-audio-settings";
 import { createAccountAudioSync } from "./account-audio-sync";
 import { requiredElement } from "../game/runtime/dom";
+import { playerDps } from "../game/runtime/dps-meter";
+import { formatCompactNumber } from "../../shared/compact-number";
 import { setHighResolutionCanvas } from "../game/runtime/render/render-budget";
 import {
   accountButtonAction,
@@ -17,6 +19,8 @@ import {
   renderVolume,
   setText,
 } from "./settings";
+
+const DPS_DISPLAY_KEY = "wildstat-dps-display-v1";
 
 type AccountState = { signedIn: boolean; notice: string; hasAccountToken?: boolean };
 
@@ -69,6 +73,8 @@ export function createAppShellController(dependencies: AppShellDependencies) {
   const gameFpsStatus = requiredElement("gameFpsStatus");
   const latencyToggle = requiredElement<HTMLButtonElement>("latencyToggle");
   const latencyStatus = requiredElement("latencyStatus");
+  const dpsToggle = requiredElement<HTMLButtonElement>("dpsToggle");
+  const dpsStatus = requiredElement("dpsStatus");
   const musicVolumeInput = requiredElement<HTMLInputElement>("musicVolume");
   const musicVolumeValue = requiredElement("musicVolumeValue");
   const sfxVolumeInput = requiredElement<HTMLInputElement>("sfxVolume");
@@ -96,6 +102,7 @@ export function createAppShellController(dependencies: AppShellDependencies) {
   let webglWorld = readBoolean(WEBGL_WORLD_KEY, true);
   let fpsVisible = readBoolean(dependencies.storageKeys.fps, false);
   let latencyVisible = readBoolean(dependencies.storageKeys.latency, false);
+  let dpsVisible = readBoolean(DPS_DISPLAY_KEY, false);
   let lastAudibleMusicVolume = dependencies.mapMusic.volume > 0 ? dependencies.mapMusic.volume : .35;
 
   function renderSignInMuteButton() {
@@ -122,7 +129,9 @@ export function createAppShellController(dependencies: AppShellDependencies) {
     gameFpsStatus.hidden = !fpsVisible;
     renderBooleanSetting(latencyToggle, latencyVisible);
     renderLatencyStatus(latencyStatus, latencyVisible, dependencies.latencyMs(), dependencies.connected());
-    fpsStatus.hidden = !fpsVisible && !latencyVisible;
+    renderBooleanSetting(dpsToggle, dpsVisible);
+    dpsStatus.hidden = !dpsVisible;
+    fpsStatus.hidden = !fpsVisible && !latencyVisible && !dpsVisible;
     dependencies.mapMusic.setVolume(dependencies.mapMusic.volume);
     dependencies.mapMusic.setSfxVolume(dependencies.mapMusic.sfxVolume);
     renderVolume(musicVolumeInput, musicVolumeValue, dependencies.mapMusic.volume);
@@ -228,6 +237,12 @@ export function createAppShellController(dependencies: AppShellDependencies) {
     writeBoolean(dependencies.storageKeys.fps, fpsVisible);
     refreshSettings();
   });
+  dpsToggle.addEventListener("click", () => {
+    dpsVisible = !dpsVisible;
+    writeBoolean(DPS_DISPLAY_KEY, dpsVisible);
+    refreshSettings();
+  });
+  setInterval(() => { if (dpsVisible) dpsStatus.textContent = `DPS: ${formatCompactNumber(Math.round(playerDps.perSecond()))}`; }, 500);
   latencyToggle.addEventListener("click", () => {
     latencyVisible = !latencyVisible;
     writeBoolean(dependencies.storageKeys.latency, latencyVisible);

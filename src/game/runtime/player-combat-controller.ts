@@ -170,6 +170,8 @@ export function createPlayerCombatController(options: {
   hitGeneratedBoss?: (enemy: EnemyState, damage: number, critical: boolean, reflected?: boolean) => boolean;
   /** The Reflect Only prestige challenge: only reflected hits deal damage. */
   reflectOnly?: () => boolean;
+  /** Every hit the player lands, after its multipliers: the DPS readout. */
+  onDamageDealt?: (amount: number) => void;
   spawnBurst: (x: number, y: number, color: string, count?: number, speed?: number) => void;
   spawnParticle: (x: number, y: number, vx: number, vy: number, life: number, maxLife: number, size: number, color: string) => void;
   spawnDamageNumber: (x: number, y: number, amount: number, critical?: boolean, damageTaken?: boolean, reflected?: boolean) => void;
@@ -777,6 +779,7 @@ export function createPlayerCombatController(options: {
       damage *= cardCombat.hitMultiplier(target) * techniques.hitFactor(target, critical);
     }
     if ((target.isBoss || target.generatedBoss) && weaponHit) damage *= 1 + bossSlayer();
+    options.onDamageDealt?.(damage);
     // A reflected hit shows blue, so the player can see Reflect fire.
     if (!target.isBoss && !target.generatedBoss) spawnDamageNumber(target.x, target.y, damage, critical, false, reflected);
     target.hurt = .12;
