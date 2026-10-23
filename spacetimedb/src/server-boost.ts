@@ -4,7 +4,7 @@ import { t, SenderError } from "spacetimedb/server";
 import type { Identity } from "spacetimedb";
 import { isDeveloperIdentity } from "../../shared/developer-identity";
 import { extendedServerBoostEnd, formatServerBoostWait, serverBoostCooldownMs, SERVER_BOOST_DURATION_MS, SERVER_BOOST_MAX_REMAINING_MS,
-  serverBoostRemainingMs } from "../../shared/server-boost";
+  serverBoostRemainingMs, withBoostSupporter } from "../../shared/server-boost";
 import { serverBoostTables } from "./server-boost-tables";
 import { patreonStatus } from "./patreon";
 import { insertChatMessage } from "./chat-runtime";
@@ -34,7 +34,8 @@ export function triggerServerBoost(ctx: Ctx) {
   const profile = ctx.db.playerProfile.identity.find(ctx.sender);
   const name = profile?.displayName || "A supporter";
   const extending = Boolean(current && current.endsAtMs > now);
-  const row = { id: 0, endsAtMs, supporterName: name, startedAtMs: extending ? current.startedAtMs : now };
+  const supporterName = extending ? withBoostSupporter(current.supporterName, name) : name;
+  const row = { id: 0, endsAtMs, supporterName, startedAtMs: extending ? current.startedAtMs : now };
   if (current) ctx.db.serverBoost.id.update(row); else ctx.db.serverBoost.insert(row);
   const stamp = { identity: ctx.sender, lastTriggeredAtMs: now };
   if (trigger) ctx.db.serverBoostTrigger.identity.update(stamp); else ctx.db.serverBoostTrigger.insert(stamp);

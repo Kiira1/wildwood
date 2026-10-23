@@ -52,6 +52,15 @@ export function extendedServerBoostEnd(endsAtMs: number | undefined, nowMs: numb
   return nowMs + remaining + SERVER_BOOST_DURATION_MS;
 }
 
+/** The most supporters a running boost thanks by name: eight 15-minute boosts fill the two-hour cap. */
+export const SERVER_BOOST_MAX_NAMES = 8;
+
+/** The boost's thanks list after `name` starts or extends it: everyone who did, once each, in order. */
+export function withBoostSupporter(names: string, name: string) {
+  const list = names ? names.split(", ") : [];
+  return list.includes(name) || list.length >= SERVER_BOOST_MAX_NAMES ? names : [...list, name].join(", ");
+}
+
 /** "14:32", or "1:05:09" past an hour. */
 export function formatServerBoostClock(ms: number) {
   const total = Math.max(0, Math.ceil(ms / 1000));

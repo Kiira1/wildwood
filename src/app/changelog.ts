@@ -1,4 +1,7 @@
 export const RELEASE_NOTES: Record<string, string[]> = {
+  "0.916.32.16": [
+    "The Shop thanks everyone who started or extended the Server Boost, not just the last",
+  ],
   "0.916.32.15": [
     "DPS Display setting: your damage per second on screen",
     "Thinner HUD borders; the Stat Tracker's frame matches the rest",
@@ -3899,6 +3902,7 @@ const RELEASE_DATES: Record<string, string> = {
 };
 
 export const RELEASE_DAYS: Record<string, string> = {
+  "0.916.32.16": "2026-10-22",
   "0.916.32.15": "2026-10-22",
   "0.916.32.14": "2026-10-22",
   "0.916.32.13": "2026-10-22",
