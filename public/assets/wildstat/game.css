@@ -5145,8 +5145,8 @@ html.text-outline-shadow .death-countdown { text-shadow: var(--text-outline-ring
   .exchange-foot .window-back-button { min-width: 160px; }
 
   /*
-   * Gear tiles colored by grade, Crude (0) to Eternal (14), like a rarity table: one muted color a grade, Celestial
-   * striped and Divine starred. The art and its labels sit on top unchanged.
+   * Gear tiles colored by grade, Crude (0) to Eternal (14), like a rarity table: one flat color a grade on the
+   * ladder players know: grey, green, blue, purple, orange, red, then sky, gold and pearl at the top. The art and its labels sit on top unchanged.
    */
   :is(.inventory-item, .equipment-slot)[data-grade] {
     border-color: rgba(0, 0, 0, .7);
@@ -5154,23 +5154,18 @@ html.text-outline-shadow .death-countdown { text-shadow: var(--text-outline-ring
     box-shadow: inset 0 0 0 2px rgba(255, 255, 255, .24);
     background: var(--grade);
   }
-  :is(.inventory-item, .equipment-slot)[data-grade="0"] { --grade: #8e8e8e; }
-  :is(.inventory-item, .equipment-slot)[data-grade="1"] { --grade: #a9a9a9; }
-  :is(.inventory-item, .equipment-slot)[data-grade="2"] { --grade: #b39c7d; }
-  :is(.inventory-item, .equipment-slot)[data-grade="3"] { --grade: #9fb36b; }
-  :is(.inventory-item, .equipment-slot)[data-grade="4"] { --grade: #77a97b; }
-  :is(.inventory-item, .equipment-slot)[data-grade="5"] { --grade: #6c9fbf; }
-  :is(.inventory-item, .equipment-slot)[data-grade="6"] { --grade: #7f8fc4; }
-  :is(.inventory-item, .equipment-slot)[data-grade="7"] { --grade: #9a83c2; }
-  :is(.inventory-item, .equipment-slot)[data-grade="8"] { --grade: #c085a8; }
-  :is(.inventory-item, .equipment-slot)[data-grade="9"] { --grade: #c9ad5f; }
-  :is(.inventory-item, .equipment-slot)[data-grade="10"] { --grade: #c98a5a; }
-  :is(.inventory-item, .equipment-slot)[data-grade="11"] { --grade: #5a63a8; }
-  :is(.inventory-item, .equipment-slot)[data-grade="12"] {
-    --grade: repeating-linear-gradient(115deg, rgba(255,255,255,.14) 0 10%, transparent 10% 22%), #b8625e;
-  }
-  :is(.inventory-item, .equipment-slot)[data-grade="13"] {
-    --grade: radial-gradient(circle at 25% 25%, #ecd9a2 0 6%, transparent 7%), radial-gradient(circle at 75% 60%, #ecd9a2 0 6%, transparent 7%),
-      radial-gradient(circle at 40% 85%, #ecd9a2 0 4%, transparent 5%), #c49a5c;
-  }
-  :is(.inventory-item, .equipment-slot)[data-grade="14"] { --grade: #56a99f; }
+  :is(.inventory-item, .equipment-slot)[data-grade="0"] { --grade: #7f7f7f; } /* Crude: grey */
+  :is(.inventory-item, .equipment-slot)[data-grade="1"] { --grade: #a7a7a7; } /* Common: light grey */
+  :is(.inventory-item, .equipment-slot)[data-grade="2"] { --grade: #b39878; } /* Sturdy: bronze */
+  :is(.inventory-item, .equipment-slot)[data-grade="3"] { --grade: #8fb26a; } /* Fine: lime */
+  :is(.inventory-item, .equipment-slot)[data-grade="4"] { --grade: #5fa66b; } /* Superior: green */
+  :is(.inventory-item, .equipment-slot)[data-grade="5"] { --grade: #5c9ccb; } /* Rare: blue */
+  :is(.inventory-item, .equipment-slot)[data-grade="6"] { --grade: #4f78c4; } /* Exquisite: deep blue */
+  :is(.inventory-item, .equipment-slot)[data-grade="7"] { --grade: #8e6fc6; } /* Epic: purple */
+  :is(.inventory-item, .equipment-slot)[data-grade="8"] { --grade: #b05fb8; } /* Heroic: magenta */
+  :is(.inventory-item, .equipment-slot)[data-grade="9"] { --grade: #d99a46; } /* Legendary: orange-gold */
+  :is(.inventory-item, .equipment-slot)[data-grade="10"] { --grade: #d9703f; } /* Mythic: orange */
+  :is(.inventory-item, .equipment-slot)[data-grade="11"] { --grade: #c44a44; } /* Ancient: red */
+  :is(.inventory-item, .equipment-slot)[data-grade="12"] { --grade: #4cb6c9; } /* Celestial: sky */
+  :is(.inventory-item, .equipment-slot)[data-grade="13"] { --grade: #e3c665; } /* Divine: gold */
+  :is(.inventory-item, .equipment-slot)[data-grade="14"] { --grade: #e6e1ef; } /* Eternal: pearl */

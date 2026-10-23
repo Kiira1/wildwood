@@ -1,4 +1,7 @@
 export const RELEASE_NOTES: Record<string, string[]> = {
+  "0.917.4": [
+    "Grade colors follow the familiar rarity ladder, grey up to gold and pearl",
+  ],
   "0.917.3": [
     "Gear tiles are colored by grade, so you can tell at a glance which is higher",
     "The item window and prompts show in front of the trade, Smith and seller windows",
@@ -3927,6 +3930,7 @@ const RELEASE_DATES: Record<string, string> = {
 };
 
 export const RELEASE_DAYS: Record<string, string> = {
+  "0.917.4": "2026-10-22",
   "0.917.3": "2026-10-22",
   "0.917.2": "2026-10-22",
   "0.917.1": "2026-10-22",
