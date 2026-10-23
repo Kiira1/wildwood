@@ -573,7 +573,7 @@ describe("The Town's gathering grounds", () => {
     ...townWindowDecor((TOWN_GROVE.left + TOWN_GROVE.right) / 2, (TOWN_GROVE.top + TOWN_GROVE.bottom) / 2), ...townWindowDecor(TOWN_WEST_BRIDGE.x, TOWN_WEST_BRIDGE.y),
   ])];
   type Frame = { w: number; h: number; ax: number; ay: number };
-  const tall = decor.flatMap(item => item.type === "soulProp" && !item.ground && !item.shadow && !item.sheet && !item.signpost
+  const tall = decor.flatMap(item => item.type === "soulProp" && !item.ground && !item.shadow && !item.sheet && !item.signpost && !item.painted
     ? [{ foot: item.y, box: spriteBox((SOUL_ATLAS.frames as Record<string, Frame>)[item.frame], item.x, item.y, item.s, item.flip) }] : []);
   const overlap = (a: { left: number; right: number; top: number; bottom: number }, b: typeof a) => a.left < b.right && a.right > b.left && a.top < b.bottom && a.bottom > b.top;
   /** A player's body standing with feet here, and whether anything drawn over it hides it. */

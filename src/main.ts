@@ -668,7 +668,7 @@ import { MAX_PLAYER_STAT, PLAYER_SPAWN } from "../shared/rules";
     teleportToMap: mapController.teleportToMap,
     clearInput: playerInput.clear, renderInventory, showMessage, techTree, quests,
     beforeUpgradesOpen: () => panels.closeAllExcept("slotUpgrades"), onUpgradeFinished: progressNotices.onUpgradeFinished,
-    applyEquipmentStats, saveProgress,
+    applyEquipmentStats, saveProgress, itemInspection: itemInspectionController,
   });
   const { smith, cardSeller, gearSellers, slotUpgrades } = town;
 

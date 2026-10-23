@@ -30,6 +30,7 @@
     "tutorial:text": "node scripts/tutorial-editor-server.mjs",
     "map:editor": "node scripts/map-editor-server.mjs",
     "test:unit": "vitest run --exclude src/balance/simulator.test.ts",
+    "sim:exchange": "EXCHANGE_SIM=1 vitest run spacetimedb/src/exchange-market.sim.test.ts --silent=false",
     "sim:autofarm": "AUTOFARM_SIM=1 vitest run src/game/runtime/auto-farm/autofarm-sim/autofarm-sim.test.ts --silent=false",
     "test:weights": "node scripts/test-shard-weights.mjs",
     "test:unit:watch": "vitest --exclude src/balance/simulator.test.ts",

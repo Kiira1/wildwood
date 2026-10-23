@@ -8,6 +8,7 @@ import {
   GROVE_LANDING_RADIUS, GROVE_ROAD, GROVE_ROAD_END, GROVE_ROAD_HALF_WIDTH, WOOD_TREE_NODES, WOOD_TREE_SPOTS, groveRoadDistanceSquared, type WoodTree, type WoodTreeKind,
 } from "../../shared/woodcutting";
 import type { WorldDecor, WorldPath } from "./world";
+import { TOWN_EXCHANGE_DECOR } from "./town-exchange";
 
 /** How each countryside prop is drawn: one of its atlas frames (by the prop's variant) and its size. */
 export const PROP_FRAMES: Readonly<Record<TownPropKind, { frames: readonly SoulFrame[]; s: number }>> = {
@@ -458,7 +459,7 @@ function oreRockShadow(rock: Extract<WorldDecor, { type: "oreRock" }>): WorldDec
 
 /** Every prop in the chunk window around a point: the village's and its rooms' when they are near, and the countryside's. */
 export function townWindowDecor(x: number, y: number): WorldDecor[] {
-  const decor: WorldDecor[] = inTownVillage(x, y, TOWN_CHUNK_SIZE * 2.5) ? [...TOWN_VILLAGE_DECOR, TOWN_SIGNPOST, TOWN_RUNESTONE, TOWN_SMITH_DECOR, TOWN_CARD_SELLER_DECOR, ...TOWN_GEAR_SELLER_DECOR, TOWN_HILLS_SIGNPOST, ...TOWN_SCHOOL_SIGNPOSTS, ...TOWN_STOP_SIGNPOSTS] : [];
+  const decor: WorldDecor[] = inTownVillage(x, y, TOWN_CHUNK_SIZE * 2.5) ? [...TOWN_VILLAGE_DECOR, TOWN_SIGNPOST, TOWN_RUNESTONE, TOWN_SMITH_DECOR, TOWN_CARD_SELLER_DECOR, ...TOWN_GEAR_SELLER_DECOR, TOWN_HILLS_SIGNPOST, ...TOWN_SCHOOL_SIGNPOSTS, ...TOWN_STOP_SIGNPOSTS, ...TOWN_EXCHANGE_DECOR] : [];
   if (inTownInteriors(x, y, TOWN_INTERIOR_MARGIN)) decor.push(...TOWN_INTERIOR_DECOR);
   for (const { cx, cy } of townWindowChunks(x, y)) decor.push(...townChunkDecor(cx, cy));
   return decor;

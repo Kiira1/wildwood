@@ -3,6 +3,7 @@ export { challengeMinimumInterval } from "../../shared/prestige-challenge";
 export { attackCapInterval } from "../../shared/stat-rating";
 export { createSmithRuntime } from "./smith-window";
 export { createCardSellerRuntime } from "./card-seller-window";
+export { createExchangeRuntime } from "./exchange-window";
 export { createGearSellerRuntime } from "./gear-seller-window";
 import type { GearSeller } from "../../shared/grade-shop";
 export { createSchoolWindowRuntime } from "./school-window";
@@ -10,7 +11,7 @@ export { createStarterChestRuntime } from "./starter-chest-window";
 export { watchCardDrops } from "./card-drop-feedback";
 import { createGemShopController } from "./gem-shop-controller";
 import { installDesktopHotkeys } from "./desktop-hotkeys";
-import { TOWN_ARMOR_SELLER_POSITION, TOWN_CARD_SELLER_POSITION, TOWN_CARD_SELLER_REACH, TOWN_FEET_OFFSET, TOWN_GEAR_SELLER_REACH, TOWN_WEAPON_SELLER_POSITION, TOWN_OX_POSITION, TOWN_OX_REACH, TOWN_QUEST_BOARD_POSITION, TOWN_RESEARCH_POSITION, TOWN_SCHOOL_POSITIONS, TOWN_SCHOOL_REACH, TOWN_SMITH_POSITION, TOWN_SMITH_REACH } from "../../shared/town";
+import { TOWN_ARMOR_SELLER_POSITION, TOWN_CARD_SELLER_POSITION, TOWN_CARD_SELLER_REACH, TOWN_EXCHANGE_POSITION, TOWN_EXCHANGE_REACH, TOWN_FEET_OFFSET, TOWN_GEAR_SELLER_REACH, TOWN_WEAPON_SELLER_POSITION, TOWN_OX_POSITION, TOWN_OX_REACH, TOWN_QUEST_BOARD_POSITION, TOWN_RESEARCH_POSITION, TOWN_SCHOOL_POSITIONS, TOWN_SCHOOL_REACH, TOWN_SMITH_POSITION, TOWN_SMITH_REACH } from "../../shared/town";
 import { WEAPON_SCHOOLS, type WeaponSchool } from "../../shared/weapon-mastery";
 import { recentReleaseNotes } from "../app/changelog";
 import { installAppUpdateNotice } from "../app/app-update-notice";
@@ -47,6 +48,7 @@ export function createHomeStationTouchHandler(
   openCardSeller?: () => void,
   openSchool?: (school: WeaponSchool) => void,
   openGearSeller?: (seller: GearSeller) => void,
+  openExchange?: () => void,
 ) {
   const latches = new Map<string, ReturnType<typeof createStationLatch>>();
   const visit = (key: string, distance: number, reach: number, open?: () => void) => {
@@ -64,6 +66,7 @@ export function createHomeStationTouchHandler(
     visit("ox", feet(TOWN_OX_POSITION), TOWN_OX_REACH, openOxShop);
     visit("smith", feet(TOWN_SMITH_POSITION), TOWN_SMITH_REACH, openSmith);
     visit("cards", feet(TOWN_CARD_SELLER_POSITION), TOWN_CARD_SELLER_REACH, openCardSeller);
+    visit("exchange", feet(TOWN_EXCHANGE_POSITION), TOWN_EXCHANGE_REACH, openExchange);
     // The Weapon and Armor Sellers the same way, each at its own stall.
     for (const [seller, at] of [["weapons", TOWN_WEAPON_SELLER_POSITION], ["armor", TOWN_ARMOR_SELLER_POSITION]] as const) {
       visit(seller, feet(at), TOWN_GEAR_SELLER_REACH, () => openGearSeller?.(seller));

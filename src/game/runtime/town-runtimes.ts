@@ -1,6 +1,7 @@
+import type { WeaponSkillRoll } from "../../../shared/weapon-skills";
 import type { WeaponSchool } from "../../../shared/weapon-mastery";
 import {
-  createCardSellerRuntime, createGearSellerRuntime, createHomeStationTouchHandler, createSchoolWindowRuntime, createSmithRuntime, createStarterChestRuntime,
+  createCardSellerRuntime, createExchangeRuntime, createGearSellerRuntime, createHomeStationTouchHandler, createSchoolWindowRuntime, createSmithRuntime, createStarterChestRuntime,
 } from "../../ui/game-ui-runtime";
 import type { createGameElements } from "../../ui/game-elements";
 import { bindTownTeleportButton, paintTownTeleportButton } from "../../ui/town-teleport-button";
@@ -8,7 +9,7 @@ import { createOxShopRuntime } from "../../ui/ox-shop-controller";
 import { createSlotUpgradesController } from "../../ui/slot-upgrades-controller";
 import { closeStationsOutOfReach } from "../../ui/station-reach";
 import {
-  TOWN_ARMOR_SELLER_POSITION, TOWN_CARD_SELLER_POSITION, TOWN_CARD_SELLER_SERVER_REACH, TOWN_GEAR_SELLER_SERVER_REACH, TOWN_SMITH_POSITION,
+  TOWN_ARMOR_SELLER_POSITION, TOWN_CARD_SELLER_POSITION, TOWN_CARD_SELLER_SERVER_REACH, TOWN_EXCHANGE_POSITION, TOWN_EXCHANGE_SERVER_REACH, TOWN_GEAR_SELLER_SERVER_REACH, TOWN_SMITH_POSITION,
   TOWN_SMITH_SERVER_REACH, TOWN_WEAPON_SELLER_POSITION, TOWN_DOORS, TOWN_RESEARCH_POSITION, townRoomAt,
   TOWN_ARRIVAL, inTownGrove, inTownHills,
 } from "../../../shared/town";
@@ -19,6 +20,9 @@ import type { createGameBootstrap } from "./game-bootstrap";
 import type { PlayerState } from "./types";
 
 export type TownRuntimeDeps = {
+  /** The item window, for gear on the Trade Chrysanthemum: its stats, skills and refine before buying. */
+  itemInspection?: { open: (request: { itemId: string; refine?: number; skills?: WeaponSkillRoll | null; ownItem?: boolean; context?: string;
+    actions?: readonly { label: string; kind?: "PRIMARY" | "SECONDARY" | "DESTROY"; disabled?: boolean; onActivate: () => void | Promise<void> }[] }) => void };
   coop: CoopAccess;
   e: ReturnType<typeof createGameElements>;
   player: PlayerState;
@@ -63,6 +67,7 @@ export function createTownRuntimes(deps: TownRuntimeDeps) {
       oxShop.close();
       smith.close();
       cardSeller.close();
+      exchange.close();
       gearSellers.close();
       schools.close();
     },
@@ -75,6 +80,8 @@ export function createTownRuntimes(deps: TownRuntimeDeps) {
   const smith = createSmithRuntime({ coop: client, inventory, showMessage, clearInput, inTown });
   const gearSellers = createGearSellerRuntime({ coop: client, inventory, showMessage, clearInput, inTown });
   const cardSeller = createCardSellerRuntime({ coop: client, showMessage, clearInput, inTown });
+  const exchange = createExchangeRuntime({ coop: client, inventory, identity: coop.identity, showMessage, clearInput, inTown,
+    inspect: (itemId, refine, roll, actions) => deps.itemInspection?.open({ itemId, refine, skills: roll, ownItem: true, context: "Trade Chrysanthemum", actions }) });
   const schools = createSchoolWindowRuntime({ coop: client, clearInput, inTown });
   const starterChest = createStarterChestRuntime({
     coop: client, player, showMessage, clearInput,
@@ -92,6 +99,7 @@ export function createTownRuntimes(deps: TownRuntimeDeps) {
     openAfterClearingInput(() => cardSeller.open()),
     (school: WeaponSchool) => { clearInput(); schools.open(school); },
     seller => { clearInput(); gearSellers.open(seller); },
+    openAfterClearingInput(() => exchange.open()),
   );
 
   const slotUpgrades = createSlotUpgradesController({
@@ -147,7 +155,7 @@ export function createTownRuntimes(deps: TownRuntimeDeps) {
   });
 
   return {
-    oxShop, smith, cardSeller, gearSellers, schools, starterChest, slotUpgrades,
+    oxShop, smith, cardSeller, exchange, gearSellers, schools, starterChest, slotUpgrades,
     /** Research Ready's tap: through the Town teleport into the Research building; false when it cannot go now. */
     goToResearch() {
       const there = inTown() && townRoomAt(player.x, player.y)?.index === TOWN_RESEARCH_POSITION.door;
@@ -168,6 +176,7 @@ export function createTownRuntimes(deps: TownRuntimeDeps) {
       closeStationsOutOfReach(player, inTown() && !deps.isMapTransitioning(), [
         [smith, TOWN_SMITH_POSITION, TOWN_SMITH_SERVER_REACH],
         [cardSeller, TOWN_CARD_SELLER_POSITION, TOWN_CARD_SELLER_SERVER_REACH],
+        [exchange, TOWN_EXCHANGE_POSITION, TOWN_EXCHANGE_SERVER_REACH],
         [gearSellers.sellers.weapons, TOWN_WEAPON_SELLER_POSITION, TOWN_GEAR_SELLER_SERVER_REACH],
         [gearSellers.sellers.armor, TOWN_ARMOR_SELLER_POSITION, TOWN_GEAR_SELLER_SERVER_REACH],
       ]);

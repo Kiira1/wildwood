@@ -8,6 +8,7 @@ const runners = [
   { file: 'src/balance/simulator.test.ts', enabled: process.env.BALANCE_SIM === '1' },
   // npm run sim:autofarm.
   { file: 'src/game/runtime/auto-farm/autofarm-sim/autofarm-sim.test.ts', enabled: process.env.AUTOFARM_SIM === '1' },
+  { file: 'spacetimedb/src/exchange-market.sim.test.ts', enabled: process.env.EXCHANGE_SIM === '1' },
 ];
 
 export default defineConfig({

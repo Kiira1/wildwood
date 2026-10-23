@@ -2,8 +2,11 @@ import { decodedImage } from "../render/decoded-image";
 import { townChunkOf, townInteriorArea, TOWN_INTERIOR_MARGIN, TOWN_WORLD } from "../../../../shared/town";
 import { SOUL_ATLAS, SOUL_INTERIOR_ROOMS, TOWN_VILLAGE_DECOR, TOWN_VILLAGE_GROUND } from "../../town-village";
 import { townChunkDecor, TOWN_INTERIOR_DECOR } from "../../town-world";
+import { TOWN_EXCHANGE_DECOR } from "../../town-exchange";
 import type { WorldDecor } from "../../world";
 import { paintHillsGround } from "./hills-ground";
+import { createForestRoadPainter } from "../render/forest-road";
+import { TOWN_EXCHANGE_GROUND } from "./exchange-ground";
 import { SOUL_SHADOW_STRENGTH, soulFrame, soulPropExtent, type SoulPropDecor } from "../soul/soul-prop-renderer";
 
 type Rect = { left: number; top: number; right: number; bottom: number };
@@ -24,11 +27,11 @@ let countrysideReach = 0;
 
 /**
  * Everything the Town draws flat on its ground in a rectangle: its flat props (in depth order) and its
- * shadows. The village, its rooms and the countryside are fixed, so this is the same
+ * shadows. The village, its rooms, the market square and the countryside are fixed, so this is the same
  * whenever it is asked: it does not depend on where the player is or which chunks are loaded.
  */
 export function townGroundPropsIn(rect: Rect) {
-  fixedGroundProps ??= [...TOWN_VILLAGE_DECOR, ...TOWN_INTERIOR_DECOR].filter(isGroundProp);
+  fixedGroundProps ??= [...TOWN_VILLAGE_DECOR, ...TOWN_INTERIOR_DECOR, ...TOWN_EXCHANGE_DECOR].filter(isGroundProp);
   if (!countrysideReach) {
     for (const frame of Object.values(SOUL_ATLAS.frames) as { w: number; h: number }[]) countrysideReach = Math.max(countrysideReach, frame.w, frame.h);
     countrysideReach = Math.ceil(countrysideReach * 1.1);
@@ -55,6 +58,8 @@ type Images = {
   interiors: () => HTMLImageElement | undefined;
   villageProps: () => HTMLImageElement | undefined;
   atlas: () => HTMLImageElement | undefined;
+  /** The village's road tiles, for the road down to the market square and the square itself. */
+  road: () => HTMLImageElement | undefined;
 };
 
 /** Still on its way: a tile baked now would miss it, so it waits. A broken image is drawn without. */
@@ -119,22 +124,35 @@ export function soulGroundPropsIn(decor: readonly WorldDecor[], rect: Rect) {
   return { flat, shadows };
 }
 
+/**
+ * The part of the village's ground image that is drawn: all but its outermost pixels, a clear row round the edge
+ * and, along its bottom, a row tinted off the grass, which drew a line across the countryside's green. The Town's
+ * own ground colour, the village's grass, shows there instead.
+ */
+function villageGroundDrawn(ground: HTMLImageElement | undefined) {
+  const area = TOWN_VILLAGE_GROUND;
+  if (!ground?.naturalWidth) return area;
+  const pixelX = area.w / ground.naturalWidth, pixelY = area.h / ground.naturalHeight;
+  return { x: area.x + pixelX, y: area.y + pixelY, w: area.w - pixelX * 2, h: area.h - pixelY * 3 };
+}
+
 export function createTownGroundTilePainter(images: Images) {
   const dark = townInteriorArea(TOWN_INTERIOR_MARGIN);
   const paintGroundProps = createSoulGroundPropPainter(images);
+  const paintRoads = createForestRoadPainter(images.road);
 
-  const ready = () => !pending(images.ground()) && !pending(images.interiors()) && !pending(images.villageProps()) && !pending(images.atlas());
+  const ready = () => !pending(images.ground()) && !pending(images.interiors()) && !pending(images.villageProps()) && !pending(images.atlas()) && !pending(images.road());
   function paint(context: CanvasRenderingContext2D, tileX: number, tileY: number, tileSize: number) {
     if (!ready()) return false;
     const rect = { left: tileX * tileSize, top: tileY * tileSize, right: (tileX + 1) * tileSize, bottom: (tileY + 1) * tileSize };
     const ox = rect.left, oy = rect.top;
     context.imageSmoothingEnabled = false;
-    const ground = images.ground(), area = TOWN_VILLAGE_GROUND;
+    const ground = images.ground(), area = villageGroundDrawn(images.ground());
     const left = Math.max(area.x, rect.left), top = Math.max(area.y, rect.top);
     const right = Math.min(area.x + area.w, rect.right), bottom = Math.min(area.y + area.h, rect.bottom);
     if (usable(ground) && left < right && top < bottom) {
-      const scaleX = ground.naturalWidth / area.w, scaleY = ground.naturalHeight / area.h;
-      context.drawImage(decodedImage(ground), (left - area.x) * scaleX, (top - area.y) * scaleY, (right - left) * scaleX, (bottom - top) * scaleY,
+      const scaleX = ground.naturalWidth / TOWN_VILLAGE_GROUND.w, scaleY = ground.naturalHeight / TOWN_VILLAGE_GROUND.h;
+      context.drawImage(decodedImage(ground), (left - TOWN_VILLAGE_GROUND.x) * scaleX, (top - TOWN_VILLAGE_GROUND.y) * scaleY, (right - left) * scaleX, (bottom - top) * scaleY,
         left - ox, top - oy, right - left, bottom - top);
     }
     const darkLeft = Math.max(dark.left, rect.left), darkTop = Math.max(dark.top, rect.top);
@@ -151,6 +169,14 @@ export function createTownGroundTilePainter(images: Images) {
       }
     }
     paintHillsGround(context, rect, ox, oy);
+    if (rect.right > TOWN_EXCHANGE_GROUND.join) {
+      context.save();
+      context.beginPath();
+      context.rect(TOWN_EXCHANGE_GROUND.join - ox, 0, rect.right - TOWN_EXCHANGE_GROUND.join, tileSize);
+      context.clip();
+      paintRoads(context, TOWN_EXCHANGE_GROUND.paths, ox, oy, tileSize, TOWN_EXCHANGE_GROUND.grass);
+      context.restore();
+    }
     const { flat, shadows } = townGroundPropsIn(rect);
     paintGroundProps(context, flat, shadows, ox, oy, tileSize);
     return true;

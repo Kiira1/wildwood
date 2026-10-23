@@ -51,6 +51,7 @@ import { awardWeaponMastery, playerMasteryLevel, playerWeaponMastery, registerWe
 import { awardKillGold, playerGold, registerGold } from "./gold";
 import { registerGradeShop } from "./grade-shop";
 import { registerGradeSale } from "./grade-sale";
+import { exchangeTables, registerExchange } from "./exchange";
 import { playerStarterWeapon, registerStarterChest } from "./starter-chest";
 import { playerCraftSkill, playerCraftLevel, registerCrafting } from "./crafting";
 import { playerTool, registerTools } from "./tools";
@@ -1398,7 +1399,7 @@ const spacetimedb = schema({
   ...proceduralMapTables,
   ...leaderboardPageTables,
   ...gemPurchaseTables,
-  ...patreonTables, ...serverBoostTables, ...chatAnnouncementTables,
+  ...patreonTables, ...serverBoostTables, ...chatAnnouncementTables, ...exchangeTables,
   homeReturnLocation,
   ...guildTables,
   ...socialTables,
@@ -3165,6 +3166,9 @@ export const destroyEquipmentCopy = spacetimedb.reducer(
 export const selectEquipmentCopy = spacetimedb.reducer({ copyId: t.u64() }, (ctx, { copyId }) => equipmentCopies.select(ctx, copyId));
 export const resolveEquipmentOffer = spacetimedb.reducer({ id: t.u64(), keep: t.bool() }, (ctx, args) => equipmentCopies.resolveOffer(ctx, args));
 export const { sellGradedItem } = registerGradeSale(spacetimedb, { requireControllingPlayer, activeDuelFor, inventoryForProgress, removeCopy: equipmentCopies.removeCopy });
+export const { placeExchangeOffer, cancelExchangeOffer, listExchangeGear, buyExchangeGear, cancelExchangeListing, collectExchange,
+  myExchangeCollect, myExchangeOffers, myExchangeListings } = registerExchange(spacetimedb, { requireControllingPlayer, activeDuelFor, inventoryForProgress, restoreItemToProgress,
+  writeProgressAndPresentation, removeCopy: equipmentCopies.removeCopy });
 
 export const convertItemToCosmetic = spacetimedb.reducer(
   { itemId: t.string() }, (ctx, { itemId }) => cosmeticConversion.convertItemToCosmetic(ctx, itemId),

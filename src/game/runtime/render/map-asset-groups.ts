@@ -37,7 +37,7 @@ export type MapArtAssetGroup =
   | "guildHall"
   /** The Soul Dimension's nature atlas alone: the pack mushrooms the glowing campaign maps draw. */
   | "packNature"
-  /** The Town's road tiles, for the tutorial forest's paths (forest-road.ts). */
+  /** The Town's road tiles: the tutorial forest's paths and the road to the Town's market (forest-road.ts). */
   | "forestRoad"
   | "crystalHollowsBoss" | "clockworkRuinsBoss" | "duskfallOrchardBoss" | "neonBastionBoss" | "verdantCatacombsBoss" | "ionCitadelBoss";
 
@@ -53,7 +53,7 @@ const AUTHORED_MAP_ASSET_GROUPS = {
   [ONBOARDING_MAP_ID]: { art: ["forestDecor"], enemies: ["Spitter", "Brood"] },
   home_exterior: { art: ["forestDecor", "snowDecor"], enemies: [] },
   // The Town's Slot Upgrades station is the snow set's workbench sprite.
-  town: { art: ["townVillage", "snowDecor"], enemies: [] },
+  town: { art: ["townVillage", "snowDecor", "forestRoad"], enemies: [] },
   // The soul camps, and the Soul Defense Force that comes every thousand of them.
   soul_dimension: { art: ["nightDecor"], enemies: [...SOUL_ENEMY_KINDS, SOUL_DEFENSE_FORCE_KIND] },
   [TUTORIAL_FOREST_MAP_ID]: {

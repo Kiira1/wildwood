@@ -8,6 +8,7 @@ import type { Camera } from "../render/camera";
 import { snapWorldRenderCoordinate } from "../render/render-space";
 import { createShrunkImages, deviceScale } from "../render/shrunk-image";
 import { drawTownSignpost, TOWN_SIGNPOST_EXTENT, TOWN_SIGNPOST_EXTENT_MIRRORED } from "../town/town-signpost";
+import { drawExchangeProp, EXCHANGE_PROP_EXTENTS } from "../town/exchange-props";
 
 export type SoulPropDecor = Extract<WorldDecor, { type: "soulProp" }>;
 export const SOUL_ATLAS_SOURCE = "assets/wildstat/soul-dimension/soul-atlas.webp";
@@ -35,6 +36,7 @@ export function animationFrame(anim: NonNullable<SoulPropDecor["anim"]>, seconds
 /** How far above and to each side of its depth point a prop reaches, for culling. */
 export function soulPropExtent(item: SoulPropDecor) {
   if (item.signpost) return item.flip ? TOWN_SIGNPOST_EXTENT_MIRRORED : TOWN_SIGNPOST_EXTENT;
+  if (item.painted) return EXCHANGE_PROP_EXTENTS[item.painted];
   if (item.crest) { const half = item.crest / 2, dy = item.dy ?? 0; return { left: half, right: half, up: Math.max(0, half - dy), down: Math.max(0, half + dy) }; }
   const frame = soulFrame(item.frame, item.sheet);
   if (!frame) return { left: 0, right: 0, up: 0, down: 0 };
@@ -68,6 +70,12 @@ export function createSoulPropRenderer(options: {
       const { camera } = options;
       options.drawCrest?.(target ?? options.ctx, snapWorldRenderCoordinate(item.x - camera.x, camera.zoom, options.devicePixelRatio()),
         snapWorldRenderCoordinate(item.y + (item.dy ?? 0) - camera.y, camera.zoom, options.devicePixelRatio()), item.crest);
+      return;
+    }
+    if (item.painted) {
+      const { camera } = options;
+      drawExchangeProp(target ?? options.ctx, item.painted, snapWorldRenderCoordinate(item.x - camera.x, camera.zoom, options.devicePixelRatio()),
+        snapWorldRenderCoordinate(item.y - camera.y, camera.zoom, options.devicePixelRatio()));
       return;
     }
     if (item.signpost) {

@@ -30,6 +30,7 @@ import { removeWoodcuttingData } from "./woodcutting";
 import { removeWeaponMastery } from "./weapon-mastery";
 import { removeCraftSkills } from "./crafting";
 import { removeTools } from "./tools";
+import { forfeitExchange } from "./exchange";
 
 export function publishPlayerDeathFrame(ctx: any, activePlayer: any) {
   if (boundedMapPopulation(ctx, activePlayer.mapId) < 2) return;
@@ -104,6 +105,7 @@ const RESET_SAVE_TABLES = [
 
 /** Reset Save: the account's progression first, so the fresh run starts with none of its bonuses, then the run. */
 export function resetWholeSave(ctx: any, activePlayer: any) {
+  forfeitExchange(ctx, ctx.sender);
   for (const table of RESET_SAVE_TABLES) {
     const handle = ctx.db[table];
     if (handle?.identity.find(ctx.sender)) handle.identity.delete(ctx.sender);

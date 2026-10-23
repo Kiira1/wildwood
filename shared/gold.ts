@@ -1,6 +1,7 @@
 /**
- * Gold: a coin some kills drop, kept through prestige and cleared by Reset Save. It is not traded and gems never
- * buy it. The server rolls it; these are the rules, with the random number given so tests can pin it.
+ * Gold: a coin some kills drop, kept through prestige and cleared by Reset Save. It changes hands only at the Trade
+ * Chrysanthemum (exchange.ts), and gems never buy it. The server rolls it; these are the rules, with the random
+ * number given so tests can pin it.
  */
 export const GOLD_DROP_CHANCE = 0.1;
 export const GOLD_PER_DROP = { min: 1, max: 3 } as const;

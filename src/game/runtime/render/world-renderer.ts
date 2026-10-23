@@ -1,7 +1,9 @@
 import { TOWN_VILLAGE_GROUND } from "../../town-village";
 import { WORLD_WIDTH } from "../../../../shared/rules";
 import { isSoulMap, SOUL_STAT_DETAILS } from "../../../../shared/soul-dimension";
-import { inTownInteriors, isTownMap, TOWN_DOORS, TOWN_GROVE_WALK_AREA, TOWN_INTERIOR_MARGIN, TOWN_VILLAGE_WALK_AREA, TOWN_WALK_AREAS } from "../../../../shared/town";
+import { inTownInteriors, isTownMap, TOWN_DOORS, TOWN_EXCHANGE_WALK_AREA, TOWN_GROVE_WALK_AREA, TOWN_INTERIOR_MARGIN, TOWN_VILLAGE_WALK_AREA, TOWN_WALK_AREAS } from "../../../../shared/town";
+import { TOWN_EXCHANGE_LABEL } from "../../town-exchange";
+import { TOWN_EXCHANGE_GROUND } from "../town/exchange-ground";
 import { MINING_NODES } from "../../../../shared/mining";
 import { SCHOOL_DETAILS } from "../../../../shared/weapon-mastery";
 import { ORE_COLORS } from "../town/ore-rock-renderer";
@@ -169,6 +171,8 @@ export type WorldRendererOptions = {
   drawOx?: (x: number, y: number) => void;
   /** The Smith, a villager in smith's gear, with his feet at (x, y). */
   drawSmith?: (x: number, y: number) => void;
+  /** The Trade Chrysanthemum's clerk, with his feet at (x, y). */
+  drawExchangeClerk?: (x: number, y: number) => void;
   lavaPools: HTMLImageElement[];
   lavaRocks: HTMLImageElement[];
   charredTrees: HTMLImageElement[];
@@ -1004,6 +1008,20 @@ export function createWorldRenderer(options: WorldRendererOptions) {
       });
       return;
     }
+    if (station.label === TOWN_EXCHANGE_LABEL) {
+      options.drawExchangeClerk?.(x, y);
+      // Its name hangs over the booth's awnings, as the sellers' do over theirs.
+      drawScreenSpaceAt(ctx, camera.zoom, x, y - 168, () => {
+        ctx.textAlign = "center";
+        ctx.textBaseline = "bottom";
+        const bob = Math.sin(options.getGameTime() * 2.2) * 2;
+        ctx.font = '900 15px "Arial Rounded MT Bold", "Arial Rounded MT", Arial, sans-serif';
+        options.outlinedText(TOWN_EXCHANGE_LABEL, 0, -18 + bob, "#ffb347", 4);
+        ctx.font = '900 13px "Arial Rounded MT Bold", "Arial Rounded MT", Arial, sans-serif';
+        options.outlinedText("Buy · Sell", 0, -2 + bob, "#ffd75e", 4);
+      });
+      return;
+    }
     // The stalls are the village's own art; only each seller's name hangs over its awning.
     const stall = STALL_SIGNS[station.label];
     if (stall) {
@@ -1174,7 +1192,7 @@ export function createWorldRenderer(options: WorldRendererOptions) {
 
   /**
    * Where the minimap looks on the Town, or null on any other map (it shows the whole world): the walled village,
-   * or once the player is out past it, the Copper Hills east of it or Timberwood west of it, and the walk out.
+   * or once the player is out past it, the Copper Hills east of it, Timberwood west of it or the market south, and the walk out.
    */
   function townMinimapFrame() {
     if (!isTownMap(options.getMapId())) return null;
@@ -1182,8 +1200,10 @@ export function createWorldRenderer(options: WorldRendererOptions) {
       return { x: options.player.x - TOWN_ROOMS_MINIMAP_SPAN / 2, y: options.player.y - TOWN_ROOMS_MINIMAP_SPAN / 2, span: TOWN_ROOMS_MINIMAP_SPAN, rooms: true, hills: false, grove: false };
     }
     const hills = options.player.x > TOWN_VILLAGE_WALK_AREA.right, grove = options.player.x < TOWN_VILLAGE_WALK_AREA.left;
+    const market = !hills && !grove && options.player.y > TOWN_VILLAGE_WALK_AREA.bottom;
     const area = hills ? { ...TOWN_WALK_AREAS[0], left: TOWN_VILLAGE_WALK_AREA.right - 300 }
-      : grove ? { ...TOWN_GROVE_WALK_AREA, right: TOWN_VILLAGE_WALK_AREA.left + 300 } : TOWN_VILLAGE_WALK_AREA;
+      : grove ? { ...TOWN_GROVE_WALK_AREA, right: TOWN_VILLAGE_WALK_AREA.left + 300 }
+      : market ? { ...TOWN_EXCHANGE_WALK_AREA, top: TOWN_VILLAGE_WALK_AREA.bottom - 300 } : TOWN_VILLAGE_WALK_AREA;
     const span = Math.max(area.right - area.left, area.bottom - area.top);
     return { x: (area.left + area.right - span) / 2, y: (area.top + area.bottom - span) / 2, span, rooms: false, hills, grove };
   }
@@ -1245,7 +1265,12 @@ export function createWorldRenderer(options: WorldRendererOptions) {
     const sx = innerSize / (frame?.span ?? WORLD.w); const sy = innerSize / (frame?.span ?? WORLD.h);
     const colors = mapColors();
     draw.fillStyle = colors.ground; draw.fillRect(innerX, innerY, innerSize, innerSize);
-    if (frame && !frame.rooms) drawTownVillageOnMinimap(draw, ox, oy, sx, sy);
+    if (frame && !frame.rooms) {
+      drawTownVillageOnMinimap(draw, ox, oy, sx, sy);
+      // The road to the Trade Chrysanthemum and its square, in the roads' colour.
+      draw.fillStyle = colors.path;
+      for (const path of TOWN_EXCHANGE_GROUND.paths) draw.fillRect(innerX + (path.x - ox) * sx, innerY + (path.y - oy) * sy, path.w * sx, path.h * sy);
+    }
     if (frame?.hills) drawOreRocksOnMinimap(draw, ox, oy, sx, sy);
     if (frame?.grove) drawWoodTreesOnMinimap(draw, ox, oy, sx, sy);
     if (frame?.rooms) drawSoulRoomsOnMinimap(draw, innerSize, ox, oy, sx, sy);

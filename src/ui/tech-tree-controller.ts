@@ -501,6 +501,13 @@ export function createTechTreeController(elements: TechTreeControllerElements, h
   });
   closeDetailButton.addEventListener("click", () => { detail.hidden = true; });
   addEventListener("resize", () => { if (!overlay.hidden && tree) { sizeTreeEdges(); drawLinks(); } });
+  // A trackpad swipe anywhere over the window scrolls the tree, not only over its nodes; the world never zooms behind it.
+  overlay.addEventListener("wheel", event => {
+    event.stopPropagation();
+    if (viewport.hidden || event.ctrlKey || viewport.contains(event.target as Node)) return;
+    event.preventDefault();
+    viewport.scrollBy({ left: event.deltaX, top: event.deltaY });
+  }, { passive: false });
   categories.addEventListener("click", event => {
     const button = (event.target as Element).closest<HTMLButtonElement>("[data-research-tree]");
     const next = button?.dataset.researchTree;

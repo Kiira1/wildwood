@@ -1,7 +1,7 @@
 /**
  * The Town square's signpost: a wooden post with one arrow plank, painted in the
  * ForestVillage pack's style (warm wood, dark brown outline), its label on the
- * plank. The plank points left and a little up, the way to the travel portal;
+ * plank (or two lines of it, split at a line break). The plank points left and a little up, the way to the travel portal;
  * mirrored, it points right, as the Copper Hills sign by the Smith's yard does.
  */
 const OUTLINE = "#3b2a1e";
@@ -51,7 +51,13 @@ export function drawTownSignpost(c: CanvasRenderingContext2D, x: number, y: numb
   // The label reads the right way round whichever way the plank points.
   if (mirrored) c.scale(-1, 1);
   const textX = mirrored ? -2 : 2;
-  c.strokeText(label, textX, 1, 100); c.fillText(label, textX, 1, 100);
+  // A label on two lines (split at a line break) is set smaller, a line each side of the plank's middle.
+  const lines = label.split("\n");
+  if (lines.length > 1) c.font = '900 13px "Arial Rounded MT Bold", "Arial Rounded MT", Arial, sans-serif';
+  lines.forEach((line, index) => {
+    const lineY = lines.length > 1 ? (index - (lines.length - 1) / 2) * 14 + 1 : 1;
+    c.strokeText(line, textX, lineY, 100); c.fillText(line, textX, lineY, 100);
+  });
   c.restore();
   c.restore();
 }

@@ -146,7 +146,7 @@ const PLAYER_STATE_TABLES: ReadonlySet<string> = new Set([
   "playerUpgradeBench", "playerUpgradeBenchThirdSlot",
   "accountDeletionRequest", "accountEmail", "aggroChallengeRun", "chatMessageReportRateLimit", "chatModerator",
   "connectionDiagnostic", "connectionDiagnosticRate", "dailyGemBonus", "developerPresencePreference",
-  "endlessTravelAccess",
+  "endlessTravelAccess", "exchangeCollect", "exchangeListing", "exchangeOffer",
   "gemKillDaily", "gemKillProgress", "gemTransaction", "guildMemberQuestWeek", "guildRejoin",
   "homeReturnLocation", "leaderboardDirty", "leaderboardPosition", "leaderboardPrestigePosition", "leaderboardStanding", "loginMove",
   "offlineProgress", "patreonPreview", "serverBoostTrigger", "playerAggroChallenge", "playerAggroChallengeParked", "playerBonusToggle", "playerNameColor",

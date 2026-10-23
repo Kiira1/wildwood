@@ -31,7 +31,7 @@ export type WorldDecor = WorldDecorPlacement & (
   | { type: "desertGrass"; variant: number }
   | { type: "snowPine"; s: number }
   | { type: "snowTuft"; variant: number }
-  | { type: "station"; s: number; label: "Slot Upgrades" | "Tech Research" | "Quest Board" | "Ox" | "Smith" | "Card Seller" | "Weapon Seller" | "Armor Seller" | SchoolBuilding }
+  | { type: "station"; s: number; label: "Slot Upgrades" | "Tech Research" | "Quest Board" | "Ox" | "Smith" | "Card Seller" | "Weapon Seller" | "Armor Seller" | "Trade Chrysanthemum" | SchoolBuilding }
   | { type: "lavaPool"; s: number; variant: number }
   | { type: "lavaRock"; s: number; variant: number }
   | { type: "charredTree"; s: number; variant: number }
@@ -56,6 +56,8 @@ export type WorldDecor = WorldDecorPlacement & (
     crest?: number;
     /** The Town square's painted signpost (town-signpost.ts), its plank labelled this; it has no sprite. */
     signpost?: string;
+    /** One of the Trade Chrysanthemum's painted pieces (exchange-props.ts): it has no sprite either. */
+    painted?: "chrysanthemumBed" | "exchangeBanner";
     /** Lies flat: drawn with the ground, under everyone, never sorted against them (garden beds, bridges, grass). */
     ground?: boolean;
     /** A shadow: drawn with the ground, every shadow faded together so overlapping ones do not stack darker. */

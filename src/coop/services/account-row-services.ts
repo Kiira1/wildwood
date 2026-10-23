@@ -15,6 +15,7 @@ import { createCardShopRows } from "./card-shop-service";
 import { createBuildRows } from "./build-service";
 import { createWeaponMasteryRows } from "./weapon-mastery-service";
 import { createGoldRows } from "./gold-service";
+import { createExchangeRows } from "./exchange-service";
 import { createCraftingRows } from "./crafting-service";
 import { createToolRows } from "./tool-service";
 import { createItemCollectionRows } from "./item-collection-service";
@@ -61,7 +62,7 @@ export function keptCardSlots(perks: () => Parameters<typeof activeCardSlots>[0]
  * opt-out, the bow skill rolls with their copies and loot settings, the
  * rewarded ad's Gem claims, the automatic chat mute and the Soul Dimension's
  * rows (soul stats, kills by reward type, whether it is open) and the guild
- * hall's fund and levels, each item's refine with the ores it costs, mining, woodcutting (with breaks not yet sent), cards, the Card Seller's buys, Weapon Mastery, gold, crafting, tools, the Starter Chest and the Server Boost. They share one
+ * hall's fund and levels, each item's refine with the ores it costs, mining, woodcutting (with breaks not yet sent), cards, the Card Seller's buys, Weapon Mastery, gold, the Trade Chrysanthemum, crafting, tools, the Starter Chest and the Server Boost. They share one
  * lifecycle, so the connection starts them together and the coop API serves
  * them together.
  */
@@ -87,6 +88,7 @@ export function createAccountRowServices(connection: () => DbConnection | null, 
   const builds = createBuildRows(notify);
   const weaponMastery = createWeaponMasteryRows(notify);
   const gold = createGoldRows(notify);
+  const exchange = createExchangeRows(notify);
   const crafting = createCraftingRows(notify);
   const tools = createToolRows(notify);
   const collection = createItemCollectionRows(notify);
@@ -134,6 +136,7 @@ export function createAccountRowServices(connection: () => DbConnection | null, 
       builds.watch(current, isCurrent);
       weaponMastery.watch(current, isCurrent);
       gold.watch(current, isCurrent);
+      exchange.watch(current, isCurrent);
       crafting.watch(current, isCurrent);
       tools.watch(current, isCurrent);
       collection.watch(current, isCurrent);
@@ -156,6 +159,7 @@ export function createAccountRowServices(connection: () => DbConnection | null, 
       ...builds.api,
       ...weaponMastery.api,
       ...gold.api,
+      ...exchange.api,
       ...crafting.api,
       ...tools.api,
       ...collection.api,
@@ -173,6 +177,8 @@ export function createAccountRowServices(connection: () => DbConnection | null, 
       upgradeTool: afterGathering(tools.api.upgradeTool),
       buyShopCard: afterGathering(cardShop.api.buyShopCard),
       claimStarterWeapon: afterGathering(starterChest.api.claimStarterWeapon),
+      placeExchangeOffer: afterGathering(exchange.api.placeExchangeOffer),
+      collectExchange: afterGathering(exchange.api.collectExchange),
       fallIntoWell: afterGathering(soulDimension.api.fallIntoWell),
       /** An item's slot tier and refine (items.ts ItemLevel). */
       itemLevel: (itemId: string): ItemLevel => itemLevelParts(itemRefine.api.itemLevel(itemId)),

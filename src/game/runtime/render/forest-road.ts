@@ -54,6 +54,20 @@ export function roadOutline(paths: readonly WorldPath[]): RoadEdge[] {
   return edges;
 }
 
+/** How far a square from a road's corner, inward, stays on the road (up to `most`): what its rounded corner may cover. */
+function roadRoom(paths: readonly WorldPath[], x: number, y: number, inX: number, inY: number, most: number) {
+  const onRoad = (px: number, py: number) => paths.some(path => px > path.x && px < path.x + path.w && py > path.y && py < path.y + path.h);
+  let room = 0;
+  for (let size = 2; size <= most; size += 2) {
+    // The square's two far sides, sampled: once either leaves the road, the last size was the room.
+    for (let along = 1; along <= size; along += 2) {
+      if (!onRoad(x + inX * along, y + inY * size) || !onRoad(x + inX * size, y + inY * along)) return room;
+    }
+    room = size;
+  }
+  return most;
+}
+
 /**
  * The tutorial forest's roads in the Town's road tiles (ForestVillage's Forest_Road, baked by
  * scripts/art/bake-forest-road.mjs): the paths' dirt repeats from the world's origin, so tiles and crossing
@@ -96,6 +110,18 @@ export function createForestRoadPainter(image: () => HTMLImageElement | undefine
         }
       }
       corners = new Map([...lengths].map(([key, length]) => [key, Math.min(tile, length / 2 / (1 - LIP_PIXELS / 256))]));
+      // Nor may it spill past the road inside a bend: its dirt square must lie on the road, however long its edges.
+      for (const edge of outline) {
+        const horizontal = edge.side === "top" || edge.side === "bottom";
+        for (const [end, cornered, first] of [[edge.from, edge.cornerFrom, true], [edge.to, edge.cornerTo, false]] as const) {
+          if (!cornered) continue;
+          const [x, y] = horizontal ? [end, edge.at] : [edge.at, end];
+          const inX = horizontal ? (first ? 1 : -1) : edge.side === "left" ? 1 : -1;
+          const inY = horizontal ? (edge.side === "top" ? 1 : -1) : first ? 1 : -1;
+          const key = `${x},${y}`, room = roadRoom(paths, x, y, inX, inY, (corners.get(key) ?? tile) * (1 - LIP_PIXELS / 256));
+          corners.set(key, Math.min(corners.get(key) ?? tile, room / (1 - LIP_PIXELS / 256)));
+        }
+      }
     }
     const reaches = (x0: number, y0: number, x1: number, y1: number) => x0 < ox + size && x1 > ox && y0 < oy + size && y1 > oy;
     const pattern = dirt(context, img, tile);

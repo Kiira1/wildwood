@@ -46,9 +46,12 @@ import AnnounceClientUpdateReducer from "./announce_client_update_reducer";
 import ApplyBuildCardsReducer from "./apply_build_cards_reducer";
 import BeginAccountLinkReducer from "./begin_account_link_reducer";
 import BeginAdventureReducer from "./begin_adventure_reducer";
+import BuyExchangeGearReducer from "./buy_exchange_gear_reducer";
 import BuyGradeGearReducer from "./buy_grade_gear_reducer";
 import BuyOxShopCosmeticReducer from "./buy_ox_shop_cosmetic_reducer";
 import BuyShopCardReducer from "./buy_shop_card_reducer";
+import CancelExchangeListingReducer from "./cancel_exchange_listing_reducer";
+import CancelExchangeOfferReducer from "./cancel_exchange_offer_reducer";
 import CancelGemPurchaseReducer from "./cancel_gem_purchase_reducer";
 import CancelItemUpgradeReducer from "./cancel_item_upgrade_reducer";
 import ChallengeGuildReducer from "./challenge_guild_reducer";
@@ -64,6 +67,7 @@ import ClaimMailboxGiftReducer from "./claim_mailbox_gift_reducer";
 import ClaimPickaxeReducer from "./claim_pickaxe_reducer";
 import ClaimStarterStaffReducer from "./claim_starter_staff_reducer";
 import ClaimStarterWeaponReducer from "./claim_starter_weapon_reducer";
+import CollectExchangeReducer from "./collect_exchange_reducer";
 import CollectGuildMemberQuestsReducer from "./collect_guild_member_quests_reducer";
 import CompleteOnboardingStepReducer from "./complete_onboarding_step_reducer";
 import ConfigureGemCommerceReducer from "./configure_gem_commerce_reducer";
@@ -127,10 +131,12 @@ import JoinGuildReducer from "./join_guild_reducer";
 import JoinVirtualPlayerLoadTestReducer from "./join_virtual_player_load_test_reducer";
 import KickGuildMemberReducer from "./kick_guild_member_reducer";
 import LeaveGuildReducer from "./leave_guild_reducer";
+import ListExchangeGearReducer from "./list_exchange_gear_reducer";
 import MarkPortalCutsceneSeenReducer from "./mark_portal_cutscene_seen_reducer";
 import MarkQuestBoardSeenReducer from "./mark_quest_board_seen_reducer";
 import MineNodeReducer from "./mine_node_reducer";
 import PauseResearchReducer from "./pause_research_reducer";
+import PlaceExchangeOfferReducer from "./place_exchange_offer_reducer";
 import PrepareWorldActionPositionReducer from "./prepare_world_action_position_reducer";
 import PrestigeAccountReducer from "./prestige_account_reducer";
 import PulseDuelReducer from "./pulse_duel_reducer";
@@ -278,6 +284,10 @@ import DuelReplayWideStatsRow from "./duel_replay_wide_stats_table";
 import DuelRiposteRow from "./duel_riposte_table";
 import DuelStaffSkillRow from "./duel_staff_skill_table";
 import DuelWideStatsRow from "./duel_wide_stats_table";
+import ExchangeListingRow from "./exchange_listing_table";
+import ExchangeOfferRow from "./exchange_offer_table";
+import ExchangePriceRow from "./exchange_price_table";
+import ExchangeTradeRow from "./exchange_trade_table";
 import GuildQuestWeekRow from "./guild_quest_week_table";
 import LatestChatMessagesRow from "./latest_chat_messages_table";
 import LatestChatMessagesWithReactionsRow from "./latest_chat_messages_with_reactions_table";
@@ -305,6 +315,9 @@ import MyEndlessTravelAccessRow from "./my_endless_travel_access_table";
 import MyEquipmentCopiesRow from "./my_equipment_copies_table";
 import MyEquipmentLocksRow from "./my_equipment_locks_table";
 import MyEquipmentOffersRow from "./my_equipment_offers_table";
+import MyExchangeCollectRow from "./my_exchange_collect_table";
+import MyExchangeListingsRow from "./my_exchange_listings_table";
+import MyExchangeOffersRow from "./my_exchange_offers_table";
 import MyGearSlotsRow from "./my_gear_slots_table";
 import MyGemPurchasesRow from "./my_gem_purchases_table";
 import MyGemWalletRow from "./my_gem_wallet_table";
@@ -547,6 +560,62 @@ const tablesSchema = __schema({
       { name: 'duel_wide_stats_duel_id_key', constraint: 'unique', columns: ['duelId'] },
     ],
   }, DuelWideStatsRow),
+  exchangeListing: __table({
+    name: 'exchange_listing',
+    indexes: [
+      { accessor: 'id', name: 'exchange_listing_id_idx_btree', algorithm: 'btree', columns: [
+        'id',
+      ] },
+      { accessor: 'identity', name: 'exchange_listing_identity_idx_btree', algorithm: 'btree', columns: [
+        'identity',
+      ] },
+      { accessor: 'itemId', name: 'exchange_listing_item_id_idx_btree', algorithm: 'btree', columns: [
+        'itemId',
+      ] },
+    ],
+    constraints: [
+      { name: 'exchange_listing_id_key', constraint: 'unique', columns: ['id'] },
+    ],
+  }, ExchangeListingRow),
+  exchangeOffer: __table({
+    name: 'exchange_offer',
+    indexes: [
+      { accessor: 'id', name: 'exchange_offer_id_idx_btree', algorithm: 'btree', columns: [
+        'id',
+      ] },
+      { accessor: 'identity', name: 'exchange_offer_identity_idx_btree', algorithm: 'btree', columns: [
+        'identity',
+      ] },
+      { accessor: 'itemId', name: 'exchange_offer_item_id_idx_btree', algorithm: 'btree', columns: [
+        'itemId',
+      ] },
+    ],
+    constraints: [
+      { name: 'exchange_offer_id_key', constraint: 'unique', columns: ['id'] },
+    ],
+  }, ExchangeOfferRow),
+  exchangePrice: __table({
+    name: 'exchange_price',
+    indexes: [
+      { accessor: 'itemId', name: 'exchange_price_item_id_idx_btree', algorithm: 'btree', columns: [
+        'itemId',
+      ] },
+    ],
+    constraints: [
+      { name: 'exchange_price_item_id_key', constraint: 'unique', columns: ['itemId'] },
+    ],
+  }, ExchangePriceRow),
+  exchangeTrade: __table({
+    name: 'exchange_trade',
+    indexes: [
+      { accessor: 'id', name: 'exchange_trade_id_idx_btree', algorithm: 'btree', columns: [
+        'id',
+      ] },
+    ],
+    constraints: [
+      { name: 'exchange_trade_id_key', constraint: 'unique', columns: ['id'] },
+    ],
+  }, ExchangeTradeRow),
   guildQuestWeek: __table({
     name: 'guild_quest_week',
     indexes: [
@@ -1396,6 +1465,27 @@ const tablesSchema = __schema({
     constraints: [
     ],
   }, MyEquipmentOffersRow),
+  myExchangeCollect: __table({
+    name: 'my_exchange_collect',
+    indexes: [
+    ],
+    constraints: [
+    ],
+  }, MyExchangeCollectRow),
+  myExchangeListings: __table({
+    name: 'my_exchange_listings',
+    indexes: [
+    ],
+    constraints: [
+    ],
+  }, MyExchangeListingsRow),
+  myExchangeOffers: __table({
+    name: 'my_exchange_offers',
+    indexes: [
+    ],
+    constraints: [
+    ],
+  }, MyExchangeOffersRow),
   myGearSlots: __table({
     name: 'my_gear_slots',
     indexes: [
@@ -1692,9 +1782,12 @@ const reducersSchema = __reducers(
   __reducerSchema("apply_build_cards", ApplyBuildCardsReducer),
   __reducerSchema("begin_account_link", BeginAccountLinkReducer),
   __reducerSchema("begin_adventure", BeginAdventureReducer),
+  __reducerSchema("buy_exchange_gear", BuyExchangeGearReducer),
   __reducerSchema("buy_grade_gear", BuyGradeGearReducer),
   __reducerSchema("buy_ox_shop_cosmetic", BuyOxShopCosmeticReducer),
   __reducerSchema("buy_shop_card", BuyShopCardReducer),
+  __reducerSchema("cancel_exchange_listing", CancelExchangeListingReducer),
+  __reducerSchema("cancel_exchange_offer", CancelExchangeOfferReducer),
   __reducerSchema("cancel_gem_purchase", CancelGemPurchaseReducer),
   __reducerSchema("cancel_item_upgrade", CancelItemUpgradeReducer),
   __reducerSchema("challenge_guild", ChallengeGuildReducer),
@@ -1710,6 +1803,7 @@ const reducersSchema = __reducers(
   __reducerSchema("claim_pickaxe", ClaimPickaxeReducer),
   __reducerSchema("claim_starter_staff", ClaimStarterStaffReducer),
   __reducerSchema("claim_starter_weapon", ClaimStarterWeaponReducer),
+  __reducerSchema("collect_exchange", CollectExchangeReducer),
   __reducerSchema("collect_guild_member_quests", CollectGuildMemberQuestsReducer),
   __reducerSchema("complete_onboarding_step", CompleteOnboardingStepReducer),
   __reducerSchema("configure_gem_commerce", ConfigureGemCommerceReducer),
@@ -1773,10 +1867,12 @@ const reducersSchema = __reducers(
   __reducerSchema("join_virtual_player_load_test", JoinVirtualPlayerLoadTestReducer),
   __reducerSchema("kick_guild_member", KickGuildMemberReducer),
   __reducerSchema("leave_guild", LeaveGuildReducer),
+  __reducerSchema("list_exchange_gear", ListExchangeGearReducer),
   __reducerSchema("mark_portal_cutscene_seen", MarkPortalCutsceneSeenReducer),
   __reducerSchema("mark_quest_board_seen", MarkQuestBoardSeenReducer),
   __reducerSchema("mine_node", MineNodeReducer),
   __reducerSchema("pause_research", PauseResearchReducer),
+  __reducerSchema("place_exchange_offer", PlaceExchangeOfferReducer),
   __reducerSchema("prepare_world_action_position", PrepareWorldActionPositionReducer),
   __reducerSchema("prestige_account", PrestigeAccountReducer),
   __reducerSchema("pulse_duel", PulseDuelReducer),

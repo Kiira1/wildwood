@@ -213,6 +213,44 @@
       "challenger:identity",
       "statsJson:string"
     ],
+    "exchange_listing": [
+      "id:u64",
+      "identity:identity",
+      "name:string",
+      "nameColor:u8",
+      "itemId:string",
+      "rollJson:string",
+      "refine:u8",
+      "price:u64",
+      "listedAt:timestamp"
+    ],
+    "exchange_offer": [
+      "id:u64",
+      "identity:identity",
+      "name:string",
+      "nameColor:u8",
+      "buy:bool",
+      "itemId:string",
+      "price:u64",
+      "quantity:u32",
+      "filled:u32",
+      "placedAt:timestamp"
+    ],
+    "exchange_price": [
+      "itemId:string",
+      "lowestAsk:u64",
+      "highestBid:u64",
+      "forSale:u32",
+      "lastPrice:u64",
+      "updatedAt:timestamp"
+    ],
+    "exchange_trade": [
+      "id:u64",
+      "itemId:string",
+      "price:u64",
+      "quantity:u32",
+      "tradedAt:timestamp"
+    ],
     "guild_quest_week": [
       "key:string",
       "week:u32",
@@ -426,6 +464,38 @@
       "whirlwind:f32",
       "deflect:f32",
       "shockwave:f32"
+    ],
+    "my_exchange_collect": [
+      "id:u64",
+      "identity:identity",
+      "itemId:string",
+      "count:u32",
+      "rollJson:string",
+      "refine:u8",
+      "arrivedAt:timestamp"
+    ],
+    "my_exchange_listings": [
+      "id:u64",
+      "identity:identity",
+      "name:string",
+      "nameColor:u8",
+      "itemId:string",
+      "rollJson:string",
+      "refine:u8",
+      "price:u64",
+      "listedAt:timestamp"
+    ],
+    "my_exchange_offers": [
+      "id:u64",
+      "identity:identity",
+      "name:string",
+      "nameColor:u8",
+      "buy:bool",
+      "itemId:string",
+      "price:u64",
+      "quantity:u32",
+      "filled:u32",
+      "placedAt:timestamp"
     ],
     "my_gear_slots": [
       "key:string",

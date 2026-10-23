@@ -1,7 +1,7 @@
 // The world and town scenes: whole maps drawn by the game's world renderer at the game's own camera framing.
 import { CAMPAIGN_MAPS } from "../../shared/campaign-registry";
 import { SOUL_MAP_ID } from "../../shared/soul-dimension";
-import { TOWN_CENTER, TOWN_MAP_ID, TOWN_WEST_BRIDGE } from "../../shared/town";
+import { TOWN_CENTER, TOWN_EXCHANGE_CENTER, TOWN_EXCHANGE_PLAZA, TOWN_EXCHANGE_POSITION, TOWN_MAP_ID, TOWN_WEST_BRIDGE } from "../../shared/town";
 import { TOWN_OX_DECOR } from "../../src/game/town-world";
 import { attackRangeWithResearch } from "../../shared/utility-research";
 import { guildHallMapId } from "../../shared/guild-hall";
@@ -87,6 +87,28 @@ export async function forest() {
     await mapView({ mapId, ...PHONE, parent: phones, title: "forest · zoom 150%", zoomSteps: 10 }),
     await mapView({ mapId, ...PHONE, parent: phones, title: "forest · east", at: { x: 1_400, y: 900 }, zoomSteps: 10 }),
     await mapView({ mapId: town, ...PHONE, parent: phones, title: "town · countryside 150%", at: countryside, zoomSteps: 10 }),
+  ];
+  for (const view of views) await view.draw();
+}
+
+/**
+ * The Trade Chrysanthemum, south of the village: the road leaving the village's south edge down to the square, the
+ * clerk at his booth and the square at the phone framing, the countryside beside it, and the whole square wide.
+ */
+export async function exchange() {
+  const phones = strip();
+  const mapId = TOWN_MAP_ID as MapId;
+  const clerk = TOWN_EXCHANGE_POSITION, plaza = TOWN_EXCHANGE_PLAZA;
+  const views = [
+    await mapView({ mapId, ...PHONE, parent: phones, title: "exchange · the bend at 100%", at: { x: TOWN_CENTER.x - 470, y: TOWN_CENTER.y + 1_800 } }),
+    await mapView({ mapId, ...PHONE, parent: phones, title: "exchange · the bend at 150%", at: { x: TOWN_CENTER.x - 470, y: TOWN_CENTER.y + 1_800 }, zoomSteps: 10 }),
+    await mapView({ mapId, ...PHONE, parent: phones, title: "exchange · the join at 150%", at: { x: TOWN_CENTER.x - 560, y: TOWN_CENTER.y + 1_780 }, zoomSteps: 10 }),
+    await mapView({ mapId, ...PHONE, parent: phones, title: "exchange · the village's edge by the portal", at: { x: TOWN_CENTER.x - 520, y: TOWN_CENTER.y + 1_960 } }),
+    await mapView({ mapId, ...PHONE, parent: phones, title: "exchange · the road from the village", at: { x: TOWN_CENTER.x - 370, y: TOWN_CENTER.y + 2_000 }, zoomSteps: -6 }),
+    await mapView({ mapId, ...PHONE, parent: phones, title: "exchange · the clerk", at: { x: clerk.x + 40, y: clerk.y + 70 } }),
+    await mapView({ mapId, ...PHONE, parent: phones, title: "exchange · the square", at: { x: TOWN_EXCHANGE_CENTER.x - 60, y: TOWN_EXCHANGE_CENTER.y + 150 } }),
+    await mapView({ mapId, ...PHONE, parent: phones, title: "exchange · countryside beside it", at: { x: plaza.right + 260, y: plaza.bottom + 120 } }),
+    await mapView({ mapId, ...DESKTOP, title: "exchange · desktop", at: { x: TOWN_EXCHANGE_CENTER.x, y: TOWN_EXCHANGE_CENTER.y - 150 }, zoomSteps: -4 }),
   ];
   for (const view of views) await view.draw();
 }

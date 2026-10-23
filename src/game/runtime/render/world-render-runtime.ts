@@ -207,7 +207,7 @@ export function createWorldRenderRuntime(options: WorldRenderRuntimeOptions) {
     }
   };
   const townGround = createTownGroundTilePainter({ ground: () => options.assets.townVillageGround, interiors: () => options.assets.soulInteriors,
-    villageProps: () => options.assets.townVillageProps, atlas: () => options.assets.soulAtlas });
+    villageProps: () => options.assets.townVillageProps, atlas: () => options.assets.soulAtlas, road: () => options.assets.forestRoad });
   const townStaticTiles = { world: TOWN_GROUND_WORLD, ...townGround };
   // The tutorial forest's own tile, then the Town's road tiles over its paths, its pack grass and tree shadows (pack-forest.ts).
   const forestProps = createSoulGroundPropPainter({ villageProps: () => undefined, atlas: () => options.assets.soulAtlas });
@@ -272,6 +272,14 @@ export function createWorldRenderRuntime(options: WorldRenderRuntimeOptions) {
       drawStartingPlayer(options.ctx, options.playerAppearanceAssets, {
         x, y: y - TOWN_FEET_OFFSET, facing: Math.PI / 2, gameTime: options.gameTime(), skinTone: 5,
         headItem: "fire_metal_helmet", chestItem: "magma_armor", rightHandItem: "wooden_sword", leftHandItem: "",
+      });
+    },
+    // The Trade Chrysanthemum's clerk: a villager in white gold and a straw hat, empty-handed, facing the square.
+    drawExchangeClerk: (x, y) => {
+      drawEntityShadow(x, y, 30, .17);
+      drawStartingPlayer(options.ctx, options.playerAppearanceAssets, {
+        x, y: y - TOWN_FEET_OFFSET, facing: Math.PI / 2, gameTime: options.gameTime(), skinTone: 2,
+        headItem: "samurai_hat", chestItem: "legendary_white_gold_armor", rightHandItem: "", leftHandItem: "",
       });
     },
     ...options.assets,

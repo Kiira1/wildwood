@@ -17,6 +17,7 @@ import { createGemShopController } from "../../src/ui/gem-shop-controller";
 import { markChatAnnouncement } from "../../src/ui/chat-announcement-line";
 import { createDiamondLookDrawer } from "../../src/game/runtime/diamond-look-preview";
 import { installServerBoostHud } from "../../src/ui/server-boost-hud";
+import { createExchangeController } from "../../src/ui/exchange-window";
 import { createItemInspectionController } from "../../src/ui/item-inspection-controller";
 import { gradeShopSalePrice } from "../../shared/grade-shop";
 import { settleFrames, settleImages } from "./determinism";
@@ -275,6 +276,67 @@ async function serverBoost() {
   await settleCssImages();
 }
 
+/** The Trade Chrysanthemum's window: a free player's slots, a supporter's, a search with sellers, one with none, an offer. */
+async function exchangeWindow() {
+  await gameMarkup();
+  document.body.style.background = GROUND;
+  const unpin = document.createElement("style");
+  unpin.textContent = `
+    html, body { position: static !important; height: auto !important; overflow: visible !important; }
+    body { display: flex !important; flex-wrap: wrap; gap: 12px; align-items: flex-start; padding: 12px; }
+    dialog.exchange-sheet[open] { position: relative !important; inset: auto !important; margin: 0 !important; flex: 0 0 390px; }
+  `;
+  document.head.append(unpin);
+  const me = "aa", them = "bb", at = 0, done = async () => ({ ok: true });
+  const offers = [
+    { id: 1n, identity: them, name: "Moss", nameColor: 7, buy: false, itemId: "copper_ore", price: 12n, quantity: 400, filled: 0, placedAtMs: at },
+    { id: 6n, identity: "cc", name: "Oogway", nameColor: 0, buy: false, itemId: "copper_ore", price: 14n, quantity: 90, filled: 0, placedAtMs: at },
+    { id: 2n, identity: them, name: "Moss", nameColor: 7, buy: true, itemId: "iron_ore", price: 30n, quantity: 200, filled: 50, placedAtMs: at },
+    { id: 3n, identity: "cc", name: "Oogway", nameColor: 0, buy: false, itemId: "iron_ore", price: 33n, quantity: 1_000, filled: 0, placedAtMs: at },
+    { id: 4n, identity: me, name: "Me", nameColor: 0, buy: true, itemId: "mithril_ore", price: 95n, quantity: 60, filled: 20, placedAtMs: at },
+  ];
+  const listings = [
+    { id: 1n, identity: them, name: "Moss", nameColor: 7, itemId: "rare_bow", rollJson: JSON.stringify({ arrowStorm: 3.1, ricochet: 1.2 }), refine: 7, price: 25_000n, listedAtMs: at },
+    { id: 3n, identity: me, name: "Me", nameColor: 0, itemId: "rare_light_helmet", rollJson: "{}", refine: 3, price: 9_999n, listedAtMs: at },
+  ];
+  // The price table as the server keeps it from these rows.
+  const prices = [...new Set([...offers.map(o => o.itemId), ...listings.map(l => l.itemId)])].map(itemId => {
+    const asks = [...offers.filter(o => o.itemId === itemId && !o.buy).map(o => o.price), ...listings.filter(l => l.itemId === itemId).map(l => l.price)];
+    const bids = offers.filter(o => o.itemId === itemId && o.buy).map(o => o.price);
+    return { itemId, lowestAsk: asks.length ? asks.reduce((a, b) => (b < a ? b : a)) : null, highestBid: bids.length ? bids.reduce((a, b) => (b > a ? b : a)) : null,
+      forSale: offers.filter(o => o.itemId === itemId && !o.buy).reduce((n, o) => n + o.quantity - o.filled, 0) + listings.filter(l => l.itemId === itemId).length,
+      lastPrice: itemId === "copper_ore" ? 11n : null };
+  });
+  const collect = [{ id: 1n, itemId: "mithril_ore", count: 20, rollJson: "", refine: 0 }, { id: 2n, itemId: "fine_sword", count: 0, rollJson: "{}", refine: 2 }];
+  const views: { supporter: boolean; mine: boolean; screen: any; search?: string }[] = [
+    { supporter: false, mine: false, screen: { kind: "slots" } },
+    { supporter: true, mine: true, screen: { kind: "slots" } },
+    { supporter: true, mine: true, screen: { kind: "pick", side: "buy" }, search: "ore" },
+    { supporter: true, mine: true, screen: { kind: "pick", side: "buy" }, search: "adamant" },
+    { supporter: true, mine: true, screen: { kind: "pick", side: "buy" }, search: "bow" },
+    { supporter: true, mine: true, screen: { kind: "offer", draft: { buy: false, itemId: "copper_ore", refine: 0, quantity: 300, max: 300, price: 12n } } },
+  ];
+  for (const view of views) {
+    const window = createExchangeController({
+      inTown: () => true, showMessage: () => {}, identity: () => me, supporter: () => view.supporter, gold: () => 12_480n,
+      ores: () => ({ pine_log: 900, oak_log: 40, copper_ore: 300, iron_ore: 12, starshard: 5 }),
+      gear: () => [{ itemId: "fine_sword", copyId: 0n, refine: 4, roll: { whirlwind: 2, deflect: 0, shockwave: 1.5 } }],
+      follow: () => {}, watch: () => {}, prices: () => prices, collect: () => view.mine ? collect : [],
+      offers: () => offers, listings: () => listings,
+      myOffers: () => view.mine ? offers.filter(offer => offer.identity === me) : [],
+      myListings: () => view.mine ? listings.filter(listing => listing.identity === me) : [],
+      place: done, cancelOffer: done, list: done, buyListing: done, cancelListing: done, collectAll: done,
+    });
+    window.open(view.screen);
+    // Side by side in the page rather than one modal over the next.
+    const sheet = [...document.querySelectorAll<HTMLDialogElement>("dialog.exchange-sheet")].at(-1)!;
+    sheet.close(); sheet.show();
+    const search = sheet.querySelector<HTMLInputElement>(".exchange-search input");
+    if (search && view.search) { search.value = view.search; search.dispatchEvent(new Event("input")); search.blur(); }
+  }
+  await settleCssImages();
+}
+
 /** Public chat, compact and expanded: a player's line, the server's Server Boost and Patreon banners, and the same words typed by a player. */
 async function chatAnnouncement() {
   const unpin = document.createElement("style");
@@ -337,6 +399,6 @@ async function itemWindow(worn: boolean) {
   await settleCssImages();
 }
 
-export const DOM_SCENES: Record<string, () => Promise<void>> = { icons, hud, wordmark, shops, "gem-shop": gemShop, "server-boost": serverBoost,
+export const DOM_SCENES: Record<string, () => Promise<void>> = { icons, hud, wordmark, shops, "gem-shop": gemShop, "server-boost": serverBoost, "exchange-window": exchangeWindow,
   "chat-announcement": chatAnnouncement, "item-window": () => itemWindow(false), "item-window-worn": () => itemWindow(true),
   "profile-own": () => profileWindow(true), "profile-other": () => profileWindow(false) };

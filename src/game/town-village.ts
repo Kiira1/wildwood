@@ -1,4 +1,4 @@
-import { TOWN_CENTER, TOWN_EAST_BRIDGE, TOWN_EAST_BRIDGE_APPROACHES, TOWN_EAST_FENCE_GAP, TOWN_EAST_FENCE_GAP_OUTSIDE, TOWN_INTERIORS, TOWN_WEST_BRIDGE } from "../../shared/town";
+import { TOWN_CENTER, TOWN_EXCHANGE_ROAD, TOWN_EXCHANGE_ROAD_JOIN, TOWN_EAST_BRIDGE, TOWN_EAST_BRIDGE_APPROACHES, TOWN_EAST_FENCE_GAP, TOWN_EAST_FENCE_GAP_OUTSIDE, TOWN_INTERIORS, TOWN_WEST_BRIDGE } from "../../shared/town";
 import { MINING_TRACK_HALF_WIDTH, miningTrackDistanceSquared } from "../../shared/mining";
 import atlas from "./soul-atlas.json";
 import scene from "./town-village-scene.json";
@@ -39,6 +39,8 @@ const CLEARINGS: readonly Area[] = [TOWN_EAST_FENCE_GAP_OUTSIDE, ...TOWN_EAST_BR
 const CLEARED: readonly Area[] = [TOWN_EAST_FENCE_GAP, ...CLEARINGS];
 const TRACK_REACH = MINING_TRACK_HALF_WIDTH + 10;
 const onTrack = (x: number, y: number) => miningTrackDistanceSquared(x, y, TRACK_REACH) < TRACK_REACH * TRACK_REACH;
+/** The road to the Trade Chrysanthemum where it leaves the village's own: nothing lies on it. */
+const onMarketBranch = (x: number, y: number) => x > TOWN_EXCHANGE_ROAD_JOIN && TOWN_EXCHANGE_ROAD.some(road => x > road.x - 10 && x < road.x + road.w + 10 && y > road.y - 10 && y < road.y + road.h + 10);
 /**
  * The east bridge (TOWN_EAST_BRIDGE): the deck of the village's own west bridge, its two halves, over the river.
  * The water under it is open ground, and its railings, out to the water, hold the walk between them.
@@ -59,6 +61,7 @@ export const TOWN_VILLAGE_DECOR: readonly WorldDecor[] = [...scene.props.flatMap
   if ((flags & 3) === 0 && CLEARED.some(area => inside(area, originX + x, originY + depth))) return [];
   if ((flags & 2) === 2 && CLEARINGS.some(area => inside(area, originX + x, originY + depth))) return [];
   if ((flags & 1) === 1 && onTrack(originX + x, originY + depth)) return [];
+  if ((flags & 1) === 1 && onMarketBranch(originX + x, originY + depth)) return [];
   const clip = animations[index];
   return [{
     type: "soulProp", sheet: "village", frame: String(frame), s: 1, x: originX + x, y: originY + depth, dy: y - depth,

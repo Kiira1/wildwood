@@ -495,6 +495,63 @@ export const EnemyDefeatBudget = __t.object("EnemyDefeatBudget", {
 });
 export type EnemyDefeatBudget = __Infer<typeof EnemyDefeatBudget>;
 
+export const ExchangeCollect = __t.object("ExchangeCollect", {
+  id: __t.u64(),
+  identity: __t.identity(),
+  itemId: __t.string(),
+  count: __t.u32(),
+  rollJson: __t.string(),
+  refine: __t.u8(),
+  arrivedAt: __t.timestamp(),
+});
+export type ExchangeCollect = __Infer<typeof ExchangeCollect>;
+
+export const ExchangeListing = __t.object("ExchangeListing", {
+  id: __t.u64(),
+  identity: __t.identity(),
+  name: __t.string(),
+  nameColor: __t.u8(),
+  itemId: __t.string(),
+  rollJson: __t.string(),
+  refine: __t.u8(),
+  price: __t.u64(),
+  listedAt: __t.timestamp(),
+});
+export type ExchangeListing = __Infer<typeof ExchangeListing>;
+
+export const ExchangeOffer = __t.object("ExchangeOffer", {
+  id: __t.u64(),
+  identity: __t.identity(),
+  name: __t.string(),
+  nameColor: __t.u8(),
+  buy: __t.bool(),
+  itemId: __t.string(),
+  price: __t.u64(),
+  quantity: __t.u32(),
+  filled: __t.u32(),
+  placedAt: __t.timestamp(),
+});
+export type ExchangeOffer = __Infer<typeof ExchangeOffer>;
+
+export const ExchangePrice = __t.object("ExchangePrice", {
+  itemId: __t.string(),
+  lowestAsk: __t.u64(),
+  highestBid: __t.u64(),
+  forSale: __t.u32(),
+  lastPrice: __t.u64(),
+  updatedAt: __t.timestamp(),
+});
+export type ExchangePrice = __Infer<typeof ExchangePrice>;
+
+export const ExchangeTrade = __t.object("ExchangeTrade", {
+  id: __t.u64(),
+  itemId: __t.string(),
+  price: __t.u64(),
+  quantity: __t.u32(),
+  tradedAt: __t.timestamp(),
+});
+export type ExchangeTrade = __Infer<typeof ExchangeTrade>;
+
 export const GemCommerceConfig = __t.object("GemCommerceConfig", {
   id: __t.u8(),
   verifier: __t.identity(),
@@ -1024,6 +1081,15 @@ export type MyEquipmentLocks = __Infer<typeof MyEquipmentLocks>;
 
 export const MyEquipmentOffers = __t.object("MyEquipmentOffers", {});
 export type MyEquipmentOffers = __Infer<typeof MyEquipmentOffers>;
+
+export const MyExchangeCollect = __t.object("MyExchangeCollect", {});
+export type MyExchangeCollect = __Infer<typeof MyExchangeCollect>;
+
+export const MyExchangeListings = __t.object("MyExchangeListings", {});
+export type MyExchangeListings = __Infer<typeof MyExchangeListings>;
+
+export const MyExchangeOffers = __t.object("MyExchangeOffers", {});
+export type MyExchangeOffers = __Infer<typeof MyExchangeOffers>;
 
 export const MyGearSlots = __t.object("MyGearSlots", {});
 export type MyGearSlots = __Infer<typeof MyGearSlots>;
