@@ -5152,7 +5152,7 @@ html.text-outline-shadow .death-countdown { text-shadow: var(--text-outline-ring
     border-color: rgba(0, 0, 0, .7);
     /* An inner border inside the dark outer one, as a card has. */
     box-shadow: inset 0 0 0 2px rgba(255, 255, 255, .24);
-    background: var(--grade);
+    background: color-mix(in srgb, var(--grade) 50%, transparent);
   }
   :is(.inventory-item, .equipment-slot)[data-grade="0"] { --grade: #7f7f7f; } /* Crude: grey */
   :is(.inventory-item, .equipment-slot)[data-grade="1"] { --grade: #a7a7a7; } /* Common: light grey */
