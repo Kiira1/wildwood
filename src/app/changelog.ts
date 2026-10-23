@@ -1,4 +1,7 @@
 export const RELEASE_NOTES: Record<string, string[]> = {
+  "0.917.8": [
+    "Quests name the map first, then the enemy",
+  ],
   "0.917.7": [
     "Collect up to 15 guild quests at a time, so small guilds can reach all 300",
     "A red dot shows guild join requests to the President and Vice President",
@@ -3942,6 +3945,7 @@ const RELEASE_DATES: Record<string, string> = {
 };
 
 export const RELEASE_DAYS: Record<string, string> = {
+  "0.917.8": "2026-10-23",
   "0.917.7": "2026-10-23",
   "0.917.6": "2026-10-22",
   "0.917.5": "2026-10-22",
