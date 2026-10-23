@@ -1,5 +1,7 @@
 export const RELEASE_NOTES: Record<string, string[]> = {
   "0.917.10": [
+    "Game settings are grouped into expandable sections",
+    "Search cards by name, description, or area, filtering as you type",
     "Bulk Delete sells graded gear for gold, the same as selling one at a time",
     "The Loot Filter is gone, as gear no longer drops",
     "Fixed outdated text in tips, the Map Guide, cards, item windows, Aggro and Reflect Only",

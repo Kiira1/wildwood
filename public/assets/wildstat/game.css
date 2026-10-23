@@ -476,6 +476,14 @@
   .settings-panel > .settings-content { flex: 1 1 auto; min-height: 0; overflow-y: auto; overscroll-behavior: contain; scrollbar-width: none; padding: 2px 12px 12px; }
   .settings-panel > .settings-content::-webkit-scrollbar { display: none; }
   .settings-tab-panel[hidden] { display: none; }
+  .settings-disclosure { margin-top: 12px; border-top: 1px solid rgba(255,255,255,.12); }
+  .settings-disclosure > summary { min-height: 44px; padding: 10px 0; cursor: pointer; color: inherit; font: 900 13px/1.3 var(--font-rounded); }
+  .settings-disclosure > summary:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; border-radius: 4px; }
+  .settings-disclosure-description { margin-left: 10px; color: #9a9a9a; font-size: 11px; font-weight: 400; }
+  @media (max-width: 600px) {
+    .settings-disclosure-description { display: block; margin: 4px 0 0 14px; }
+  }
+  .settings-disclosure-content { padding: 0 0 6px 12px; border-left: 2px solid rgba(255,255,255,.12); }
   .settings-tab-panel .setting-reset { margin-top: 28px; }
   /* The Graphics readout: plain read-only lines, the tip dimmer. */
   .graphics-info { display: grid; gap: 4px; padding: 6px 0 2px; }
