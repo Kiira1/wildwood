@@ -1,4 +1,7 @@
 export const RELEASE_NOTES: Record<string, string[]> = {
+  "0.916.32.14": [
+    "Verdant Catacombs' big blocky mushrooms are back to their small size",
+  ],
   "0.916.32.13": [
     "Swordplay's Momentum now speeds up swings on bosses too",
     "Profile Attack Speed shows Momentum and the cap it reaches",
@@ -3892,6 +3895,7 @@ const RELEASE_DATES: Record<string, string> = {
 };
 
 export const RELEASE_DAYS: Record<string, string> = {
+  "0.916.32.14": "2026-10-22",
   "0.916.32.13": "2026-10-22",
   "0.916.32.12": "2026-10-22",
   "0.916.32.11": "2026-10-22",

@@ -22,7 +22,8 @@ export function createVerdantCatacombsLayout(camps: readonly SpawnCamp[]) {
     const i = row * 15 + col, x = 150 + col * 300 + Math.sin(i * 2.3) * 45, y = 160 + row * 300 + Math.cos(i * 1.7) * 40;
     if (!clear(x, y)) continue;
     decor.push({ type: 'rock', x, y, s: 1.2 + (i % 3) * .35, variant: i % 4 });
-    decor.push({ type: 'glowMushroom', x: x + 35, y: y + 25, s: 1.2 + (i % 4) * .25, variant: i % 3 });
+    // The same small size as the path mushrooms: larger, the sprite is scaled up and blocky.
+    decor.push({ type: 'glowMushroom', x: x + 35, y: y + 25, s: .65, variant: i % 3 });
     if (i % 3 === 0) decor.push({ type: 'tree', x: x - 28, y: y - 20, s: 1.3, variant: i % 3 });
   }
   for (const road of paths) {
