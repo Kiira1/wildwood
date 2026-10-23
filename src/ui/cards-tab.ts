@@ -124,7 +124,7 @@ export function cardDetailRequest(port: CardsPort, cardId: string, after: (resul
     context: `${typeName} Card · ${owned > 0 ? `${owned.toLocaleString("en-US")} Owned · ${copies} Equipped` : "Not Found Yet"}`,
     effects: card.effects.map(effect => ({ text: cardEffectText(effect), cost: effect.value < 0 })),
     odds: `${cardOddsText(card, chance)} · ${cardSureText(card, cardSureByKills(card, port.cardHunter()))}`,
-    note: slotsText || (owned > 0 && error && copies < owned ? `${error} Remove one first.` : owned > 0 ? "" : "Drops rarely from this enemy."),
+    note: slotsText || (owned > 0 && error && copies < owned ? `${error} Remove one first.` : ""),
     actions,
   };
 }
@@ -391,7 +391,7 @@ export function createCardsTab(options: {
     if (!owned.length) {
       const none = document.createElement("p");
       none.className = "cards-equip-note";
-      none.textContent = `No ${CARD_SLOT_NAMES[type]} cards yet. Cards drop rarely from enemies and bosses.`;
+      none.textContent = `No ${CARD_SLOT_NAMES[type]} cards yet. Cards drop from enemies, bosses and trees, and the Card Seller in Town sells some.`;
       yours.append(none);
     }
     const tiles = document.createElement("div");

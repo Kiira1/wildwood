@@ -1,4 +1,9 @@
 export const RELEASE_NOTES: Record<string, string[]> = {
+  "0.917.10": [
+    "Bulk Delete sells graded gear for gold, the same as selling one at a time",
+    "The Loot Filter is gone, as gear no longer drops",
+    "Fixed outdated text in tips, the Map Guide, cards, item windows, Aggro and Reflect Only",
+  ],
   "0.917.9": [
     "A guild President now has 7 days away before the guild passes on, not 3",
   ],
@@ -3948,6 +3953,7 @@ const RELEASE_DATES: Record<string, string> = {
 };
 
 export const RELEASE_DAYS: Record<string, string> = {
+  "0.917.10": "2026-10-23",
   "0.917.9": "2026-10-23",
   "0.917.8": "2026-10-23",
   "0.917.7": "2026-10-23",

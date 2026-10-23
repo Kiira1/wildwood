@@ -2906,18 +2906,6 @@
     outline-offset: 2px;
   }
 
-  #bootUpgrade {
-    position: fixed;
-    inset: 0;
-    display: grid;
-    place-items: center;
-    padding: 13px;
-    background: transparent;
-    z-index: 6;
-  }
-
-  #bootUpgrade[hidden] { display: none; }
-
   #duelResult,
   #offlineProgress,
   #playerProfile,
@@ -3948,57 +3936,6 @@
 
   @media (max-width: 420px) {
     .player-profile-title-row { display: grid; grid-template-columns: minmax(0, 1fr); gap: 2px; }
-  }
-
-  .upgrade-modal {
-    width: var(--game-window-width);
-    max-width: none;
-    border-color: rgba(255,218,94,.52);
-  }
-
-  .boots-icon {
-    display: flex;
-    justify-content: center;
-    gap: 16px;
-    margin: 0 auto 12px;
-  }
-
-  .boots-icon span {
-    position: relative;
-    display: block;
-    width: 40px;
-    height: 58px;
-    border: 4px solid #32190d;
-    border-radius: 8px 8px 12px 12px;
-    background: linear-gradient(90deg, #8a481d 0 24%, #da8e32 24% 76%, #6a3518 76%);
-  }
-
-  .boots-icon span::after {
-    content: "";
-    position: absolute;
-    left: -9px;
-    bottom: -7px;
-    width: 48px;
-    height: 15px;
-    border: 4px solid #32190d;
-    border-radius: 6px 6px 11px 11px;
-    background: #f0c158;
-  }
-
-  .upgrade-modal h2 {
-    margin: 0;
-    color: #ffe777;
-    font-size: clamp(22px, 6vw, 32px);
-    line-height: 1;
-    text-shadow: var(--text-shadow);
-  }
-
-  .upgrade-stat {
-    margin: 12px 0 0;
-    color: #76ed7e;
-    font-size: 18px;
-    font-weight: 900;
-    letter-spacing: .06em;
   }
 
   .modal {
