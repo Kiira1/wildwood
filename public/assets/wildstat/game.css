@@ -5077,7 +5077,7 @@ html.text-outline-shadow .death-countdown { text-shadow: var(--text-outline-ring
   .exchange-slot.is-sell .exchange-tag { color: var(--sand); }
   .exchange-price { color: var(--sand); font-size: 14px; }
   .exchange-count { color: var(--muted); font-size: 11px; }
-  .exchange-progress { width: 100%; height: 5px; margin-top: auto; border-radius: 3px; background: #2a2b28; overflow: hidden; }
+  .exchange-progress { width: 100%; height: 5px; margin-top: 4px; border-radius: 3px; background: #2a2b28; overflow: hidden; }
   .exchange-progress::after { content: ""; display: block; width: calc(var(--done, 0) * 100%); height: 100%; background: currentColor; }
   .exchange-slot.is-buy .exchange-progress { color: var(--buy); }
   .exchange-slot.is-sell .exchange-progress { color: var(--sand); }
@@ -5113,7 +5113,7 @@ html.text-outline-shadow .death-countdown { text-shadow: var(--text-outline-ring
   .exchange-hero.is-sell .exchange-pill { background: #2a261c; color: var(--sand); border: 1px solid var(--sand-line); }
   .exchange-hero-name { font-size: 17px; }
   .exchange-market { margin: 0; color: var(--muted); font-size: 12px; white-space: pre; }
-  .exchange-stepper { display: grid; grid-template-columns: 58px 44px minmax(0, 1fr) 44px auto; align-items: center; gap: 6px; margin-bottom: 8px; }
+  .exchange-stepper { display: grid; grid-template-columns: 66px 44px minmax(0, 1fr) 44px auto; align-items: center; gap: 6px; margin-bottom: 8px; }
   .exchange-stepper-label { color: var(--muted); font-size: 13px; }
   .exchange-stepper input { min-width: 0; height: 40px; padding: 0 8px; border: 1.5px solid var(--cell-line); border-radius: 8px; background: var(--cell); color: var(--text); font-size: 16px; text-align: center; }
   .exchange-step { height: 40px; }
@@ -5126,5 +5126,10 @@ html.text-outline-shadow .death-countdown { text-shadow: var(--text-outline-ring
   .exchange-confirm { width: min(240px, 100%); height: 48px; margin: 0 auto; font-size: 16px; }
   .exchange-collect .exchange-confirm { flex: 0 0 auto; align-self: center; width: auto; height: 44px; margin: 0 0 3px; padding: 0 18px 2px; }
 
+  .exchange-cancel { width: 100%; height: 30px; margin-top: 6px; font-size: 12px; }
+  .exchange-each { margin-left: 2px; color: var(--muted); font-size: 11px; }
+  .exchange-total-label { display: flex; flex-direction: column; gap: 2px; }
+  .exchange-sum { color: var(--muted); font-size: 12px; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; -webkit-text-stroke: 0; }
+  .exchange-tile.is-none { opacity: .35; }
   .exchange-foot { display: flex; justify-content: center; padding: 8px 12px 12px; }
   .exchange-foot .window-back-button { min-width: 160px; }

@@ -1,4 +1,10 @@
 export const RELEASE_NOTES: Record<string, string[]> = {
+  "0.917.1": [
+    "Smoother framerate in and around the Trade Chrysanthemum",
+    "Offers have a Cancel button, and prices read as each",
+    "Every resource shows on the Sell screen, even ones you have none of",
+    "Confirm prompts show in front of the trade window",
+  ],
   "0.917": [
     "The Trade Chrysanthemum: a market south of the Town to buy and sell resources and gear for gold",
     "Search any item by name to see who sells it, at what price, and how many",
@@ -3909,6 +3915,7 @@ const RELEASE_DATES: Record<string, string> = {
 };
 
 export const RELEASE_DAYS: Record<string, string> = {
+  "0.917.1": "2026-10-22",
   "0.917": "2026-10-22",
   "0.917.0": "2026-10-22",
   "0.916.32.16": "2026-10-22",

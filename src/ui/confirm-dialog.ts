@@ -101,6 +101,11 @@ export function createConfirmDialog(root: Document = document): ConfirmDialog {
       cancelButton.textContent = cancelLabel;
       cancelButton.hidden = !cancelLabel;
       frame.classList.toggle("is-danger", danger);
+      // A modal window (the Trade Chrysanthemum, the Smith) is drawn above everything in the page, so the prompt goes
+      // inside the topmost one to show over it; with none open it stays in the page.
+      let host: Element = root.body;
+      try { host = [...root.querySelectorAll("dialog[open]")].filter(dialog => dialog.matches(":modal")).at(-1) ?? root.body; } catch { /* no :modal: the page */ }
+      if (overlay.parentElement !== host) host.append(overlay);
       overlay.hidden = false;
       // Something irreversible starts on the way out, so a stray Enter or a tap
       // where the last prompt left focus cannot destroy anything.

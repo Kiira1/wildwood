@@ -3,6 +3,8 @@
  * brown outline), as the Town's signpost is: the chrysanthemum bed in the square's middle and its banners.
  * Each is drawn from its foot, in world units.
  */
+import { freezeEntry, type FrozenImage } from "../render/frozen-canvas";
+
 const OUTLINE = "#3b2a1e";
 
 export type ExchangeProp = "chrysanthemumBed" | "exchangeBanner";
@@ -100,10 +102,33 @@ function drawBanner(c: CanvasRenderingContext2D) {
   bloom(c, 0, -94, 13, GOLD);
 }
 
-export function drawExchangeProp(c: CanvasRenderingContext2D, kind: ExchangeProp, x: number, y: number) {
-  c.save();
-  c.translate(x, y);
+/** Draws one prop's paths from its foot. Hundreds of petals: only ever into a cache, never per frame. */
+function paint(c: CanvasRenderingContext2D, kind: ExchangeProp) {
   c.lineJoin = "round";
   if (kind === "chrysanthemumBed") drawBed(c); else drawBanner(c);
-  c.restore();
+}
+
+/** Room round each prop's extents for its outlines. */
+const PAD = 4;
+/** Painted once per kind and screen scale (to a quarter step), then copied: a frame draws two images, not hundreds of paths. */
+const cached = new Map<string, FrozenImage>();
+
+export function drawExchangeProp(c: CanvasRenderingContext2D, kind: ExchangeProp, x: number, y: number) {
+  const e = EXCHANGE_PROP_EXTENTS[kind], w = e.left + e.right + PAD * 2, h = e.up + e.down + PAD * 2;
+  const transform = typeof c.getTransform === "function" ? c.getTransform() : null;
+  const scale = Math.min(4, Math.max(.25, Math.round(Math.hypot(transform?.a ?? 1, transform?.b ?? 0) * 4) / 4));
+  const key = `${kind}:${scale}`;
+  let art = cached.get(key);
+  if (!art) {
+    const canvas = document.createElement("canvas");
+    canvas.width = Math.ceil(w * scale); canvas.height = Math.ceil(h * scale);
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+    ctx.scale(scale, scale);
+    ctx.translate(e.left + PAD, e.up + PAD);
+    paint(ctx, kind);
+    cached.set(key, art = canvas);
+    freezeEntry(cached, key, canvas);
+  }
+  c.drawImage(art, x - e.left - PAD, y - e.up - PAD, w, h);
 }

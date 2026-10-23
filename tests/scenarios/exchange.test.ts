@@ -73,7 +73,7 @@ describe("The Trade Chrysanthemum", () => {
     const hit = sheet(ann.tab)!.querySelector(".exchange-hit")!;
     // The seller's own display name, as their profile has it.
     expect(hit.querySelector(".exchange-hit-seller")?.textContent).toBe(world.db.playerProfile.identity.find(moss.player.identity)?.displayName);
-    expect(hit.querySelector(".exchange-hit-price")?.textContent).toBe("10");
+    expect(hit.querySelector(".exchange-hit-price")?.textContent).toBe("10ea");
     expect(hit.querySelector(".exchange-hit-amount")?.textContent).toBe("×100");
     press(ann.tab, ".exchange-hit");
     await ann.tab.play(100);
