@@ -285,7 +285,7 @@ async function exchangeWindow() {
   unpin.textContent = `
     html, body { position: static !important; height: auto !important; overflow: visible !important; }
     body { display: flex !important; flex-wrap: wrap; gap: 12px; align-items: flex-start; padding: 12px; }
-    dialog.exchange-sheet[open] { position: relative !important; inset: auto !important; margin: 0 !important; flex: 0 0 390px; }
+    dialog.exchange-sheet[open] { position: relative !important; inset: auto !important; margin: 0 !important; flex: 0 0 345px; }
   `;
   document.head.append(unpin);
   const me = "aa", them = "bb", at = 0, done = async () => ({ ok: true });
