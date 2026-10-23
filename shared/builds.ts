@@ -2,7 +2,7 @@ import { cardDefinition } from "./cards";
 import { MAX_ACTIVE_CARD_SLOTS, type ActiveCards } from "./active-cards";
 
 /** How many Builds a player can save. */
-export const BUILD_SLOTS = 3;
+export const BUILD_SLOTS = 10;
 /** The longest name a Build can have. */
 export const BUILD_NAME_MAX = 20;
 

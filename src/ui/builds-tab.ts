@@ -3,7 +3,7 @@ import type { SavedBuild } from "../../shared/builds";
 import type { BuildActions } from "./build-actions";
 
 /**
- * The Builds tab: three saved loadouts, each the gear in every slot and the active cards. Save Current
+ * The Builds tab: ten saved loadouts, a compact row each, each the gear in every slot and the active cards. Save Current
  * stores what is worn now (a second tap confirms over a saved build); Equip puts it all back on. Rename names
  * one (Enter or leaving the box keeps it, Escape keeps the old one; an empty name is its number again).
  */
@@ -90,12 +90,12 @@ export function createBuildsTab(options: {
       const renameButton = document.createElement("button");
       renameButton.type = "button";
       renameButton.className = "builds-tab-rename";
-      renameButton.textContent = "Rename";
+      renameButton.textContent = "✎";
       renameButton.hidden = editing === slot;
       renameButton.disabled = busy >= 0;
       renameButton.setAttribute("aria-label", `Rename ${label(slot)}`);
       renameButton.addEventListener("click", () => { editing = slot; armed = -1; render(true); });
-      head.append(title, renameButton);
+      head.append(title);
       const detail = document.createElement("span");
       detail.className = "builds-tab-detail";
       detail.textContent = summary(build);
@@ -110,21 +110,24 @@ export function createBuildsTab(options: {
       const save = document.createElement("button");
       save.type = "button";
       save.className = "builds-tab-save";
-      save.textContent = armed === slot ? "Confirm Save" : "Save Current";
+      save.textContent = armed === slot ? "Confirm" : "Save";
       save.disabled = busy >= 0;
       save.addEventListener("click", () => {
         if (build && armed !== slot) { armed = slot; render(true); return; }
         void run(slot, "save");
       });
-      actions.append(equip, save);
-      card.append(head, detail, actions);
+      actions.append(renameButton, equip, save);
+      const text = document.createElement("div");
+      text.className = "builds-tab-text";
+      text.append(head, detail);
+      card.append(text, actions);
       list.append(card);
     }
   }
 
   return {
     element,
-    /** Equips a saved build as its Equip button does (the Build 1-3 hotkeys); an empty slot says so. */
+    /** Equips a saved build as its Equip button does (the Build 1-10 hotkeys); an empty slot says so. */
     equip(slot: number) {
       if (busy >= 0) return;
       if (!options.actions.builds()[slot]) { options.showMessage(`${label(slot)} Is Empty`, "#ff9b91"); return; }

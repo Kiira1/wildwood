@@ -21,6 +21,7 @@ import { TOWN_BENCH_POSITION } from "../../shared/town";
 import { CARD_SHOP_ROTATION_MS, cardShopOffer, cardShopRotation } from "../../shared/card-shop";
 import { writeProgressAndPresentation } from "../../spacetimedb/src/player-power";
 import { readPlayerProgress } from "../../spacetimedb/src/wide-stats";
+import { BUILD_SLOTS } from "../../shared/builds";
 
 type BowRoll = { arrowStorm: number; ricochet: number; piercingShot: number };
 const NO_ROLL: BowRoll = { arrowStorm: 0, ricochet: 0, piercingShot: 0 };
@@ -622,7 +623,7 @@ describe("builds", () => {
     ann.call("applyBuildCards", { slot: 2 });
     expect(activeHand(world, ann)).toEqual(["needle_card"]);
     expect(ann.refusal("applyBuildCards", { slot: 1 })).not.toBeNull();
-    expect(ann.refusal("saveBuild", { slot: 3 })).not.toBeNull();
+    expect(ann.refusal("saveBuild", { slot: BUILD_SLOTS })).not.toBeNull();
     ann.call("renameBuild", { slot: 2, name: "x".repeat(40) });
     expect(world.db.playerBuildName.key.find(`${ann.hex}:2`)?.name).toBe("x".repeat(20));
     const account = signInAs(world, ann, "Ann's account");

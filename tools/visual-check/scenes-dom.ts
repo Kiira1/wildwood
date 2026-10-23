@@ -23,6 +23,9 @@ import { createItemInspectionController } from "../../src/ui/item-inspection-con
 import { gradeShopSalePrice } from "../../shared/grade-shop";
 import { settleFrames, settleImages } from "./determinism";
 import { GROUND, playerAppearance } from "./world";
+import { createBuildsTab } from "../../src/ui/builds-tab";
+import { itemDisplayName } from "../../shared/items";
+import { itemInspectionButtonLabel } from "../../src/ui/item-inspection-controller";
 
 let markup: Promise<Document> | null = null;
 
@@ -429,6 +432,32 @@ async function itemWindow(worn: boolean) {
   await settleCssImages();
 }
 
-export const DOM_SCENES: Record<string, () => Promise<void>> = { icons, hud, wordmark, shops, "gem-shop": gemShop, "server-boost": serverBoost, "exchange-window": exchangeWindow, grades,
+/** The Builds tab at phone width: ten rows, a few saved and named, one being renamed. */
+async function builds() {
+  await gameMarkup();
+  document.body.style.background = "#151515";
+  const style = document.createElement("style");
+  style.textContent = `html, body { position: static !important; height: auto !important; overflow: visible !important; }
+    .builds-tab { width: 360px; }`;
+  document.head.append(style);
+  const gear = (HAND: string, HEAD = "", CHEST = "", FEET = "") => ({ HAND, HEAD, CHEST, FEET });
+  const none = { HAND: [], HEAD: [], CHEST: [] };
+  const saved = [
+    { slot: 0, gear: gear("rare_bow", "rare_light_helmet", "rare_light_armor", "rare_boots"), cards: { ...none, HAND: ["needle_card"] } },
+    { slot: 1, gear: gear("iron_bow", "crude_light_helmet"), cards: none },
+    null,
+    { slot: 3, gear: gear("crude_bow"), cards: none },
+  ];
+  const ok = async () => ({ ok: true });
+  const view = createBuildsTab({
+    actions: { builds: () => saved, names: () => ["Boss Killer", "", "", "Mining"], save: ok, rename: ok, equip: ok } as never,
+    itemName: itemId => itemInspectionButtonLabel(itemDisplayName(itemId)), showMessage: () => {},
+  });
+  document.body.append(view.element);
+  view.show(true);
+  await settleCssImages();
+}
+
+export const DOM_SCENES: Record<string, () => Promise<void>> = { icons, hud, wordmark, shops, "gem-shop": gemShop, "server-boost": serverBoost, "exchange-window": exchangeWindow, grades, builds,
   "chat-announcement": chatAnnouncement, "item-window": () => itemWindow(false), "item-window-worn": () => itemWindow(true),
   "profile-own": () => profileWindow(true), "profile-other": () => profileWindow(false) };

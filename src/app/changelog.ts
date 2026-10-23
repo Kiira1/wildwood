@@ -1,4 +1,7 @@
 export const RELEASE_NOTES: Record<string, string[]> = {
+  "0.917.6": [
+    "10 Builds instead of 3, in a smaller list; keys 1 to 9 and 0 equip them",
+  ],
   "0.917.5": [
     "Gear grades show as colored borders, so names stay easy to read",
     "Items you buy at the Trade Chrysanthemum go straight to your bag",
@@ -3934,6 +3937,7 @@ const RELEASE_DATES: Record<string, string> = {
 };
 
 export const RELEASE_DAYS: Record<string, string> = {
+  "0.917.6": "2026-10-22",
   "0.917.5": "2026-10-22",
   "0.917.4": "2026-10-22",
   "0.917.3": "2026-10-22",

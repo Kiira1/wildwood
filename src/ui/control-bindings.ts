@@ -3,7 +3,8 @@
  * arrow keys, and a controller always moves with its left stick and D-pad; those stay fixed.
  */
 export type ControlAction = "moveUp" | "moveLeft" | "moveDown" | "moveRight"
-  | "autoFarm" | "inventory" | "map" | "profile" | "guild" | "leaderboard" | "settings" | "build1" | "build2" | "build3";
+  | "autoFarm" | "inventory" | "map" | "profile" | "guild" | "leaderboard" | "settings"
+  | "build1" | "build2" | "build3" | "build4" | "build5" | "build6" | "build7" | "build8" | "build9" | "build10";
 
 export type ControlBindings = { keys: Record<ControlAction, string>; pad: Record<ControlAction, number | null> };
 
@@ -24,6 +25,13 @@ export const CONTROL_ACTIONS: readonly ActionDefinition[] = Object.freeze([
   { id: "build1", label: "Build 1", key: "Digit1", pad: null },
   { id: "build2", label: "Build 2", key: "Digit2", pad: null },
   { id: "build3", label: "Build 3", key: "Digit3", pad: null },
+  { id: "build4", label: "Build 4", key: "Digit4", pad: null },
+  { id: "build5", label: "Build 5", key: "Digit5", pad: null },
+  { id: "build6", label: "Build 6", key: "Digit6", pad: null },
+  { id: "build7", label: "Build 7", key: "Digit7", pad: null },
+  { id: "build8", label: "Build 8", key: "Digit8", pad: null },
+  { id: "build9", label: "Build 9", key: "Digit9", pad: null },
+  { id: "build10", label: "Build 10", key: "Digit0", pad: null },
 ]);
 
 /** Standard-mapping button names, as an Xbox pad or a Steam Deck labels them. */

@@ -1,8 +1,8 @@
 import { actionForKey, onControlAction, type ControlAction } from "./control-bindings";
 
-const BUILD_ACTIONS: readonly ControlAction[] = ["build1", "build2", "build3"];
+const BUILD_ACTIONS: readonly ControlAction[] = ["build1", "build2", "build3", "build4", "build5", "build6", "build7", "build8", "build9", "build10"];
 
-/** Build 1-3 on their keys (1, 2, 3 unless remapped) and any controller button bound to them: equip that build. */
+/** Build 1-10 on their keys (1 to 9 and 0 unless remapped) and any controller button bound to them: equip that build. */
 export function installBuildHotkeys(doc: Document, equip: (slot: number) => void) {
   const onKey = (event: KeyboardEvent) => {
     if (event.defaultPrevented || event.repeat || event.ctrlKey || event.metaKey || event.altKey) return;
