@@ -1,3 +1,4 @@
+import { raiseAboveModals } from "./above-modals";
 import { formatEquipmentStat } from "./equipment-stat-format";
 import { appendItemTierLabel } from "./item-tier-label";
 import { itemArtMarkup, itemHasGalaxyFinish, itemInventoryRotation, itemPresentation } from "../game/item-presentation";
@@ -301,6 +302,7 @@ export function createItemInspectionController(elements: ItemInspectionElements)
     summary.append(preview, copy);
     elements.content.replaceChildren(summary);
     actionsHost.replaceChildren(actionRow);
+    raiseAboveModals(elements.panel);
     elements.panel.hidden = false;
     elements.back.focus({ preventScroll: true });
     return true;
@@ -368,6 +370,7 @@ export function createItemInspectionController(elements: ItemInspectionElements)
     summary.append(preview, copy);
     elements.content.replaceChildren(summary);
     actionsHost.replaceChildren(actionRow);
+    raiseAboveModals(elements.panel);
     elements.panel.hidden = false;
     elements.back.focus({ preventScroll: true });
     return true;
@@ -428,6 +431,7 @@ export function createItemInspectionController(elements: ItemInspectionElements)
     summary.append(preview, copy);
     elements.content.replaceChildren(summary);
     actionsHost.replaceChildren(actionRow);
+    raiseAboveModals(elements.panel);
     elements.panel.hidden = false;
     elements.back.focus({ preventScroll: true });
     return true;

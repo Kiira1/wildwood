@@ -49,8 +49,8 @@ describe("The Trade Chrysanthemum", () => {
     // Standing at the clerk opens his window.
     expect(await moss.tab.until(() => Boolean(sheet(moss.tab)))).toBe(true);
     expect(await ann.tab.until(() => Boolean(sheet(ann.tab)))).toBe(true);
-    // A free account has one slot; the rest are locked.
-    expect(sheet(moss.tab)!.querySelectorAll(".exchange-slot.is-locked")).toHaveLength(2);
+    // A free account has three slots; a supporter's other three are locked.
+    expect(sheet(moss.tab)!.querySelectorAll(".exchange-slot.is-locked")).toHaveLength(3);
 
     press(moss.tab, ".exchange-side.is-sell");
     await moss.tab.play(100);

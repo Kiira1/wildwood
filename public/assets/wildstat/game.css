@@ -5065,9 +5065,10 @@ html.text-outline-shadow .death-countdown { text-shadow: var(--text-outline-ring
   :is(.exchange-side, .exchange-confirm, .exchange-step):disabled { opacity: .45; cursor: default; }
   .exchange-side { height: 54px; font-size: 18px; }
   /* Every card the same height, filled or not: a row as tall as a filled card's contents. */
-  .exchange-slots { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); grid-auto-rows: minmax(176px, auto); gap: 8px; }
-  .exchange-slot { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 5px;
-    padding: 10px 8px; border: 1.5px dashed var(--cell-line); border-radius: 10px; background: var(--cell); color: #a3a49e; font-size: 13px; }
+  /* Square cards, three across: a supporter's six make two rows. */
+  .exchange-slots { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+  .exchange-slot { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; aspect-ratio: 1; overflow: hidden;
+    padding: 6px; border: 1.5px dashed var(--cell-line); border-radius: 0; background: var(--cell); color: #a3a49e; font-size: 13px; }
   .exchange-slot.is-locked { color: #8d8e88; background: #171816; }
   .exchange-slot.is-filled { border-style: solid; color: var(--text); cursor: pointer; }
   .exchange-slot.is-buy { border-color: var(--buy-line); }
@@ -5077,25 +5078,28 @@ html.text-outline-shadow .death-countdown { text-shadow: var(--text-outline-ring
   .exchange-slot.is-sell .exchange-tag { color: var(--sand); }
   .exchange-price { color: var(--sand); font-size: 14px; }
   .exchange-count { color: var(--muted); font-size: 11px; }
-  .exchange-progress { width: 100%; height: 5px; margin-top: 4px; border-radius: 3px; background: #2a2b28; overflow: hidden; }
+  .exchange-progress { width: 100%; height: 4px; margin-top: 2px; border-radius: 3px; background: #2a2b28; overflow: hidden; }
   .exchange-progress::after { content: ""; display: block; width: calc(var(--done, 0) * 100%); height: 100%; background: currentColor; }
   .exchange-slot.is-buy .exchange-progress { color: var(--buy); }
   .exchange-slot.is-sell .exchange-progress { color: var(--sand); }
-  .exchange-collect { display: flex; align-items: center; gap: 8px; margin-top: 12px; padding: 8px 10px; border: 1.5px solid var(--sand-line); border-radius: 10px; background: #26241d; }
+  .exchange-collect { display: flex; align-items: center; gap: 8px; margin-top: 12px; padding: 8px 10px; border: 1.5px solid var(--sand-line); border-radius: 3px; background: #26241d; }
   .exchange-collect-items { flex: 1; display: flex; align-items: center; gap: 6px; overflow: hidden; }
 
   /* Items: the bag's own tiles, a figure in the corner. */
+  /* The bag's own tile, corners and all, so items look the same everywhere. */
   .exchange-tile { width: 56px; height: 56px; min-height: 0; padding: 0; position: relative; flex: 0 0 auto; }
+  /* No tier label over a trade tile, so its refine star sits right in the corner. */
+  .inventory-item.exchange-tile > .refine-badge { top: 3px; right: 4px; }
   .exchange-chip { position: absolute; right: 2px; bottom: 2px; padding: 0 3px; border-radius: 4px; background: #000b; color: var(--sand); font-size: 10px; line-height: 14px; }
   .exchange-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(56px, 1fr)); gap: 8px; justify-items: center; }
 
   /* Buy: a search over the market; results a row per seller. */
-  .exchange-search { display: flex; align-items: center; gap: 8px; padding: 0 12px; border: 1.5px solid var(--cell-line); border-radius: 10px; background: var(--cell); color: var(--muted); }
+  .exchange-search { display: flex; align-items: center; gap: 8px; padding: 0 12px; border: 1.5px solid var(--cell-line); border-radius: 3px; background: var(--cell); color: var(--muted); }
   .exchange-search-icon { width: 18px; height: 18px; flex: 0 0 auto; }
   .exchange-search input { flex: 1; min-width: 0; padding: 11px 0; border: 0; background: transparent; color: var(--text); font: inherit; font-size: 15px; outline: none; }
   .exchange-results { margin-top: 4px; }
   .exchange-hit { display: grid; grid-template-columns: 56px minmax(0, 1fr) auto; align-items: center; column-gap: 12px; width: 100%; margin-top: 8px;
-    padding: 8px 10px 8px 8px; border: 1.5px solid var(--cell-line); border-radius: 10px; background: var(--cell); color: var(--text); font: inherit; text-align: left; cursor: pointer; }
+    padding: 8px 10px 8px 8px; border: 1.5px solid var(--cell-line); border-radius: 0; background: var(--cell); color: var(--text); font: inherit; text-align: left; cursor: pointer; }
   .exchange-hit-text { display: flex; flex-direction: column; min-width: 0; gap: 1px; }
   .exchange-hit-name { font-size: 14px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .exchange-hit-seller { color: var(--sand-dim); font-size: 12px; }
@@ -5108,15 +5112,17 @@ html.text-outline-shadow .death-countdown { text-shadow: var(--text-outline-ring
   /* An offer: the item in the middle, its market under it, then amount, price, total. */
   .exchange-hero { display: flex; flex-direction: column; align-items: center; gap: 6px; margin: 4px 0 16px; text-align: center; }
   .exchange-hero .exchange-tile { width: 72px; height: 72px; }
-  .exchange-pill { padding: 2px 12px; border-radius: 999px; font-size: 12px; }
+  .exchange-pill { padding: 2px 12px; border-radius: 3px; font-size: 12px; }
   .exchange-hero.is-buy .exchange-pill { background: #1f2a1c; color: var(--buy); border: 1px solid var(--buy-line); }
   .exchange-hero.is-sell .exchange-pill { background: #2a261c; color: var(--sand); border: 1px solid var(--sand-line); }
   .exchange-hero-name { font-size: 17px; }
   .exchange-market { margin: 0; color: var(--muted); font-size: 12px; white-space: pre; }
-  .exchange-stepper { display: grid; grid-template-columns: 66px 44px minmax(0, 1fr) 44px auto; align-items: center; gap: 6px; margin-bottom: 8px; }
-  .exchange-stepper-label { color: var(--muted); font-size: 13px; }
-  .exchange-stepper input { min-width: 0; height: 40px; padding: 0 8px; border: 1.5px solid var(--cell-line); border-radius: 8px; background: var(--cell); color: var(--text); font-size: 16px; text-align: center; }
-  .exchange-step { height: 40px; }
+  /* Label, step down, field, step up, extra: the same columns in every row, each cell the same height. */
+  .exchange-stepper { display: grid; grid-template-columns: 82px 52px minmax(0, 1fr) 52px 52px; align-items: center; gap: 6px; margin-bottom: 10px; }
+  .exchange-stepper-label { color: var(--muted); font-size: 13px; white-space: nowrap; }
+  .exchange-stepper input { box-sizing: border-box; min-width: 0; height: 40px; margin: 0; padding: 0 8px; border: 1.5px solid var(--cell-line); border-radius: 0; background: var(--cell); color: var(--text); font-size: 16px; text-align: center; }
+  .exchange-stepper .exchange-step { box-sizing: border-box; width: 52px; height: 40px; margin: 0 0 3px; padding: 0 0 2px; }
+  .exchange-step { height: 40px; border-radius: 4px; }
   .exchange-total { display: flex; align-items: center; justify-content: space-between; margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--cell-line); }
   .exchange-total-label { color: var(--muted); font-size: 13px; }
   .exchange-total-gold { font-size: 18px; }
@@ -5127,10 +5133,44 @@ html.text-outline-shadow .death-countdown { text-shadow: var(--text-outline-ring
   .exchange-collect .exchange-confirm { flex: 0 0 auto; align-self: center; width: auto; height: 44px; margin: 0 0 3px; padding: 0 18px 2px; }
 
   .exchange-item-offer { margin-top: 14px; }
-  .exchange-cancel { width: 100%; height: 30px; margin-top: 6px; font-size: 12px; }
+  .exchange-cancel { width: 100%; height: 22px; margin-top: 3px; font-size: 11px; }
+  .exchange-slot .exchange-tile { width: 40px; height: 40px; }
+  .exchange-slot .exchange-price { font-size: 12px; }
+  .exchange-slot .exchange-tag { font-size: 11px; white-space: nowrap; }
   .exchange-each { margin-left: 2px; color: var(--muted); font-size: 11px; }
   .exchange-total-label { display: flex; flex-direction: column; gap: 2px; }
   .exchange-sum { color: var(--muted); font-size: 12px; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; -webkit-text-stroke: 0; }
   .exchange-tile.is-none { opacity: .35; }
   .exchange-foot { display: flex; justify-content: center; padding: 8px 12px 12px; }
   .exchange-foot .window-back-button { min-width: 160px; }
+
+  /*
+   * Gear tiles colored by grade, Crude (0) to Eternal (14), like a rarity table: one muted color a grade, Celestial
+   * striped and Divine starred. The art and its labels sit on top unchanged.
+   */
+  :is(.inventory-item, .equipment-slot)[data-grade] {
+    border-color: rgba(0, 0, 0, .7);
+    /* An inner border inside the dark outer one, as a card has. */
+    box-shadow: inset 0 0 0 2px rgba(255, 255, 255, .24);
+    background: var(--grade);
+  }
+  :is(.inventory-item, .equipment-slot)[data-grade="0"] { --grade: #8e8e8e; }
+  :is(.inventory-item, .equipment-slot)[data-grade="1"] { --grade: #a9a9a9; }
+  :is(.inventory-item, .equipment-slot)[data-grade="2"] { --grade: #b39c7d; }
+  :is(.inventory-item, .equipment-slot)[data-grade="3"] { --grade: #9fb36b; }
+  :is(.inventory-item, .equipment-slot)[data-grade="4"] { --grade: #77a97b; }
+  :is(.inventory-item, .equipment-slot)[data-grade="5"] { --grade: #6c9fbf; }
+  :is(.inventory-item, .equipment-slot)[data-grade="6"] { --grade: #7f8fc4; }
+  :is(.inventory-item, .equipment-slot)[data-grade="7"] { --grade: #9a83c2; }
+  :is(.inventory-item, .equipment-slot)[data-grade="8"] { --grade: #c085a8; }
+  :is(.inventory-item, .equipment-slot)[data-grade="9"] { --grade: #c9ad5f; }
+  :is(.inventory-item, .equipment-slot)[data-grade="10"] { --grade: #c98a5a; }
+  :is(.inventory-item, .equipment-slot)[data-grade="11"] { --grade: #5a63a8; }
+  :is(.inventory-item, .equipment-slot)[data-grade="12"] {
+    --grade: repeating-linear-gradient(115deg, rgba(255,255,255,.14) 0 10%, transparent 10% 22%), #b8625e;
+  }
+  :is(.inventory-item, .equipment-slot)[data-grade="13"] {
+    --grade: radial-gradient(circle at 25% 25%, #ecd9a2 0 6%, transparent 7%), radial-gradient(circle at 75% 60%, #ecd9a2 0 6%, transparent 7%),
+      radial-gradient(circle at 40% 85%, #ecd9a2 0 4%, transparent 5%), #c49a5c;
+  }
+  :is(.inventory-item, .equipment-slot)[data-grade="14"] { --grade: #56a99f; }

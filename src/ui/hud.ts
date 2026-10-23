@@ -1,4 +1,4 @@
-import { appendBagTileContents } from "./bag-item-tile";
+import { appendBagTileContents, setTileGrade } from "./bag-item-tile";
 import { itemTier } from "../../shared/item-tier";
 import { appendItemTierLabel } from "./item-tier-label";
 import { appendRefineBadge, withRefineStars } from "./refine-badge";
@@ -297,6 +297,7 @@ function renderEquipmentSlot(
     ? `Lvl: +${level}`
     : item?.name ?? (cosmeticHidden ? "NOTHING" : inheritedItem ? "GEAR VISIBLE" : mode === "COSMETICS" ? "NOTHING" : "EMPTY");
   element.replaceChildren(slotLabel, art, name);
+  setTileGrade(element, item ? itemId : undefined);
   element.classList.toggle("is-filled", Boolean(equipped));
   if (equipped) appendItemTierLabel(element, itemId);
   if (level > 0) {

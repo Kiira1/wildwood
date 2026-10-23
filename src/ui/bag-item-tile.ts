@@ -3,6 +3,13 @@ import { itemArtMarkup } from "../game/item-presentation";
 import { formatEquipmentAmount } from "./equipment-stat-format";
 import { appendItemTierLabel } from "./item-tier-label";
 import { appendRefineBadge } from "./refine-badge";
+import { itemGradeRank } from "../../shared/item-tier";
+
+/** Colors a tile by the piece's grade (game.css [data-grade]); empty or non-gear tiles keep the plain one. */
+export function setTileGrade(tile: HTMLElement, itemId: string | undefined) {
+  const rank = itemId ? itemGradeRank(itemId) : undefined;
+  if (rank === undefined) delete tile.dataset.grade; else tile.dataset.grade = String(rank);
+}
 
 /**
  * A bag tile's insides: the art, the tier over it, the stat values along the bottom and the ★N.
@@ -11,6 +18,7 @@ import { appendRefineBadge } from "./refine-badge";
 export function appendBagTileContents(button: HTMLElement, itemId: string,
   options: { refine?: number; tier?: number; artRefine?: number; plain?: boolean; stats?: boolean } = {}) {
   const refine = options.refine ?? 0;
+  if (!options.plain) setTileGrade(button, itemId);
   const art = document.createElement("span");
   art.className = "inventory-item-art-wrap";
   art.innerHTML = itemArtMarkup(itemId, true, options.artRefine ?? refine);

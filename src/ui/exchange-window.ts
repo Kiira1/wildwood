@@ -136,7 +136,7 @@ export function createExchangeController(deps: ExchangeDeps) {
   }
   const section = (title: string) => el("h4", "exchange-section", title);
 
-  function slot(fill: { itemId: string; refine: number; buy: boolean; filled: number; quantity: number; price: bigint; cancel: () => void } | null) {
+  function slot(fill: { itemId: string; refine: number; buy: boolean; filled: number; quantity: number; price: bigint; cancel: () => void; roll?: WeaponSkillRoll | null } | null) {
     const card = el("div", `exchange-slot${fill ? " is-filled" : ""}`);
     if (!fill) { card.textContent = "Empty"; return card; }
     card.classList.add(fill.buy ? "is-buy" : "is-sell");
@@ -145,8 +145,12 @@ export function createExchangeController(deps: ExchangeDeps) {
     const cancel = el("button", "exchange-step exchange-cancel", "Cancel");
     cancel.type = "button"; cancel.disabled = busy;
     cancel.addEventListener("click", fill.cancel);
-    card.append(el("span", "exchange-tag", fill.buy ? "Buying" : "Selling"), tile(fill.itemId, fill.refine),
-      el("span", "exchange-price", `${short(fill.price)} ea`), el("span", "exchange-count", `${short(BigInt(fill.filled))}/${short(BigInt(fill.quantity))}`), bar, cancel);
+    const tag = el("span", "exchange-tag", fill.buy ? "Buying" : "Selling");
+    tag.append(el("span", "exchange-count", ` ${short(BigInt(fill.filled))}/${short(BigInt(fill.quantity))}`));
+    // Gear on sale opens the item window, so its stats are there to remember.
+    const gear = !isExchangeResource(fill.itemId) && deps.inspect;
+    card.append(tag, tile(fill.itemId, fill.refine, "", gear ? () => deps.inspect!(fill.itemId, fill.refine, fill.roll ?? null) : undefined),
+      el("span", "exchange-price", `${short(fill.price)} ea`), bar, cancel);
     card.setAttribute("aria-label", `${fill.buy ? "Buying" : "Selling"} ${itemName(fill.itemId)}, ${fill.filled} of ${fill.quantity} done, ${fill.price} gold each.`);
     return card;
   }
@@ -183,7 +187,7 @@ export function createExchangeController(deps: ExchangeDeps) {
         cancel: cancel(`Cancel ${offer.buy ? "buying" : "selling"} ${itemName(offer.itemId)}?`, () => deps.cancelOffer(offer.id)) }));
     }
     for (const listing of myListings()) {
-      grid.append(slot({ itemId: listing.itemId, refine: listing.refine, buy: false, filled: 0, quantity: 1, price: listing.price,
+      grid.append(slot({ itemId: listing.itemId, refine: listing.refine, buy: false, filled: 0, quantity: 1, price: listing.price, roll: rollFrom(listing.rollJson),
         cancel: cancel(`Take ${itemName(listing.itemId)} off sale?`, () => deps.cancelListing(listing.id)) }));
     }
     while (grid.childElementCount < usable) grid.append(slot(null));
@@ -338,7 +342,8 @@ export function createExchangeController(deps: ExchangeDeps) {
     input.addEventListener("input", () => onInput(input.value));
     const button = ([text, run]: [string, () => void]) => { const b = el("button", "exchange-step", text); b.type = "button"; b.addEventListener("click", run); return b; };
     const [down, up, ...more] = steps;
-    row.append(el("span", "exchange-stepper-label", label), button(down), input, button(up), ...more.map(button));
+    // Every row the same five cells, a blank where it has no extra button, so the fields line up.
+    row.append(el("span", "exchange-stepper-label", label), button(down), input, button(up), ...(more.length ? more.map(button) : [el("span")]));
     return row;
   }
 
@@ -350,7 +355,9 @@ export function createExchangeController(deps: ExchangeDeps) {
     const market = el("p", "exchange-market");
     market.textContent = gear ? "" : [`Lowest ${lowest === null ? "—" : short(lowest)}`, `Highest ${highest === null ? "—" : short(highest)}`,
       `Last ${recent === null ? "—" : short(recent)}`].join("   ");
-    hero.append(el("span", "exchange-pill", draft.buy ? "Buy" : "Sell"), tile(draft.itemId, draft.refine),
+    const piece = gear ? deps.gear().find(each => each.itemId === draft.itemId && each.copyId === draft.copyId) : undefined;
+    hero.append(el("span", "exchange-pill", draft.buy ? "Buy" : "Sell"),
+      tile(draft.itemId, draft.refine, "", gear && deps.inspect ? () => deps.inspect!(draft.itemId, draft.refine, piece?.roll ?? null) : undefined),
       el("strong", "exchange-hero-name", `${itemName(draft.itemId)}${draft.refine ? ` ★${draft.refine}` : ""}`), market);
     const parts: HTMLElement[] = [hero];
     const redraw = () => render(true);

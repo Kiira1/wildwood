@@ -1,4 +1,11 @@
 export const RELEASE_NOTES: Record<string, string[]> = {
+  "0.917.3": [
+    "Gear tiles are colored by grade, so you can tell at a glance which is higher",
+    "The item window and prompts show in front of the trade, Smith and seller windows",
+    "Cleaner trade window: fields line up, square boxes and rows",
+    "3 trade slots for everyone, 6 for Patreon supporters",
+    "Tap gear you're selling to see its stats",
+  ],
   "0.917.2": [
     "Tap an item in Buy to see everyone selling it, with a Buy Offer button",
     "Your own gear on sale no longer loads forever",
@@ -3920,6 +3927,7 @@ const RELEASE_DATES: Record<string, string> = {
 };
 
 export const RELEASE_DAYS: Record<string, string> = {
+  "0.917.3": "2026-10-22",
   "0.917.2": "2026-10-22",
   "0.917.1": "2026-10-22",
   "0.917": "2026-10-22",

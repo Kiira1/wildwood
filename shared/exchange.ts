@@ -7,9 +7,9 @@ import { canonicalItemId, isCosmeticOnlyItem, itemDefinition, STARTER_ITEM_IDS, 
 import { isDuplicateOfferItem } from "./equipment-copies";
 import { REFINE_ORES, type OreId } from "./refine";
 
-/** Offers and listings open at once, together: one for everyone, three for Patreon supporters. */
-export const EXCHANGE_FREE_OFFERS = 1;
-export const EXCHANGE_SUPPORTER_OFFERS = 3;
+/** Offers and listings open at once, together: three for everyone, six for Patreon supporters. */
+export const EXCHANGE_FREE_OFFERS = 3;
+export const EXCHANGE_SUPPORTER_OFFERS = 6;
 export const exchangeOfferSlots = (supporter: boolean) => supporter ? EXCHANGE_SUPPORTER_OFFERS : EXCHANGE_FREE_OFFERS;
 /** The seller's share taken on every sale, in percent: gold leaves the game. */
 export const EXCHANGE_FEE_PERCENT = 2n;

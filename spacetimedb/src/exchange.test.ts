@@ -66,8 +66,6 @@ describe("Trade Chrysanthemum resources", () => {
     f.as(BUYER);
     f.run(server.placeExchangeOffer, { buy: true, itemId: "iron_ore", quantity: 10, price: 7n });
     expect(goldFor(f.ctx, BUYER)).toBe(10_000n - 70n);
-    // A free player has one slot.
-    expect(() => f.run(server.placeExchangeOffer, { buy: true, itemId: "copper_ore", quantity: 1, price: 1n })).toThrow("slot");
     const [buy] = [...f.db.exchangeOffer.iter()];
     f.run(server.cancelExchangeOffer, { id: buy.id });
     expect(goldFor(f.ctx, BUYER)).toBe(10_000n);
@@ -77,6 +75,10 @@ describe("Trade Chrysanthemum resources", () => {
     f.run(server.cancelExchangeOffer, { id: sale.id });
     f.collect();
     expect(oreCount(f.ctx, SELLER, "copper_ore")).toBe(100);
+    // A free player has three slots: three go up, a fourth does not.
+    f.as(BUYER);
+    for (const itemId of ["iron_ore", "oak_log", "pine_log"]) f.run(server.placeExchangeOffer, { buy: true, itemId, quantity: 1, price: 1n });
+    expect(() => f.run(server.placeExchangeOffer, { buy: true, itemId: "yew_log", quantity: 1, price: 1n })).toThrow("slots");
   });
 
   it("refuses guests, players away from the clerk, cards and amounts out of range", () => {

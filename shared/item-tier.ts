@@ -5,6 +5,8 @@ import {
   STARTER_BOW, STARTER_STONE, WATER_ARMOR, WOOD_FULL_HELM, WOODEN_ARMOR, isCosmeticOnlyItem,
 } from "./items";
 import { MAP_IDS } from "./rules";
+import { GEAR_GRADES } from "./gear-grades";
+import { gradeOf } from "./grade-equipment";
 
 // Tier follows each item's map (the first maps' gear plus each campaign item's own map), not item power
 // or upgrade level, so owned items keep their tiers and refine grades.
@@ -19,4 +21,15 @@ for (const [itemId, { mapId }] of Object.entries(CAMPAIGN_EQUIPMENT)) {
 }
 export function itemTier(itemId: string): number | undefined {
   return isCosmeticOnlyItem(itemId) ? undefined : TIERS.get(itemId);
+}
+
+/**
+ * Where a piece stands on the grade ladder, 0 (Crude) to 14 (Eternal), for its tile's color: a graded piece by its
+ * grade, older gear by its tier, which stands for the same grade (GRADE_ITEM_TIER). Undefined for anything else.
+ */
+export function itemGradeRank(itemId: string): number | undefined {
+  const grade = gradeOf(itemId);
+  if (grade) return GEAR_GRADES.indexOf(grade);
+  const tier = itemTier(itemId);
+  return tier === undefined ? undefined : Math.max(0, Math.min(GEAR_GRADES.length - 1, tier - 1));
 }
