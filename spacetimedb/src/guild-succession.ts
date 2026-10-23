@@ -2,7 +2,7 @@ import type { Identity } from "spacetimedb";
 import { sendPersonalMail } from "./dev-review-mail";
 
 /** Days a President can be away before their guild passes to a member who still plays. */
-export const GUILD_LEADER_AWAY_DAYS = 3;
+export const GUILD_LEADER_AWAY_DAYS = 7;
 const DAY_MICROS = 86_400_000_000n;
 
 type Ctx = any;

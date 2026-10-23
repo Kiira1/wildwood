@@ -459,11 +459,11 @@ describe("A President who stops playing", () => {
     ann.call("setGuildVicePresident", { identity: dan.identity, enabled: true });
     const president = () => world.db.guild.id.find(id).leader.toHexString();
     for (const player of [ann, bob, cara, dan]) player.disconnect();
-    // Two days away is not long enough.
-    world.advance(2 * DAY);
+    // Six days away is not long enough.
+    world.advance(6 * DAY);
     enter(cara);
     expect(president()).toBe(ann.hex);
-    // Past three days: the Vice President has not played either, so the longest-serving member who has leads.
+    // Past a week: the Vice President has not played either, so the longest-serving member who has leads.
     cara.disconnect();
     world.advance(2 * DAY);
     enter(bob);

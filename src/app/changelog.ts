@@ -1,4 +1,7 @@
 export const RELEASE_NOTES: Record<string, string[]> = {
+  "0.917.9": [
+    "A guild President now has 7 days away before the guild passes on, not 3",
+  ],
   "0.917.8": [
     "Quests name the map first, then the enemy",
   ],
@@ -3945,6 +3948,7 @@ const RELEASE_DATES: Record<string, string> = {
 };
 
 export const RELEASE_DAYS: Record<string, string> = {
+  "0.917.9": "2026-10-23",
   "0.917.8": "2026-10-23",
   "0.917.7": "2026-10-23",
   "0.917.6": "2026-10-22",
