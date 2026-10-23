@@ -36,8 +36,6 @@ function bloom(c: CanvasRenderingContext2D, x: number, y: number, r: number, col
 }
 
 const GOLD = ["#e9a426", "#f5c13e", "#ffe08a", "#b5651d"] as const;
-const AMBER = ["#d9762b", "#ee9a3e", "#f8c36a", "#8f4a17"] as const;
-const CREAM = ["#e6dcc4", "#f5efe0", "#fffaf0", "#c9a246"] as const;
 
 /** A raised round bed of stone, soil and leaves, one great golden chrysanthemum in its middle and smaller ones round it. */
 function drawBed(c: CanvasRenderingContext2D) {
@@ -66,19 +64,12 @@ function drawBed(c: CanvasRenderingContext2D) {
     const angle = leaf / 14 * Math.PI * 2, lx = Math.cos(angle) * (rx - 26), ly = cy + Math.sin(angle) * (ry - 20);
     c.beginPath(); c.ellipse(lx, ly - 3, 11, 6, angle, 0, Math.PI * 2); c.fill(); c.stroke();
   }
-  // The small blooms round the edge, back to front, then the great one, raised on its stems.
-  const small = Array.from({ length: 10 }, (_, index) => {
-    const angle = index / 10 * Math.PI * 2 + .3;
-    return { x: Math.cos(angle) * (rx - 30), y: cy + Math.sin(angle) * (ry - 22) - 6, colors: [AMBER, CREAM, GOLD][index % 3] };
-  }).sort((a, b) => a.y - b.y);
-  const back = small.filter(item => item.y < cy - 6), front = small.filter(item => item.y >= cy - 6);
-  for (const item of back) bloom(c, item.x, item.y, 15, item.colors);
+  // One great bloom, raised on its stems.
   c.strokeStyle = "#2f5a2a"; c.lineWidth = 4;
   c.beginPath(); c.moveTo(0, cy + 4); c.lineTo(0, cy - 22); c.stroke();
   c.fillStyle = "#4f8a40"; c.strokeStyle = OUTLINE; c.lineWidth = 1.5;
   for (const side of [-1, 1]) { c.beginPath(); c.ellipse(side * 12, cy - 8, 13, 6, side * -.5, 0, Math.PI * 2); c.fill(); c.stroke(); }
   bloom(c, 0, cy - 32, 36, GOLD);
-  for (const item of front) bloom(c, item.x, item.y, 15, item.colors);
 }
 
 /** A banner pole: a charcoal cloth, gold-trimmed, with a gold chrysanthemum on it, hung from a crossbar. */

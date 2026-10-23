@@ -236,12 +236,28 @@ export function createExchangeController(deps: ExchangeDeps) {
     return row;
   }
 
-  /** One gear item's listings, cheapest first: what a gear tile in Buy opens. */
+  /** How many of an item others have on sale: the price table's count less the player's own. */
+  function othersSelling(itemId: string) {
+    const own = myOffers().filter(offer => !offer.buy && offer.itemId === itemId).reduce((sum, offer) => sum + offer.quantity - offer.filled, 0)
+      + myListings().filter(listing => listing.itemId === itemId).length;
+    return Math.max(0, (priceOf(itemId)?.forSale ?? 0) - own);
+  }
+
+  /** One item: who sells it, cheapest first, and for a resource a buy offer of your own. What a tile in Buy opens. */
   function itemScreen(itemId: string) {
     deps.watch([itemId]);
     const sales = forSale().filter(sale => sale.itemId === itemId).slice(0, SHOWN_SELLERS);
-    return [heading(itemName(itemId), goldChip(deps.gold())),
-      ...(sales.length ? sales.map(hitRow) : [el("p", "exchange-empty", priceOf(itemId)?.forSale ? "Loading…" : "None")])];
+    // Only the player's own on sale, or nothing: there is nobody else to wait for.
+    const empty = othersSelling(itemId) > 0 ? "Loading…" : "Nobody else is selling this";
+    const parts: HTMLElement[] = [heading(itemName(itemId), goldChip(deps.gold())),
+      ...(sales.length ? sales.map(hitRow) : [el("p", "exchange-empty", empty)])];
+    if (isExchangeResource(itemId)) {
+      const offer = el("button", "exchange-confirm is-buy exchange-item-offer", "Place Buy Offer");
+      offer.type = "button";
+      offer.addEventListener("click", () => go(buyDraft(itemId, best(itemId, false) ?? last(itemId))));
+      parts.push(offer);
+    }
+    return parts;
   }
 
   /** Buy: a search box over the market. Empty, the resources and the gear for sale as grids; typed, a row per seller. */
@@ -249,7 +265,7 @@ export function createExchangeController(deps: ExchangeDeps) {
     const field = el("label", "exchange-search");
     field.innerHTML = SEARCH;
     const search = el("input");
-    search.type = "search"; search.placeholder = "Search"; search.value = query;
+    search.type = "search"; search.placeholder = "Search to see who sells it"; search.value = query;
     search.setAttribute("aria-label", "Search items");
     field.append(search);
     const results = el("div", "exchange-results");
@@ -258,10 +274,10 @@ export function createExchangeController(deps: ExchangeDeps) {
         const resources = el("div", "exchange-grid");
         for (const itemId of ORE_ORDER) {
           const price = best(itemId, false);
-          resources.append(tile(itemId, 0, price === null ? "" : short(price), () => go(buyDraft(itemId, price ?? last(itemId)))));
+          resources.append(tile(itemId, 0, price === null ? "" : short(price), () => go({ kind: "item", itemId })));
         }
         // Gear on sale, one tile per item with its lowest price: thousands of listings stay a short grid.
-        const gearForSale = deps.prices().filter(row => !isExchangeResource(row.itemId) && row.forSale > 0 && row.lowestAsk !== null)
+        const gearForSale = deps.prices().filter(row => !isExchangeResource(row.itemId) && othersSelling(row.itemId) > 0 && row.lowestAsk !== null)
           .sort((a, b) => (a.lowestAsk! < b.lowestAsk! ? -1 : 1));
         const gear = el("div", "exchange-grid");
         for (const row of gearForSale) gear.append(tile(row.itemId, 0, short(row.lowestAsk!), () => go({ kind: "item", itemId: row.itemId })));
@@ -271,7 +287,7 @@ export function createExchangeController(deps: ExchangeDeps) {
       }
       // Matched the way the leaderboard matches names (whole name, then its start, then a word's start, then anywhere),
       // over the items on sale; only the best few items' sellers are followed.
-      const onSale = deps.prices().filter(row => row.forSale > 0);
+      const onSale = deps.prices().filter(row => othersSelling(row.itemId) > 0);
       const entries = onSale.map(row => ({ identity: row.itemId, name: itemName(row.itemId), key: foldPlayerName(itemName(row.itemId)) }));
       const matched = searchPlayerDirectory(entries, query, { limit: EXCHANGE_WATCHED_ITEMS }).map(entry => entry.identity);
       deps.watch(matched);

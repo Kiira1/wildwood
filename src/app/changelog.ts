@@ -1,4 +1,9 @@
 export const RELEASE_NOTES: Record<string, string[]> = {
+  "0.917.2": [
+    "Tap an item in Buy to see everyone selling it, with a Buy Offer button",
+    "Your own gear on sale no longer loads forever",
+    "The Trade Chrysanthemum's bed keeps just its one big flower",
+  ],
   "0.917.1": [
     "Smoother framerate in and around the Trade Chrysanthemum",
     "Offers have a Cancel button, and prices read as each",
@@ -3915,6 +3920,7 @@ const RELEASE_DATES: Record<string, string> = {
 };
 
 export const RELEASE_DAYS: Record<string, string> = {
+  "0.917.2": "2026-10-22",
   "0.917.1": "2026-10-22",
   "0.917": "2026-10-22",
   "0.917.0": "2026-10-22",
