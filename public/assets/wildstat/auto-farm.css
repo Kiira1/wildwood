@@ -1019,6 +1019,10 @@
 .school-window .is-locked .school-window-technique-status { color: rgba(255,255,255,.72); font-weight: 700; }
 .cards-tab { display: grid; grid-column: 1; grid-row: 1 / span 2; align-content: start; gap: 6px; container-type: inline-size; min-width: 0; padding: 0 7px 7px; }
 .cards-tab-count { display: block; margin: 0 auto 4px; }
+.cards-search { box-sizing: border-box; width: 100%; min-width: 0; min-height: 40px; padding: 8px 10px; border: 1px solid var(--border); border-radius: 5px; background: #111; color: var(--text, #fff); font: inherit; }
+.cards-search:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
+.cards-search-status { margin: 0; color: #b3b3b3; font-size: 12px; }
+.cards-tab .inventory-item[hidden], .cards-zone[hidden], .cards-search-status[hidden] { display: none; }
 /* Active cards, at the top above the zones: a row per type, four slots each; empty is dashed, locked is dim. */
 .cards-active-row { display: grid; gap: 3px; }
 .cards-slot-row { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; }
