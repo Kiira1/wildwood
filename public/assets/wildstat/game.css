@@ -378,6 +378,10 @@
   #townBtn.is-town-cooldown .toolbar-icon { visibility: hidden; }
   .inventory-notice { position: absolute; top: 12%; left: calc(50% + 8px); width: 8px; height: 8px; border: 1px solid #fff; border-radius: 50%; background: #e63d3d; box-shadow: 0 1px 0 var(--ui-outline); pointer-events: none; }
   .inventory-notice[hidden] { display: none; }
+  /* Join requests waiting, for the guild's President and Vice President; the Guilds button uses the Inventory's dot. */
+  .guild-request-dot { position: absolute; top: 3px; right: 3px; width: 8px; height: 8px; border: 1px solid #fff; border-radius: 50%; background: #e63d3d; box-shadow: 0 1px 0 var(--ui-outline); pointer-events: none; }
+  .guild-request-dot[hidden] { display: none; }
+  .has-guild-request-dot:not(#guildBtn) { position: relative; }
 
   .toolbar-label { max-width: 100%; overflow: hidden; color: #fff; font: 900 10px/1 var(--font-rounded); letter-spacing: .01em; text-align: center; text-overflow: clip; white-space: nowrap; -webkit-text-stroke: 0; text-shadow: 1px 1px 0 #000; }
 
