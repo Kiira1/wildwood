@@ -88,7 +88,36 @@ function rollOf(json: string): WeaponSkillRoll {
   } catch { return {}; }
 }
 
-function toCollect(ctx: Ctx, identity: Identity, itemId: string, count: number, rollJson = "", refine = 0) {
+/**
+ * Puts resources (count > 0) or one gear piece (count 0) in a player's bag, whoever is acting, or says why it cannot
+ * (a full bag). Bought things arrive this way without a trip to the clerk.
+ */
+function deliver(ctx: Ctx, deps: ExchangeDeps, identity: Identity, itemId: string, count: number, rollJson: string, refine: number): string | null {
+  const progress = readPlayerProgress(ctx, identity);
+  if (!progress) return "Player unavailable.";
+  const inventory = deps.inventoryForProgress(progress);
+  const free = freeBagSlots(ctx, identity, progress, inventory);
+  if (count > 0) {
+    if (!isExchangeResource(itemId)) return null;
+    if (oreCount(ctx, identity, itemId) <= 0 && free <= 0) return "Your bag is full. Free a slot to collect.";
+    addOres(ctx, identity, itemId, count);
+    return null;
+  }
+  if (free <= 0) return "Your bag is full. Free a slot to collect.";
+  const roll = rollOf(rollJson);
+  if (inventory.includes(itemId)) insertKeptCopy(ctx, identity, itemId, roll, refine);
+  else {
+    deps.writeProgressAndPresentation(ctx, deps.restoreItemToProgress(progress, itemId));
+    setFirstCopyRoll(ctx, identity, itemId, roll);
+    setRefineLevel(ctx, identity, itemId, 0n, refine);
+  }
+  collectItem(ctx, identity, itemId);
+  return null;
+}
+
+/** Into the bag when it fits; otherwise, or during a challenge run (whose bag is put back after), the collection box. */
+function toCollect(ctx: Ctx, deps: ExchangeDeps, identity: Identity, itemId: string, count: number, rollJson = "", refine = 0) {
+  if (!challengeActive(ctx, identity) && deliver(ctx, deps, identity, itemId, count, rollJson, refine) === null) return;
   ctx.db.exchangeCollect.insert({ id: 0n, identity, itemId, count, rollJson, refine, arrivedAt: ctx.timestamp });
 }
 
@@ -144,7 +173,7 @@ function requireRoom(ctx: Ctx) {
 }
 
 /** Fills `incoming` against the best opposite offers, each at the price of the one that was waiting. */
-function match(ctx: Ctx, incoming: any) {
+function match(ctx: Ctx, deps: ExchangeDeps, incoming: any) {
   let left = incoming.quantity - incoming.filled;
   const waiting = [...ctx.db.exchangeOffer.itemId.filter(incoming.itemId)]
     .filter((offer: any) => offer.buy !== incoming.buy && !same(offer.identity, incoming.identity) && offer.quantity > offer.filled
@@ -158,7 +187,7 @@ function match(ctx: Ctx, incoming: any) {
     creditGold(ctx, sell.identity, total - exchangeFee(total));
     // The buyer set aside their own price; anything under it comes back.
     creditGold(ctx, buy.identity, (buy.price - price) * BigInt(quantity));
-    toCollect(ctx, buy.identity, incoming.itemId, quantity);
+    toCollect(ctx, deps, buy.identity, incoming.itemId, quantity);
     recordTrade(ctx, incoming.itemId, price, quantity);
     left -= quantity;
     const filled = { ...offer, filled: offer.filled + quantity };
@@ -178,7 +207,7 @@ function mailComplete(ctx: Ctx, offer: any) {
   const total = offer.price * BigInt(offer.quantity), item = `${offer.quantity.toLocaleString("en-US")} ${nameOf(offer.itemId)}`;
   sendPersonalMail(ctx, { key: `exchange-offer-${offer.id}`, identity: offer.identity, title: "Trade Chrysanthemum: Offer Complete",
     body: offer.buy
-      ? `You bought ${item} for ${goldText(total)} Gold. Collect it at the Trade Chrysanthemum.`
+      ? `You bought ${item} for ${goldText(total)} Gold. It went to your bag, or waits at the Trade Chrysanthemum if your bag was full.`
       : `You sold ${item} for ${goldText(total)} Gold, less the ${EXCHANGE_FEE_PERCENT}% fee. The gold is already yours.` });
 }
 
@@ -200,7 +229,7 @@ export function placeExchangeOfferFor(ctx: Ctx, args: { buy: boolean; itemId: st
     throw new SenderError("You do not have that many.");
   }
   const offer = ctx.db.exchangeOffer.insert({ id: 0n, identity: ctx.sender, name: traderName(ctx), nameColor: traderColor(ctx), buy: args.buy, itemId, price, quantity, filled: 0, placedAt: ctx.timestamp });
-  match(ctx, offer);
+  match(ctx, deps, offer);
   refreshPrice(ctx, itemId);
 }
 
@@ -211,7 +240,7 @@ export function cancelExchangeOfferFor(ctx: Ctx, id: bigint, deps: ExchangeDeps)
   const left = offer.quantity - offer.filled;
   ctx.db.exchangeOffer.id.delete(offer.id);
   if (offer.buy) creditGold(ctx, ctx.sender, offer.price * BigInt(left));
-  else if (left > 0) toCollect(ctx, ctx.sender, offer.itemId, left);
+  else if (left > 0) toCollect(ctx, deps, ctx.sender, offer.itemId, left);
   refreshPrice(ctx, offer.itemId);
 }
 
@@ -247,7 +276,7 @@ export function buyExchangeGearFor(ctx: Ctx, id: bigint, deps: ExchangeDeps) {
   if (!takeGold(ctx, ctx.sender, listing.price)) throw new SenderError("Not enough gold.");
   ctx.db.exchangeListing.id.delete(listing.id);
   creditGold(ctx, listing.identity, listing.price - exchangeFee(listing.price));
-  toCollect(ctx, ctx.sender, listing.itemId, 0, listing.rollJson, listing.refine);
+  toCollect(ctx, deps, ctx.sender, listing.itemId, 0, listing.rollJson, listing.refine);
   refreshPrice(ctx, listing.itemId);
   sendPersonalMail(ctx, { key: `exchange-listing-${listing.id}`, identity: listing.identity, title: "Trade Chrysanthemum: Sold",
     body: `Your ${nameOf(listing.itemId)}${listing.refine ? ` ★${listing.refine}` : ""} sold for ${goldText(listing.price)} Gold, less the ${EXCHANGE_FEE_PERCENT}% fee. The gold is already yours.` });
@@ -259,33 +288,15 @@ export function cancelExchangeListingFor(ctx: Ctx, id: bigint, deps: ExchangeDep
   const listing = ctx.db.exchangeListing.id.find(id);
   if (!listing || !same(listing.identity, ctx.sender)) throw new SenderError("That listing is not yours.");
   ctx.db.exchangeListing.id.delete(listing.id);
-  toCollect(ctx, ctx.sender, listing.itemId, 0, listing.rollJson, listing.refine);
+  toCollect(ctx, deps, ctx.sender, listing.itemId, 0, listing.rollJson, listing.refine);
   refreshPrice(ctx, listing.itemId);
 }
 
 /** Puts one collection-box row in the bag, or says why it cannot. */
 function collectRow(ctx: Ctx, row: any, deps: ExchangeDeps): string | null {
-  const progress = readPlayerProgress(ctx, ctx.sender);
-  if (!progress) return "Player unavailable.";
-  const inventory = deps.inventoryForProgress(progress);
-  const free = freeBagSlots(ctx, ctx.sender, progress, inventory);
-  if (row.count > 0) {
-    if (!isExchangeResource(row.itemId)) return null;
-    if (oreCount(ctx, ctx.sender, row.itemId) <= 0 && free <= 0) return "Your bag is full. Free a slot to collect.";
-    addOres(ctx, ctx.sender, row.itemId, row.count);
-  } else {
-    if (free <= 0) return "Your bag is full. Free a slot to collect.";
-    const roll = rollOf(row.rollJson);
-    if (inventory.includes(row.itemId)) insertKeptCopy(ctx, ctx.sender, row.itemId, roll, row.refine);
-    else {
-      deps.writeProgressAndPresentation(ctx, deps.restoreItemToProgress(progress, row.itemId));
-      setFirstCopyRoll(ctx, ctx.sender, row.itemId, roll);
-      setRefineLevel(ctx, ctx.sender, row.itemId, 0n, row.refine);
-    }
-    collectItem(ctx, ctx.sender, row.itemId);
-  }
-  ctx.db.exchangeCollect.id.delete(row.id);
-  return null;
+  const blocked = deliver(ctx, deps, ctx.sender, row.itemId, row.count, row.rollJson, row.refine);
+  if (!blocked) ctx.db.exchangeCollect.id.delete(row.id);
+  return blocked;
 }
 
 /** Collects everything that fits, oldest first. */

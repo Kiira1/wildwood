@@ -212,7 +212,7 @@ export function createExchangeController(deps: ExchangeDeps) {
     if (busy) return;
     const yes = await gameConfirm({ message: `Buy ${itemName(listing.itemId)}${listing.refine ? ` ★${listing.refine}` : ""}?`, confirmLabel: "Buy",
       details: [{ label: "Price", value: `${listing.price.toLocaleString("en-US")} Gold` }, { label: "Your Gold", value: deps.gold().toLocaleString("en-US") }] });
-    if (yes) await act(() => deps.buyListing(listing.id), "Bought · collect it here");
+    if (yes) await act(() => deps.buyListing(listing.id), "Bought · it is in your bag");
   }
   /** Gear opens the item window, stats and skills first, with Buy in it; without the window, straight to the confirm. */
   function viewGear(listing: ExchangeListingRow) {

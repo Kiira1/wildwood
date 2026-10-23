@@ -42,7 +42,7 @@ function type(tab: GameTab, selector: string, value: string, index = 0) {
 }
 
 describe("The Trade Chrysanthemum", () => {
-  it("one player sells copper through the window, another finds it by name, buys some and collects it", async () => {
+  it("one player sells copper through the window, another finds it by name, buys some and it arrives in the bag", async () => {
     const world = gameWorld();
     const moss = await trader(world, "Moss", { copper: 300 });
     const ann = await trader(world, "Ann", { gold: 5_000 });
@@ -79,14 +79,13 @@ describe("The Trade Chrysanthemum", () => {
     await ann.tab.play(100);
     type(ann.tab, ".exchange-stepper input", "40", 0);
     press(ann.tab, ".exchange-confirm", "Place Buy Offer");
-    expect(await ann.tab.until(() => [...world.db.exchangeCollect.iter()].length === 1)).toBe(true);
+    // Bought copper goes straight to the bag: nothing waits to be collected.
+    expect(await ann.tab.until(() => oreCount({ db: world.db } as never, ann.player.identity, "copper_ore") === 40)).toBe(true);
+    expect([...world.db.exchangeCollect.iter()]).toHaveLength(0);
 
     // 40 at 10: Ann paid 400, Moss got 400 less the 2% fee.
     expect(goldFor({ db: world.db } as never, ann.player.identity)).toBe(4_600n);
     expect(goldFor({ db: world.db } as never, moss.player.identity)).toBe(392n);
-    expect(await ann.tab.until(() => Boolean(sheet(ann.tab)?.querySelector(".exchange-collect")))).toBe(true);
-    press(ann.tab, ".exchange-collect .exchange-confirm", "Collect");
-    expect(await ann.tab.until(() => oreCount({ db: world.db } as never, ann.player.identity, "copper_ore") === 40)).toBe(true);
     expect(await ann.tab.until(() => (ann.tab.coop.ores().copper_ore ?? 0) === 40)).toBe(true);
   });
 
@@ -125,11 +124,9 @@ describe("The Trade Chrysanthemum", () => {
       .find(button => !button.closest("[hidden]")) ?? null;
     expect(await ann.tab.until(() => Boolean(accept()))).toBe(true);
     accept()!.dispatchEvent(new (ann.tab.window as any).Event("click", { bubbles: true }));
-    expect(await ann.tab.until(() => [...world.db.exchangeCollect.iter()].length === 1)).toBe(true);
-    expect(goldFor({ db: world.db } as never, moss.player.identity)).toBe(1_176n);
-    expect(await ann.tab.until(() => Boolean(sheet(ann.tab)?.querySelector(".exchange-collect")))).toBe(true);
-    press(ann.tab, ".exchange-collect .exchange-confirm", "Collect");
+    // The bow goes straight to the bag, refine and all.
     expect(await ann.tab.until(() => held(ann).includes("iron_bow"))).toBe(true);
+    expect(goldFor({ db: world.db } as never, moss.player.identity)).toBe(1_176n);
     expect(refineLevelFor({ db: world.db } as never, ann.player.identity, "iron_bow")).toBe(5);
   });
 });

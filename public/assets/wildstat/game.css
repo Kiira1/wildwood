@@ -5145,14 +5145,12 @@ html.text-outline-shadow .death-countdown { text-shadow: var(--text-outline-ring
   .exchange-foot .window-back-button { min-width: 160px; }
 
   /*
-   * Gear tiles colored by grade, Crude (0) to Eternal (14), like a rarity table: one flat color a grade on the
-   * ladder players know: grey, green, blue, purple, orange, red, then sky, gold and pearl at the top. The art and its labels sit on top unchanged.
+   * Gear tiles bordered by grade, Crude (0) to Eternal (14), on the rarity ladder players know: grey, green, blue,
+   * purple, orange, red, then sky, gold and pearl. The tile keeps its dark background so names stay readable.
    */
   :is(.inventory-item, .equipment-slot)[data-grade] {
-    border-color: rgba(0, 0, 0, .7);
-    /* An inner border inside the dark outer one, as a card has. */
-    box-shadow: inset 0 0 0 2px rgba(255, 255, 255, .24);
-    background: color-mix(in srgb, var(--grade) 50%, transparent);
+    border-color: var(--grade);
+    box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--grade) 45%, transparent);
   }
   :is(.inventory-item, .equipment-slot)[data-grade="0"] { --grade: #7f7f7f; } /* Crude: grey */
   :is(.inventory-item, .equipment-slot)[data-grade="1"] { --grade: #a7a7a7; } /* Common: light grey */
