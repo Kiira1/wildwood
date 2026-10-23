@@ -5,7 +5,7 @@ import { itemPresentation } from "../../src/game/item-presentation";
 import { createInventoryCharacterPreview } from "../../src/game/runtime/inventory-character-preview";
 import { bindPlayerNameTags } from "../../src/app/player-name-tags";
 import { applyProfileIcon } from "../../src/app/profile-icons";
-import { GEAR_GRADES } from "../../shared/gear-grades";
+import { GEAR_GRADES, GEAR_GRADE_NAMES } from "../../shared/gear-grades";
 import { isGradeItemId, gradeOf } from "../../shared/grade-equipment";
 import { PLAYER_GENDER_MALE } from "../../shared/player-gender";
 import { craftExperienceForLevel } from "../../shared/crafting";
@@ -18,6 +18,7 @@ import { markChatAnnouncement } from "../../src/ui/chat-announcement-line";
 import { createDiamondLookDrawer } from "../../src/game/runtime/diamond-look-preview";
 import { installServerBoostHud } from "../../src/ui/server-boost-hud";
 import { createExchangeController } from "../../src/ui/exchange-window";
+import { appendBagTileContents } from "../../src/ui/bag-item-tile";
 import { createItemInspectionController } from "../../src/ui/item-inspection-controller";
 import { gradeShopSalePrice } from "../../shared/grade-shop";
 import { settleFrames, settleImages } from "./determinism";
@@ -337,6 +338,35 @@ async function exchangeWindow() {
   await settleCssImages();
 }
 
+/** Every grade's tile background, Crude to Eternal: a bow of each grade as the bag draws it, its grade under it. */
+async function grades() {
+  await gameMarkup();
+  document.body.style.background = "#151515";
+  const style = document.createElement("style");
+  style.textContent = `
+    html, body { position: static !important; height: auto !important; overflow: visible !important; }
+    .grade-sheet { display: grid; grid-template-columns: repeat(5, 72px); gap: 14px 12px; padding: 16px; }
+    .grade-cell { display: grid; gap: 6px; justify-items: center; color: #e8e8e2; font: 900 11px/1.2 var(--font-rounded); }
+    .grade-cell .inventory-item { width: 72px; height: 72px; }
+  `;
+  document.head.append(style);
+  const sheet = document.createElement("div");
+  sheet.className = "grade-sheet";
+  for (const grade of GEAR_GRADES) {
+    const cell = document.createElement("div");
+    cell.className = "grade-cell";
+    const tile = document.createElement("button");
+    tile.className = "inventory-item is-filled";
+    appendBagTileContents(tile, `${grade}_bow`, { stats: false });
+    const name = document.createElement("span");
+    name.textContent = GEAR_GRADE_NAMES[grade];
+    cell.append(tile, name);
+    sheet.append(cell);
+  }
+  document.body.append(sheet);
+  await settleCssImages();
+}
+
 /** Public chat, compact and expanded: a player's line, the server's Server Boost and Patreon banners, and the same words typed by a player. */
 async function chatAnnouncement() {
   const unpin = document.createElement("style");
@@ -399,6 +429,6 @@ async function itemWindow(worn: boolean) {
   await settleCssImages();
 }
 
-export const DOM_SCENES: Record<string, () => Promise<void>> = { icons, hud, wordmark, shops, "gem-shop": gemShop, "server-boost": serverBoost, "exchange-window": exchangeWindow,
+export const DOM_SCENES: Record<string, () => Promise<void>> = { icons, hud, wordmark, shops, "gem-shop": gemShop, "server-boost": serverBoost, "exchange-window": exchangeWindow, grades,
   "chat-announcement": chatAnnouncement, "item-window": () => itemWindow(false), "item-window-worn": () => itemWindow(true),
   "profile-own": () => profileWindow(true), "profile-other": () => profileWindow(false) };
