@@ -9,7 +9,7 @@ const enabledKey = "wildstat-mysterious-ore-timer-enabled-v1";
 const positionKey = "wildstat-mysterious-ore-timer-position-v1";
 afterEach(() => { vi.useRealTimers(); vi.unstubAllGlobals(); });
 
-function setup(saved = false, deniedStorage = false) {
+function setup(saved = false, deniedStorage = false, locked = false) {
   vi.useFakeTimers();
   const { window, document } = parseHTML(`<html><body><div id="hud"></div>
     <details><div class="setting-row"><button id="statTrackerToggle"></button></div></details></body></html>`);
@@ -17,6 +17,7 @@ function setup(saved = false, deniedStorage = false) {
   vi.stubGlobal("document", document);
   Object.assign(window, { innerWidth: 800, innerHeight: 600 });
   const values = new Map([[enabledKey, String(saved)], [positionKey, JSON.stringify({ x: 25, y: 35 })]]);
+  if (locked) values.set('wildstat-mysterious-ore-position-locked', 'true');
   Object.defineProperty(window, "localStorage", { configurable: true, get() {
     if (deniedStorage) throw new Error("Storage disabled");
     return { getItem: (key: string) => values.get(key) ?? null, setItem: (key: string, value: string) => values.set(key, value) };
@@ -48,6 +49,22 @@ it("is off by default, creates its chip lazily, and stops polling when disabled"
   expect(s.read).not.toHaveBeenCalled();
   expect(vi.getTimerCount()).toBe(0);
   expect(s.document.querySelector<HTMLElement>(".mysterious-ore-timer")!.hidden).toBe(true);
+});
+
+it('locks the ore chip, continues its countdown, and restores the lock without consuming L', () => {
+  const s = setup(true);
+  const panel = s.document.querySelector<HTMLElement>('.mysterious-ore-timer')!;
+  const handle = panel.querySelector('button')!;
+  for (const detail of [1, 2]) handle.dispatchEvent(Object.assign(new s.window.Event('click'), { detail }));
+  expect(panel.classList.contains('is-position-locked')).toBe(true);
+  expect(s.values.get('wildstat-mysterious-ore-position-locked')).toBe('true');
+  s.breaks.set(rocks[0].id, 1_000_000);
+  vi.advanceTimersByTime(1000);
+  expect(s.text()).toContain('Next 15:00');
+  handle.dispatchEvent(Object.assign(new s.window.Event('keydown'), { key: 'l' }));
+  expect(panel.classList.contains('is-position-locked')).toBe(true);
+  const restored = setup(true, false, true);
+  expect(restored.document.querySelector('.mysterious-ore-timer')!.classList.contains('is-position-locked')).toBe(true);
 });
 
 it("shows ready count, earliest respawn and latest respawn using the server clock", () => {

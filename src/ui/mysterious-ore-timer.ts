@@ -64,7 +64,7 @@ export function installMysteriousOreTimer(options: {
     handle.title = "Mysterious Ore: ready rocks, next respawn, all respawned. Drag to move; Home to reset position.";
     panel.append(handle);
     (document.getElementById("hud") ?? document.body).append(panel);
-    movable = installMovableHudCard({ panel, handle, storage: () => storage, positionKey: POSITION_KEY, toggle: () => {} });
+    movable = installMovableHudCard({ panel, handle, storage: () => storage, positionKey: POSITION_KEY, lockKey: 'wildstat-mysterious-ore-position-locked', toggle: () => {} });
   }
 
   function setEnabled(value: boolean) {

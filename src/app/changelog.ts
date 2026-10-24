@@ -1,6 +1,10 @@
 export const RELEASE_NOTES: Record<string, string[]> = {
   "0.917.11": [
     "Added a movable Mysterious Ore timer, enabled in Settings -> Display & HUD",
+    "Tracker hides raw values for capped Attack Speed and Crit Damage",
+    "Stat Tracker Settings now appears above Auto controls",
+    "Added compact stat tracker options for columns and icons",
+    "Double-click or double-tap either tracker to lock or unlock its position",
   ],
   "0.917.10": [
     "Game settings are grouped into expandable sections",
