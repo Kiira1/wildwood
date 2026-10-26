@@ -32,6 +32,7 @@ import { parseHexColorOrNull, STATIC_WORLD_LAYER_RESET_EVENT, type StaticWorldCo
 import { nightEnemyOpacity, nightGroundShadowsVisible } from "./night-visibility";
 import { snapWorldRenderCoordinate } from "./render-space";
 import { createSoulGroundRenderer, createSoulPropRenderer } from "../soul/soul-prop-renderer";
+import { createGroveShadowRenderer } from "../town/grove-shadows";
 import { createSoulParticles } from "../soul/soul-particles";
 import { createSoulWater } from "../soul/soul-water";
 import { createSoulWaterGL, routeRiver } from "../soul/soul-water-gl";
@@ -427,6 +428,8 @@ export function createWorldRenderRuntime(options: WorldRenderRuntimeOptions) {
       decor: options.decor, drawProp: drawSoulProp, baked: true,
       drawWater: drawRiver,
       viewport: options.viewport, devicePixelRatio: options.devicePixelRatio, active: () => isTownMap(options.currentMapId()) });
+    const drawGroveShadows = createGroveShadowRenderer({ ctx: options.ctx, camera: options.camera, viewport: options.viewport,
+      drawProp: drawSoulProp, active: () => isTownMap(options.currentMapId()) });
     const depth = createDepthWorldRenderer({
       camera: options.camera,
       viewport: () => options.viewport(),
@@ -500,7 +503,7 @@ export function createWorldRenderRuntime(options: WorldRenderRuntimeOptions) {
       drawStaticWorld: world.drawStaticWorld,
       drawDuelArena: actor.drawDuelArena,
       drawDuelScene: actor.drawDuelScene,
-      drawDecor: () => { world.drawDecor(); soulGround.draw(); hallGround.draw(); },
+      drawDecor: () => { world.drawDecor(); soulGround.draw(); drawGroveShadows(); hallGround.draw(); },
       drawBossTelegraphs: () => {
         const mapBoss = bossForMap(options.currentMapId());
         if (mapBoss) boss.drawBossTelegraphs[mapBoss.kind]();

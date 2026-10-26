@@ -508,10 +508,8 @@ export function townChunkDecor(cx: number, cy: number): readonly WorldDecor[] {
   groveCover ??= layGroveCover();
   for (const item of groveCover.get(key) ?? []) add(item.frame, item.x, item.y, item.s, item.flip);
   for (const tree of treesIn(cx, cy)) {
-    const decor = TREE_DECOR[tree.id];
-    // The tree's shadow is baked with the ground: a felled tree's stump stands in it.
-    if (`${decor.frame}__shadow` in SOUL_ATLAS.frames) made.push({ type: "soulProp", x: decor.x, y: decor.y, s: decor.s, frame: `${decor.frame}__shadow`, flip: decor.flip, shadow: true });
-    made.push(decor);
+    // Its shadow is drawn live (grove-shadows.ts), so a felled tree's stump shows a stump's.
+    made.push(TREE_DECOR[tree.id]);
   }
   if (Math.floor(TOWN_GROVE_SIGNPOST.x / TOWN_CHUNK_SIZE) === cx && Math.floor(TOWN_GROVE_SIGNPOST.y / TOWN_CHUNK_SIZE) === cy) made.push(TOWN_GROVE_SIGNPOST);
   if (Math.floor(GROVE_ROAD_END.x / TOWN_CHUNK_SIZE) === cx && Math.floor(GROVE_ROAD_END.y / TOWN_CHUNK_SIZE) === cy) made.push(...GROVE_LANDING_DECOR);

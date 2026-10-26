@@ -1,4 +1,7 @@
 export const RELEASE_NOTES: Record<string, string[]> = {
+  "0.917.22": [
+    "A felled tree's stump has a stump's shadow, not the whole tree's",
+  ],
   "0.917.21": [
     "The Town's countryside is open all round: walk north of the village and the hills, and into every corner",
   ],
@@ -3998,6 +4001,7 @@ const RELEASE_DATES: Record<string, string> = {
 };
 
 export const RELEASE_DAYS: Record<string, string> = {
+  "0.917.22": "2026-10-26",
   "0.917.21": "2026-10-26",
   "0.917.20": "2026-10-26",
   "0.917.19": "2026-10-26",
