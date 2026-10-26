@@ -89,8 +89,7 @@ import { createDeathScreenController } from "./ui/death-screen-controller";
 import { createGameElements } from "./ui/game-elements";
 import { bindGameInteractionListeners } from "./ui/game-interaction-bindings";
 import { createDuplicateLoginRuntime, createGameOverlays, createPrestigeUnlockRuntime } from "./ui/game-ui-runtime";
-import { formatGemAmount } from "./ui/number-format";
-import { refreshGoldCounter } from "./ui/gold-counter";
+import { refreshWalletCounters } from "./ui/gold-counter";
 import { createRewardDisplay } from "./game/runtime/reward-display";
 import { onwardCue } from "./game/runtime/onward-cue";
 import { bossPortalCutscenes } from "./game/runtime/boss/boss-portal-cutscenes";
@@ -107,8 +106,8 @@ import { MAX_PLAYER_STAT, PLAYER_SPAWN } from "../shared/rules";
 
   const gameElements = createGameElements({ names: PLAYER_SKIN_TONE_NAMES, colors: PLAYER_SKIN_TONES });
   const {
-    canvas, gameOverEl, deathCountdownEl, hpText, playerHudProfileIcon, playerHudProfileGear, hudGemWallet,
-    hudGemBalance, minimapButton, toolbar, settingsBtn, settingsPanel, inventoryPanel, inventoryCharacterCanvas,
+    canvas, gameOverEl, deathCountdownEl, hpText, playerHudProfileIcon, playerHudProfileGear,
+    minimapButton, toolbar, settingsBtn, settingsPanel, inventoryPanel, inventoryCharacterCanvas,
     joystickEl, stickEl, duelResultEl, watchDuelReplayBtn, cutsceneOverlayEl,
     playerProfileEl, playerProfileIcon, profileCharacterCanvas, closeProfileIconPickerBtn,
   } = gameElements;
@@ -136,10 +135,7 @@ import { MAX_PLAYER_STAT, PLAYER_SPAWN } from "../shared/rules";
     gameplayReadyTelemetry?.finish();
   }
   function refreshGemCounter() {
-    const balance = formatGemAmount(coopAccess.gemBalance());
-    hudGemBalance.textContent = balance;
-    hudGemWallet.setAttribute("aria-label", `${balance} Gems`);
-    refreshGoldCounter(gameElements, coop?.gold?.() ?? 0n);
+    refreshWalletCounters(gameElements, coopAccess.gemBalance(), coop?.gold?.() ?? 0n);
   }
   refreshGemCounter();
   const overlays = createGameOverlays({
@@ -618,7 +614,8 @@ import { MAX_PLAYER_STAT, PLAYER_SPAWN } from "../shared/rules";
     coop, started: () => session?.hasStarted(), pause: (paused: boolean) => setGameplayPause("duplicate-login", paused),
   });
   function updateHud(force = false) {
-    runtimeHud.updateHud(force);
+    // These polls share the HUD's 100 ms gate and, like its drawing, rest in a hidden tab.
+    if (!runtimeHud.updateHud(force)) return;
     expansionNotice.tick();
     offlineProgressSummary?.showPending();
     prestigeUnlock.poll();
