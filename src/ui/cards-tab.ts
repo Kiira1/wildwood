@@ -130,9 +130,10 @@ export function cardDetailRequest(port: CardsPort, cardId: string, after: (resul
     ? `${typeName} Slot${positions.length === 1 ? "" : "s"} ${positions.map(index => index + 1).join(", ")}${inPlay < positions.length ? ` · ${positions.length - inPlay} waiting` : ""}`
     : "";
   return {
-    cardId: card.id, count: owned, found: owned > 0,
+    // Effects read for the copies in play: one card's worth until any is.
+    cardId: card.id, count: owned, found: owned > 0, copies: Math.max(1, inPlay),
     context: `${typeName} Card · ${owned > 0 ? `${owned.toLocaleString("en-US")} Owned · ${copies} Equipped` : "Not Found Yet"}`,
-    effects: card.effects.map(effect => ({ text: cardEffectText(effect), cost: effect.value < 0 })),
+    effects: card.effects.map(effect => ({ text: cardEffectText(effect, Math.max(1, inPlay)), cost: effect.value < 0 })),
     odds: `${cardOddsText(card, chance)} · ${cardSureText(card, cardSureByKills(card, port.cardHunter()))}`,
     note: slotsText || (owned > 0 && error && copies < owned ? `${error} Remove one first.` : ""),
     actions,
@@ -362,7 +363,7 @@ export function createCardsTab(options: {
     effects.className = "cards-equip-effects";
     for (const effect of card.effects) {
       const line = document.createElement("li");
-      line.textContent = cardEffectText(effect);
+      line.textContent = cardEffectText(effect, copies);
       if (effect.value < 0) line.className = "is-cost";
       effects.append(line);
     }

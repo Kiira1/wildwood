@@ -381,7 +381,8 @@ export function createItemInspectionController(elements: ItemInspectionElements)
    * it and Equip or Remove. `found` false is a card never had: its shadow, and no count.
    */
   function openCard(request: { cardId: string; count: number; found?: boolean; context?: string; odds?: string; note?: string;
-    actions?: readonly ItemInspectionAction[] }) {
+    /** Copies in play: each effect reads as their total. One by default. */
+    copies?: number; actions?: readonly ItemInspectionAction[] }) {
     const card = cardDefinition(request.cardId);
     if (!card) return false;
     if (elements.panel.hidden) {
@@ -413,7 +414,7 @@ export function createItemInspectionController(elements: ItemInspectionElements)
     stats.className = "item-inspection-stats";
     for (const effect of card.effects) {
       const value = document.createElement("span");
-      value.textContent = cardEffectText(effect);
+      value.textContent = cardEffectText(effect, request.copies);
       value.dataset.statKind = effect.value < 0 ? "cost" : "card";
       stats.append(value);
     }

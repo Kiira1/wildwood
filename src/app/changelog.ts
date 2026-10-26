@@ -1,4 +1,7 @@
 export const RELEASE_NOTES: Record<string, string[]> = {
+  "0.917.13": [
+    "Card effects show how copies stack: 75% [25%×3], and which parts stay the same",
+  ],
   "0.917.12": [
     "New quests ask for enemies that give a stat on one map, not one enemy",
   ],
@@ -3965,6 +3968,7 @@ const RELEASE_DATES: Record<string, string> = {
 };
 
 export const RELEASE_DAYS: Record<string, string> = {
+  "0.917.13": "2026-10-26",
   "0.917.12": "2026-10-25",
   "0.917.11": "2026-10-24",
   "0.917.10": "2026-10-23",
