@@ -39,6 +39,7 @@ const VIEWPORTS = {
   "chat-announcement": [{ width: 390, height: 844, full: true }, { width: 1280, height: 800, full: true }],
   "profile-own": [{ width: 390, height: 844, full: false }],
   "item-window": [{ width: 390, height: 844, full: false }],
+  "card-window": [{ width: 390, height: 844, full: false }],
   "item-window-worn": [{ width: 390, height: 844, full: false }],
   "profile-other": [{ width: 390, height: 844, full: false }],
 };

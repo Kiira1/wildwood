@@ -29,6 +29,7 @@ import { itemInspectionButtonLabel } from "../../src/ui/item-inspection-controll
 import { installQuestTracker } from "../../src/ui/quest-tracker";
 import { questTrackerView } from "../../src/ui/quest-board-controller";
 import { CAMPAIGN_MAPS } from "../../shared/campaign-registry";
+import { CARDS } from "../../shared/cards";
 
 let markup: Promise<Document> | null = null;
 
@@ -435,6 +436,23 @@ async function itemWindow(worn: boolean) {
   await settleCssImages();
 }
 
+/** A card's window with three copies in play: each stacking number shows its total and one card's share times three. */
+async function cardWindow() {
+  const doc = await gameMarkup();
+  document.body.style.background = GROUND;
+  for (const node of doc.body.children) document.body.append(document.importNode(node, true));
+  await import("../../src/ui/game-shell");
+  const controller = createItemInspectionController({
+    panel: byId("itemInspectionPanel"), title: byId("itemInspectionTitle"), content: byId("itemInspectionContent"),
+    back: byId<HTMLButtonElement>("itemInspectionBack"),
+  });
+  const card = CARDS.find(card => card.enemy === "Desert Spider") ?? CARDS[0];
+  controller.openCard({ cardId: card.id, count: 4, copies: 3, context: "Armor Card · 4 Owned · 3 Equipped",
+    odds: "Desert · 1 in 877 kills · Sure by 2,000 kills", note: "Armor Slots 1, 2, 3",
+    actions: [{ label: "Remove", kind: "SECONDARY", onActivate: () => {} }] });
+  await settleCssImages();
+}
+
 /** The Builds tab at phone width: ten rows, a few saved and named, one being renamed. */
 async function builds() {
   await gameMarkup();
@@ -479,5 +497,5 @@ async function questTracker() {
 }
 
 export const DOM_SCENES: Record<string, () => Promise<void>> = { icons, hud, wordmark, shops, "gem-shop": gemShop, "server-boost": serverBoost, "exchange-window": exchangeWindow, grades, "quest-tracker": questTracker, builds,
-  "chat-announcement": chatAnnouncement, "item-window": () => itemWindow(false), "item-window-worn": () => itemWindow(true),
+  "chat-announcement": chatAnnouncement, "item-window": () => itemWindow(false), "card-window": cardWindow, "item-window-worn": () => itemWindow(true),
   "profile-own": () => profileWindow(true), "profile-other": () => profileWindow(false) };
