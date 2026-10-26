@@ -4703,17 +4703,32 @@ export function releaseNotes(version: string) {
   return RELEASE_NOTES[version] ?? [];
 }
 
+type RecentRelease = { version: string; notes: string[]; date: string };
+// Newest first, sorted once; each window is cached by its cutoff day.
+let releasesNewestFirst: { release: RecentRelease; dayMs: number | null }[] | null = null;
+const recentWindows = new Map<string, RecentRelease[]>();
+
+function sortedReleases() {
+  return releasesNewestFirst ??= Object.entries(RELEASE_NOTES)
+    .sort(([a], [b]) => b.localeCompare(a, undefined, { numeric: true }))
+    .map(([version, notes]) => {
+      const day = releaseDay(version);
+      return { release: { version, notes, date: releaseDate(version) }, dayMs: day === null ? null : new Date(`${day}T00:00:00`).getTime() };
+    });
+}
+
 export function recentReleaseNotes(days = 2, today = new Date(), minimumReleases = 10) {
   const cutoff = new Date(today);
   cutoff.setHours(0, 0, 0, 0);
   cutoff.setDate(cutoff.getDate() - Math.max(0, days - 1));
   const minimum = Math.max(0, Math.floor(minimumReleases));
-  return Object.entries(RELEASE_NOTES)
-    .sort(([a], [b]) => b.localeCompare(a, undefined, { numeric: true }))
-    .filter(([version], index) => {
-      if (index < minimum) return true;
-      const day = releaseDay(version);
-      return day !== null && new Date(`${day}T00:00:00`).getTime() >= cutoff.getTime();
-    })
-    .map(([version, notes]) => ({ version, notes, date: releaseDate(version) }));
+  const key = `${cutoff.getTime()}:${minimum}`;
+  const cached = recentWindows.get(key);
+  if (cached) return cached;
+  const releases = sortedReleases()
+    .filter(({ dayMs }, index) => index < minimum || (dayMs !== null && dayMs >= cutoff.getTime()))
+    .map(({ release }) => release);
+  if (recentWindows.size > 16) recentWindows.clear();
+  recentWindows.set(key, releases);
+  return releases;
 }
