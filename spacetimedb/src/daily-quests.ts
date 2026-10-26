@@ -63,36 +63,49 @@ export const playerQuestWeekTotal = table({ name: "player_quest_week_total" }, {
 
 type Ctx = { db: any; timestamp: { microsSinceUnixEpoch: bigint } };
 
-/** Quests a player finished without a guild in the given week. */
+/** Quests a player finished without a guild in the given week, from their soloQuestWeek row. */
+const pointsIn = (row: any, week: number) => row?.week === week ? row.points : row?.lastWeek === week ? row.lastPoints : 0;
 function soloPoints(ctx: Ctx, identity: any, week: number) {
-  const row = ctx.db.soloQuestWeek.identity.find(identity);
-  return row?.week === week ? row.points : row?.lastWeek === week ? row.lastPoints : 0;
+  return pointsIn(ctx.db.soloQuestWeek.identity.find(identity), week);
 }
 const weekKey = (week: number, guildId: bigint) => `${week}:${guildId}`;
 
-/** What the player's list for `week` shows done: their own quests and the ones they collected. Null once the week's list is gone. */
-function listDone(ctx: Ctx, identity: any, week: number, quests?: WeeklyQuest[]) {
-  const row = quests ? null : ctx.db.playerDailyQuest.identity.find(identity);
-  if (!quests && (!row || questWeek(row.day) !== week)) return null;
-  const done = (quests ?? parseWeeklyQuests(row.questsJson)).filter(questDone);
+/** What a list for `week` shows done: own quests and collected ones. Null when the daily row is not that week's. */
+function doneIn(daily: any, week: number, quests?: WeeklyQuest[]) {
+  if (!quests && (!daily || questWeek(daily.day) !== week)) return null;
+  const done = (quests ?? parseWeeklyQuests(daily.questsJson)).filter(questDone);
   return { own: done.filter(ownQuest).length, collected: done.filter(quest => !ownQuest(quest)).length };
 }
 
-/** Points the player's guild tally holds for `week`, for the guild given (or any guild). */
-function guildTally(ctx: Ctx, identity: any, week: number, guildId?: bigint) {
-  const row = ctx.db.guildMemberQuestWeek.identity.find(identity);
-  return row && row.week === week && (guildId === undefined || row.guildId === guildId) ? row.points : 0;
+/** What the player's list for `week` shows done: their own quests and the ones they collected. Null once the week's list is gone. */
+function listDone(ctx: Ctx, identity: any, week: number, quests?: WeeklyQuest[]) {
+  return doneIn(quests ? null : ctx.db.playerDailyQuest.identity.find(identity), week, quests);
 }
+
+/** Points a guildMemberQuestWeek row holds for `week`, for the guild given (or any guild). */
+const tallyIn = (row: any, week: number, guildId?: bigint) =>
+  row && row.week === week && (guildId === undefined || row.guildId === guildId) ? row.points : 0;
+function guildTally(ctx: Ctx, identity: any, week: number, guildId?: bigint) {
+  return tallyIn(ctx.db.guildMemberQuestWeek.identity.find(identity), week, guildId);
+}
+
+/** The rows the solo figures read, found once so a refresh does not read each again per figure. */
+type SoloRows = { daily: any; solo: any; tally: any };
+const soloRowsFor = (ctx: Ctx, identity: any, daily: any): SoloRows =>
+  ({ daily, solo: ctx.db.soloQuestWeek.identity.find(identity), tally: ctx.db.guildMemberQuestWeek.identity.find(identity) });
 
 /**
  * Quests that count toward a week's solo bonus: the count kept as they
  * finished, or, when more, what the week's list shows done that no guild was
  * credited with.
  */
+function soloQuestsIn(rows: SoloRows, week: number, quests?: WeeklyQuest[]) {
+  const stored = pointsIn(rows.solo, week);
+  const done = doneIn(quests ? null : rows.daily, week, quests);
+  return done ? Math.max(stored, done.own + done.collected - tallyIn(rows.tally, week)) : stored;
+}
 function soloQuestsFor(ctx: Ctx, identity: any, week: number, quests?: WeeklyQuest[]) {
-  const stored = soloPoints(ctx, identity, week);
-  const done = listDone(ctx, identity, week, quests);
-  return done ? Math.max(stored, done.own + done.collected - guildTally(ctx, identity, week)) : stored;
+  return soloQuestsIn(soloRowsFor(ctx, identity, quests ? null : ctx.db.playerDailyQuest.identity.find(identity)), week, quests);
 }
 
 function noteQuestsDone(ctx: Ctx, identity: any, week: number, count: number) {
@@ -108,10 +121,10 @@ function noteQuestsDone(ctx: Ctx, identity: any, week: number, count: number) {
  * Every quest the player finished in `week`, guild or solo: the stored count,
  * or the solo count plus their guild tally when that is more.
  */
-function questsDoneIn(ctx: Ctx, identity: any, week: number) {
+function questsDoneIn(ctx: Ctx, identity: any, week: number, rows: SoloRows) {
   const row = ctx.db.playerQuestWeekTotal.identity.find(identity);
   const counted = row?.week === week ? row.done : row?.lastWeek === week ? row.lastDone : 0;
-  return Math.max(counted, soloQuestsFor(ctx, identity, week) + guildTally(ctx, identity, week));
+  return Math.max(counted, soloQuestsIn(rows, week) + tallyIn(rows.tally, week));
 }
 
 /** Records a week's solo count, keeping the week before it, so it outlives the list it was read from. */
@@ -184,10 +197,9 @@ function weekPoints(ctx: Ctx, week: number, guildId: bigint) {
  * ever the current guild's, so leaving drops it and nothing stacks. Without a
  * guild it is their own week: 1% for each quest they finished, guild or not, up to 15%.
  */
-export function guildQuestBonusFor(ctx: Ctx, identity: any) {
-  const guild = guildOf(ctx, identity);
+export function guildQuestBonusFor(ctx: Ctx, identity: any, guild = guildOf(ctx, identity), rows?: SoloRows) {
   const week = questWeek(questDay(ctx.timestamp.microsSinceUnixEpoch));
-  if (!guild) return soloQuestBonus(questsDoneIn(ctx, identity, week - 1));
+  if (!guild) return soloQuestBonus(questsDoneIn(ctx, identity, week - 1, rows ?? soloRowsFor(ctx, identity, ctx.db.playerDailyQuest.identity.find(identity))));
   return guildQuestBonus(weekPoints(ctx, week - 1, guild.id));
 }
 
@@ -198,6 +210,11 @@ export function guildQuestBonusFor(ctx: Ctx, identity: any) {
  * up to fifteen from the week's draw.
  */
 export function ensureDailyQuests(ctx: Ctx, identity: any) {
+  return dailyQuestsFor(ctx, identity).row;
+}
+
+/** ensureDailyQuests, plus the row's quests parsed and the guild it read, for a kill report to reuse. */
+function dailyQuestsFor(ctx: Ctx, identity: any) {
   const day = questDay(ctx.timestamp.microsSinceUnixEpoch);
   const existing = ctx.db.playerDailyQuest.identity.find(identity);
   const guild = guildOf(ctx, identity), week = questWeek(day);
@@ -207,9 +224,12 @@ export function ensureDailyQuests(ctx: Ctx, identity: any) {
     const last = questWeek(existing.day), settled = soloQuestsFor(ctx, identity, last);
     if (settled > soloPoints(ctx, identity, last)) settleSoloWeek(ctx, identity, last, settled);
   }
-  const guildFields = { bonus: guildQuestBonusFor(ctx, identity), guildPoints: guild ? weekPoints(ctx, week, guild.id) : soloQuestsFor(ctx, identity, week), guildName: guild?.name ?? "" };
-  let questsJson = existing?.questsJson ?? "[]";
   const current = existing && questWeek(existing.day) === week ? parseWeeklyQuests(existing.questsJson) : null;
+  // Read after the settle above, which can write the solo row.
+  const rows = guild ? undefined : soloRowsFor(ctx, identity, existing);
+  const guildFields = { bonus: guildQuestBonusFor(ctx, identity, guild, rows),
+    guildPoints: guild ? weekPoints(ctx, week, guild.id) : soloQuestsIn(rows!, week, current ?? undefined), guildName: guild?.name ?? "" };
+  let questsJson = existing?.questsJson ?? "[]";
   const own = current?.filter(ownQuest).length ?? 0;
   if (!current || own < WEEKLY_QUEST_COUNT) {
     const progress = readPlayerProgress(ctx, identity) ?? {};
@@ -223,7 +243,7 @@ export function ensureDailyQuests(ctx: Ctx, identity: any) {
   if (!existing) ctx.db.playerDailyQuest.insert(row);
   else if (existing.day !== row.day || existing.questsJson !== row.questsJson || existing.bonus !== row.bonus
     || existing.guildPoints !== row.guildPoints || existing.guildName !== row.guildName) ctx.db.playerDailyQuest.identity.update(row);
-  return row;
+  return { row, guild, quests: current && questsJson === existing.questsJson ? current : parseWeeklyQuests(questsJson) };
 }
 
 /**
@@ -232,14 +252,14 @@ export function ensureDailyQuests(ctx: Ctx, identity: any) {
  */
 export function recordDailyQuestKills(ctx: Ctx, identity: any, mapId: string, kills: { enemy: string; count: number }[]) {
   if (!kills.some(kill => kill.count > 0)) return 0;
-  const row = ensureDailyQuests(ctx, identity);
-  const { quests, completed } = applyQuestKills(parseWeeklyQuests(row.questsJson), mapId, kills);
+  const { row, guild: seat, quests: list } = dailyQuestsFor(ctx, identity);
+  const { quests, completed } = applyQuestKills(list, mapId, kills);
   if (completed) noteQuestsDone(ctx, identity, questWeek(row.day), completed);
   let guildPoints = row.guildPoints;
   // A member's quests count for their guild from the moment they join.
   // Each quest counts once, for the guild they are in when it finishes,
   // and stays with that guild whatever they join afterwards.
-  const member = completed ? guildOf(ctx, identity) : null;
+  const member = completed ? seat : null;
   const guild = member;
   if (completed && !guild) {
     // No guild: the quest counts toward next week's solo bonus, and moves to a guild they join this week.
