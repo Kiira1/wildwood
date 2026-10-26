@@ -203,6 +203,14 @@ export function guildQuestBonusFor(ctx: Ctx, identity: any, guild = guildOf(ctx,
   return guildQuestBonus(weekPoints(ctx, week - 1, guild.id));
 }
 
+/** guildQuestBonusFor with the rows it read, so a kill report's quest refresh can start from them. */
+export type QuestStanding = { bonus: number; guild: ReturnType<typeof guildOf>; daily: any; rows?: SoloRows };
+export function questStandingFor(ctx: Ctx, identity: any): QuestStanding {
+  const guild = guildOf(ctx, identity), daily = ctx.db.playerDailyQuest.identity.find(identity);
+  const rows = guild ? undefined : soloRowsFor(ctx, identity, daily);
+  return { bonus: guildQuestBonusFor(ctx, identity, guild, rows), guild, daily, rows };
+}
+
 /**
  * This week's quests for the player, drawing fifteen when the week has turned;
  * `day` records the last visit, and the guild figures are refreshed every
@@ -213,21 +221,26 @@ export function ensureDailyQuests(ctx: Ctx, identity: any) {
   return dailyQuestsFor(ctx, identity).row;
 }
 
-/** ensureDailyQuests, plus the row's quests parsed and the guild it read, for a kill report to reuse. */
-function dailyQuestsFor(ctx: Ctx, identity: any) {
+/**
+ * ensureDailyQuests, plus the row's quests parsed and the guild it read, for a kill report to reuse.
+ * `known` is questStandingFor read earlier in the same transaction, with no quest row written since.
+ */
+function dailyQuestsFor(ctx: Ctx, identity: any, known?: QuestStanding) {
   const day = questDay(ctx.timestamp.microsSinceUnixEpoch);
-  const existing = ctx.db.playerDailyQuest.identity.find(identity);
-  const guild = guildOf(ctx, identity), week = questWeek(day);
+  const existing = known ? known.daily : ctx.db.playerDailyQuest.identity.find(identity);
+  const guild = known ? known.guild : guildOf(ctx, identity), week = questWeek(day);
   // Without a guild, guildPoints carries the player's own solo quests this week, for the board's bonus line.
   // A new week replaces the list: settle the last week's solo count from it first, so its bonus survives.
-  if (existing && questWeek(existing.day) < week) {
+  const newWeek = Boolean(existing && questWeek(existing.day) < week);
+  if (newWeek) {
     const last = questWeek(existing.day), settled = soloQuestsFor(ctx, identity, last);
     if (settled > soloPoints(ctx, identity, last)) settleSoloWeek(ctx, identity, last, settled);
   }
   const current = existing && questWeek(existing.day) === week ? parseWeeklyQuests(existing.questsJson) : null;
-  // Read after the settle above, which can write the solo row.
-  const rows = guild ? undefined : soloRowsFor(ctx, identity, existing);
-  const guildFields = { bonus: guildQuestBonusFor(ctx, identity, guild, rows),
+  // Read after the settle above, which can write the solo row; the caller's rows stand when there was none.
+  const fresh = !known || newWeek;
+  const rows = guild ? undefined : fresh ? soloRowsFor(ctx, identity, existing) : known.rows;
+  const guildFields = { bonus: fresh ? guildQuestBonusFor(ctx, identity, guild, rows) : known.bonus,
     guildPoints: guild ? weekPoints(ctx, week, guild.id) : soloQuestsIn(rows!, week, current ?? undefined), guildName: guild?.name ?? "" };
   let questsJson = existing?.questsJson ?? "[]";
   const own = current?.filter(ownQuest).length ?? 0;
@@ -250,9 +263,9 @@ function dailyQuestsFor(ctx: Ctx, identity: any) {
  * Accepted kills move the player's quests on. Each quest a report finishes is
  * a point for their guild this week; without a guild it is finished for nothing.
  */
-export function recordDailyQuestKills(ctx: Ctx, identity: any, mapId: string, kills: { enemy: string; count: number }[]) {
+export function recordDailyQuestKills(ctx: Ctx, identity: any, mapId: string, kills: { enemy: string; count: number }[], known?: QuestStanding) {
   if (!kills.some(kill => kill.count > 0)) return 0;
-  const { row, guild: seat, quests: list } = dailyQuestsFor(ctx, identity);
+  const { row, guild: seat, quests: list } = dailyQuestsFor(ctx, identity, known);
   const { quests, completed } = applyQuestKills(list, mapId, kills);
   if (completed) noteQuestsDone(ctx, identity, questWeek(row.day), completed);
   let guildPoints = row.guildPoints;

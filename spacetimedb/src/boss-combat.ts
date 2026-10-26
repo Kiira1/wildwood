@@ -3,18 +3,19 @@
 import { upgradeSlotForItem } from "../../shared/slot-upgrades";
 import { preparePlayerPowerStats } from "../../shared/player-power";
 import { powerFieldsFromStats, powerStatsFrom } from "./power-stats";
-import { bonusOffFor } from "./bonus-toggles";
 import { researchInPlayFor } from "../../shared/bonus-toggles";
 import { bootSkillChanceFactor, equipmentDamageFactor, hasBootStat, itemDefinition, type ItemLevel } from "../../shared/items";
 import { armorSkillChanceFactor } from "../../shared/armor-class-perks";
 import { createEnemyRewardAccumulator, type EnemyStatReward } from "../../shared/enemy-reward-accumulator";
-import { attackCapInPlay, statRewardMultiplierFor, prestigePerkRanks } from "./prestige";
+import { attackCapInPlay, bonusRowsFor, statRewardMultiplierFor, prestigePerkRanks, type BonusRows } from "./prestige";
 import { WORLD_REFLECT_SHARE, preArmorFactor, prestigePerkValue, prestigeReachMultiplier, prestigeSwingMultiplier } from "../../shared/prestige-perks";
 import { armorDamageReduction } from "../../shared/combat";
 import { criticalDamageMultiplier } from "../../shared/critical-damage";
 import { cardStatFactors, type CardTotals } from "../../shared/card-effects";
 import { activeCardTotalsFor } from "./active-cards";
 import { serverBoostRewardMultiplier } from "./server-boost-tables";
+import { luckInPlay } from "./luck-research";
+import type { LuckRanks } from "../../shared/luck-research";
 import { soulStatsFor, withSoulStats } from "./soul-dimension";
 import { bowSkillRollFor } from "./bow-skills";
 import { bowSkillReachMultiplier, isSkillBow } from "../../shared/bow-skills";
@@ -112,25 +113,31 @@ export function createCombatReport(deps: CombatReportDeps) {
    * entry after that is arithmetic on the saved stats plus what it earned.
    * Rebuilding it per species would be most of what the kill reducer costs.
    */
-  function combatBoundForReport(ctx: GameReducerContext, worn?: CardTotals) {
+  function combatBoundForReport(ctx: GameReducerContext, worn?: CardTotals, savedRow?: any) {
     let loaded: ReturnType<typeof load> | undefined;
     let power: ReturnType<typeof powerStatsFrom> | undefined;
+    // Rows the rest of the report reads too, each read once on first use. Nothing in a report writes them.
+    let researchRead: { row: any } | undefined, rows: BonusRows | undefined, luck: LuckRanks | undefined, boostRead: number | undefined;
+    const researchRow = () => (researchRead ??= { row: ctx.db.playerResearch.identity.find(ctx.sender) }).row;
+    const bonuses = () => (rows ??= bonusRowsFor(ctx, ctx.sender, researchRow()));
+    const serverBoost = () => (boostRead ??= serverBoostRewardMultiplier(ctx));
     function load() {
-      const saved = readPlayerProgress(ctx, ctx.sender);
-      const research = ctx.db.playerResearch.identity.find(ctx.sender);
+      // The caller passes the save when it has just read it and written nothing since.
+      const saved = savedRow ?? readPlayerProgress(ctx, ctx.sender);
+      const bonus = bonuses(), research = bonus.research;
       // The active cards, read once for the report (syncCardAttackCap) rather than again by each helper.
       // A running Server Boost doubles what this report earns, and the bound counts the stronger player that makes.
-      const stat = statRewardMultiplierFor(ctx, ctx.sender, worn), boost = serverBoostRewardMultiplier(ctx);
+      const stat = statRewardMultiplierFor(ctx, ctx.sender, worn, bonus), boost = serverBoost();
       const statMultiplier = (type: string) => stat(type) * boost;
       // Soul stats add to the run's in every fight; the saved row and the earned rewards stay the run's alone.
-      const soul = soulStatsFor(ctx, ctx.sender);
+      const soul = soulStatsFor(ctx, ctx.sender, bonus);
       const cards = worn ?? activeCardTotalsFor(ctx, ctx.sender);
       const loadout = saved ? damageLoadout(ctx, saved, research, cards) : null;
-      const challenge = ctx.db.playerPrestigeChallenge.identity.find(ctx.sender);
+      const challenge = bonus.challenge;
       // Reflect Only wins and Quick Draw set the attack speed cap, Aggro runs included (attackCapInPlay).
       // The bounds above keep stored research, the looser side.
-      const ranks = prestigePerkRanks(ctx, ctx.sender);
-      const minInterval = attackCapInPlay(ctx, ctx.sender, worn);
+      const ranks = prestigePerkRanks(ctx, ctx.sender, bonus);
+      const minInterval = attackCapInPlay(ctx, ctx.sender, worn, bonus);
       const earned = saved ? createEnemyRewardAccumulator(saved, statMultiplier, minInterval) : null;
       const statsFor = saved ? preparePlayerPowerStats(saved, research, loadout?.levelFor, cards) : null;
       // Armor rewards can change the nonlinear reduction inside a report.
@@ -254,6 +261,11 @@ export function createCombatReport(deps: CombatReportDeps) {
         return { attackInterval, projectiles: gear.projectiles, reach: gear.reach, dps, reflectDps, reflectTick: REFLECT_ONLY_TICK_SECONDS };
       },
       commit: (reward: EnemyStatReward) => report().earned?.commit(reward),
+      research: researchRow, bonuses, serverBoost,
+      /** Luck as drops read it, for the report's card and gold rolls. */
+      luck: () => (luck ??= luckInPlay(ctx, ctx.sender, bonuses().off)),
+      /** Either challenge under way (prestige-challenge.ts challengeActive). */
+      inChallenge: () => Boolean(bonuses().challenge?.active) || bonuses().aggro,
       /** The active cards the caller read for this report, if it passed them. */
       wornCards: () => worn,
       rewardedProgress: () => report().earned?.current(),
@@ -268,7 +280,7 @@ export function createCombatReport(deps: CombatReportDeps) {
         if (!saved || !statsFor || !gear) return { power: 0, powerLevel: 0 };
         if (!power) {
           // Research as it plays: the bound keeps the stored row, so its gear factors serve only while nothing is switched off.
-          const inPlay = researchInPlayFor(research, bonusOffFor(ctx, ctx.sender));
+          const inPlay = researchInPlayFor(research, bonuses().off);
           power = powerStatsFrom({ soul, cap: minInterval, research: inPlay, perks: ranks, cards, itemLevel: gear.loadout.levelFor,
             critRating: () => readCritRating(ctx, ctx.sender) }, inPlay === research ? statsFor : undefined);
         }
