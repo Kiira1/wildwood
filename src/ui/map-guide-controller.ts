@@ -20,7 +20,7 @@ import { drawPortalMapMarker } from "../game/portal-presentation";
 import { liveRewardText, type RewardLabelContext } from "../game/runtime/reward-labels";
 import { recommendedMapPower } from "../game/runtime/auto-farm/auto-farm-power";
 import { prestigeRequirementHint } from "../../shared/prestige";
-import { formatCompactNumber } from "../../shared/compact-number";
+import { formatCompactNumber, formatMultiplier } from "../../shared/compact-number";
 import { baseName, unlockedBy } from "./travel-controller";
 import {
   ADVANCED_LAVA_WASTES_MAP_ID,
@@ -222,14 +222,14 @@ export function mapGuideDropChance(denominator: number, numerator = 1) {
 }
 
 function bonusLabel(value: number) {
-  return `+${Math.round(value * 10000) / 100}%`;
+  return formatMultiplier(1 + value);
 }
 
 export function mapGuideItemStats(itemId: ItemId) {
   const item: ItemDefinition = ITEM_DEFINITIONS[itemId];
   const stats: string[] = [];
   const damageBonus = item.weapon?.damageMultiplierBonus ?? item.modifiers?.damageMultiplierBonus;
-  if (damageBonus !== undefined) stats.push(`Damage +${Math.round(damageBonus * 10000) / 100}%`);
+  if (damageBonus !== undefined) stats.push(`Damage ${bonusLabel(damageBonus)}`);
   if (item.modifiers?.maxHealthMultiplierBonus !== undefined) stats.push(`Max Health ${bonusLabel(item.modifiers.maxHealthMultiplierBonus)}`);
   if (item.modifiers?.regenerationMultiplierBonus !== undefined) stats.push(`Regen ${bonusLabel(item.modifiers.regenerationMultiplierBonus)}`);
   return stats;

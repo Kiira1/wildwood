@@ -20,12 +20,12 @@ export type ArrowKind = {
 };
 
 export const ARROW_KINDS: Readonly<Record<ArrowId, ArrowKind>> = {
-  steel_arrow: { name: "Steel Arrow", effect: "damage", text: "+10% arrow damage", recipe: { pine_log: 1, iron_ore: 1 }, makes: 100 },
+  steel_arrow: { name: "Steel Arrow", effect: "damage", text: "Arrow damage ×1.1", recipe: { pine_log: 1, iron_ore: 1 }, makes: 100 },
   fire_arrow: { name: "Fire Arrow", effect: "burn", text: "Hits burn for a hit's damage over 3s", recipe: { oak_log: 1, copper_ore: 2 }, makes: 100 },
   venom_arrow: { name: "Venom Arrow", effect: "poison", text: "Hits poison and weaken enemies 15%", recipe: { oak_log: 1, iron_ore: 2 }, makes: 100 },
   frost_arrow: { name: "Frost Arrow", effect: "chill", text: "Hits slow enemies 40% for 2s", recipe: { yew_log: 1, arcane_crystal: 1 }, makes: 100 },
   piercing_arrow: { name: "Piercing Arrow", effect: "pierce", text: "Passes through one more enemy", recipe: { yew_log: 1, mithril_ore: 1 }, makes: 100 },
-  star_arrow: { name: "Star Arrow", effect: "critDamage", text: "Critical hits deal 25% more", recipe: { elder_log: 2, starshard: 1 }, makes: 250 },
+  star_arrow: { name: "Star Arrow", effect: "critDamage", text: "Critical hits ×1.25", recipe: { elder_log: 2, starshard: 1 }, makes: 250 },
 };
 export const ARROW_IDS = Object.keys(ARROW_KINDS) as ArrowId[];
 export const isArrowId = (value: unknown): value is ArrowId => typeof value === "string" && value in ARROW_KINDS;

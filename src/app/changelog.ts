@@ -1,4 +1,7 @@
 export const RELEASE_NOTES: Record<string, string[]> = {
+  "0.917.28": [
+    "Stat bonuses show as multipliers (Damage ×1.23) instead of percentages; chances and move speed stay as %",
+  ],
   "0.917.27": [
     "Builds save your nocked arrow, and equipping a build nocks it again",
   ],
@@ -4014,6 +4017,7 @@ const RELEASE_DATES: Record<string, string> = {
 };
 
 export const RELEASE_DAYS: Record<string, string> = {
+  "0.917.28": "2026-10-26",
   "0.917.27": "2026-10-26",
   "0.917.26": "2026-10-26",
   "0.917.25": "2026-10-26",

@@ -158,9 +158,12 @@ export function createSmithController(deps: {
     }
     const { level, atTop, cost, short } = nextTry(item), next = level + 1, tier = deps.slotTier(item.itemId);
     const safe = refineSafeLimit(item.itemId), chance = atTop ? 0 : refineSuccessChance(item.itemId, next, deps.refineLuck?.() ?? 0);
-    const [now] = itemStats(item.itemId, { tier, refine: level }), [after] = atTop ? [""] : itemStats(item.itemId, { tier, refine: next });
+    // A small step can round away at two decimals (×1.05 → ×1.05); then both sides show three.
+    const pair = (decimals: number) => [itemStats(item.itemId, { tier, refine: level }, decimals)[0], atTop ? "" : itemStats(item.itemId, { tier, refine: next }, decimals)[0]];
+    let [now, after] = pair(2);
+    if (now === after) [now, after] = pair(3);
     focus.replaceChildren();
-    // Title case, as the item window shows stats ("Damage +7%").
+    // Title case, as the item window shows stats ("Damage ×1.07").
     const stat = formatEquipmentStat(itemInspectionButtonLabel(now ?? ""));
     const head = itemHead(item, atTop ? `${stat} · Fully Refined` : `${stat} → ${formatEquipmentStat(after?.split(" ").pop() ?? "")}`);
     const facts = document.createElement("dl");
