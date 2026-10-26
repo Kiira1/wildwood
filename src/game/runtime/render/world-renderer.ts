@@ -42,6 +42,7 @@ import { isGuildHallMap } from "../../../../shared/guild-hall";
 import { portalTravelScene } from "./portal-glimpse";
 import { createShrunkImages, deviceScale } from "./shrunk-image";
 import { freezeEntry, markCanvasChanged, releaseFrozen, type FrozenImage } from "./frozen-canvas";
+import { createChangeSignature } from "./change-signature";
 import { createGlowCache } from "./glow-cache";
 
 export { snapWorldRenderCoordinate } from "./render-space";
@@ -258,6 +259,7 @@ export function createWorldRenderer(options: WorldRendererOptions) {
   let cachedStaticScene: StaticTileScene | null = null;
   let minimapCacheKey = "";
   let nextMinimapFrameAt = 0;
+  const minimapInputs = createChangeSignature();
   let staticTileLimit = STATIC_TILE_MIN_LIMIT;
   let staticTilePlaceholder: HTMLCanvasElement | null = null;
   let staticTilePlaceholderGeneration = -1;
@@ -272,7 +274,14 @@ export function createWorldRenderer(options: WorldRendererOptions) {
   const viewport = () => options.getViewport();
   const visibleSize = () => ({ width: viewport().width / camera.zoom, height: viewport().height / camera.zoom });
   const snapToWorldPixel = (value: number) => snapWorldRenderCoordinate(value, camera.zoom, options.getDevicePixelRatio());
-  const hasLavaRocks = () => options.decor.some((decor) => decor.type === "lavaRock");
+  // Scanned once per rebuild of the world (or change in its decor count), not twice a frame.
+  let lavaRocksKnown = { generation: -1, count: -1, found: false };
+  const hasLavaRocks = () => {
+    if (lavaRocksKnown.generation !== staticTileGeneration || lavaRocksKnown.count !== options.decor.length) {
+      lavaRocksKnown = { generation: staticTileGeneration, count: options.decor.length, found: options.decor.some((decor) => decor.type === "lavaRock") };
+    }
+    return lavaRocksKnown.found;
+  };
   const hasLavaPools = () => options.decor.some((decor) => decor.type === "lavaPool");
 
   function tintedPortalSwirl(destination: MapId) {
@@ -1330,6 +1339,34 @@ export function createWorldRenderer(options: WorldRendererOptions) {
     minimapCacheKey = cacheKey;
   }
 
+  /** Whether anything renderMinimapFrame draws from changed since the last check. */
+  function minimapMoved(remotePlayers: MapPlayerMarker[], view: Viewport) {
+    const inputs = minimapInputs.begin();
+    const frame = townMinimapFrame();
+    if (frame) inputs.add(frame.x).add(frame.y).add(frame.span).add(Number(frame.rooms)).add(Number(frame.hills)).add(Number(frame.grove));
+    inputs.add(townVillageThumbnail ? 1 : options.minimapVillageGround?.()?.complete ? 2 : 0).add(options.paths.length);
+    if (frame?.hills) for (const node of MINING_NODES) inputs.add(Number(miningScene.bare.has(node.id)));
+    if (frame?.grove) for (const tree of WOOD_TREE_NODES) inputs.add(Number(woodcuttingScene.felled.has(tree.id)));
+    inputs.add(options.enemies.length);
+    for (const enemy of options.enemies) {
+      const definition = enemy.definition ?? ENEMY_TYPES[enemy.type];
+      inputs.add(enemy.x).add(enemy.y).add(Number(Boolean(enemy.generatedBoss || definition.elite))).text(soulMarkerColor(enemy) ?? definition.reward.type);
+    }
+    for (const portal of [options.activePortal(), options.secondaryPortal()]) {
+      if (portal) inputs.add(portal.x).add(portal.y).text(portal.destination).add(Number(options.portalIsUnlocked(portal)));
+      else inputs.add(-Infinity);
+    }
+    const mapBoss = bossForMap(options.getMapId());
+    if (mapBoss) {
+      const state = options.bosses[mapBoss.kind];
+      inputs.add(state.x).add(state.y).add(Number(state.dead));
+    }
+    inputs.add(remotePlayers.length);
+    for (const player of remotePlayers) inputs.add(player.x).add(player.y);
+    inputs.add(options.player.x).add(options.player.y).add(camera.x).add(camera.y).add(camera.zoom).add(view.width).add(view.height);
+    return inputs.finish();
+  }
+
   function drawMinimap(remotePlayers: MapPlayerMarker[]) {
     if (options.getMapId() === "first_steps") return;
     const view = viewport();
@@ -1338,7 +1375,9 @@ export function createWorldRenderer(options: WorldRendererOptions) {
     const cacheKey = `${options.getMapId()}:${size}:${options.getDevicePixelRatio()}`;
     const now = performance.now();
     if (cacheKey !== minimapCacheKey || now >= nextMinimapFrameAt) {
-      renderMinimapFrame(remotePlayers, size, view);
+      // Redrawn, and so uploaded again, only when something on it moved.
+      const moved = minimapMoved(remotePlayers, view);
+      if (moved || cacheKey !== minimapCacheKey) renderMinimapFrame(remotePlayers, size, view);
       nextMinimapFrameAt = now + MINIMAP_FRAME_INTERVAL_MS;
     }
     if (minimapCanvas.width > 0 && minimapCanvas.height > 0) ctx.drawImage(minimapCanvas, layout.x, layout.y, size, size);
