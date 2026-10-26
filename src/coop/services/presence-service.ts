@@ -166,6 +166,11 @@ type PlayerPresentationRow = RemoteEquipment & {
 };
 
 function samePlayerPresentation(left: PlayerPresentationRow | undefined, right: PlayerPresentationRow) {
+  return sameProfilePresentation(left, right) && left!.speed === right.speed && left!.powerLevel === right.powerLevel;
+}
+
+/** Everything but power and speed, which only the figure shows (each kill changes power). */
+function sameProfilePresentation(left: PlayerPresentationRow | undefined, right: PlayerPresentationRow) {
   if (!left) return false;
   // zoneX/zoneY are physical compatibility columns, not presentation state.
   return left.networkId === right.networkId &&
@@ -177,8 +182,6 @@ function samePlayerPresentation(left: PlayerPresentationRow | undefined, right: 
     left.skinTone === right.skinTone &&
     left.isGuest === right.isGuest &&
     left.gender === right.gender &&
-    left.speed === right.speed &&
-    left.powerLevel === right.powerLevel &&
     left.feetItem === right.feetItem &&
     left.headItem === right.headItem &&
     left.chestItem === right.chestItem &&
@@ -635,7 +638,9 @@ export function createPresenceService(dependencies: PresenceServiceDependencies)
   function upsertMotionIdentity(row: PlayerPresentationRow) {
     const identity = row.identity.toHexString();
     if (!remotePlayersVisible && identity !== dependencies.localIdentity()) return;
-    const presentationChanged = !samePlayerPresentation(presentations.get(identity), row);
+    const previous = presentations.get(identity);
+    const presentationChanged = !samePlayerPresentation(previous, row);
+    const profileChanged = !sameProfilePresentation(previous, row);
     if (identity === dependencies.localIdentity()) localMotionNetworkId = row.networkId;
     if (identity !== dependencies.localIdentity() && (!row.isVisible || row.mapId !== currentMapId)) {
       removeMotionIdentity(row);
@@ -652,7 +657,7 @@ export function createPresenceService(dependencies: PresenceServiceDependencies)
     if (presentationChanged) {
       const player = players.get(identity);
       if (player) applyPresentation(player, row);
-      dependencies.changes.batch(() => {
+      if (profileChanged) dependencies.changes.batch(() => {
         dependencies.directory.tables.upsertProfile(row);
         dependencies.directory.tables.upsertAccountStatus(row);
         if (row.isVisible && row.mapId === currentMapId) playerMaps.set(identity, row.mapId);
@@ -883,10 +888,12 @@ export function createPresenceService(dependencies: PresenceServiceDependencies)
   /** Draws the nearest figures toward their targets: placed when first seen or through a door, walked ever after. */
   function drawFigures(targets: Map<string, FigureTarget>, now: number, serverNow: number, out: RemotePlayer[]) {
     const origin = localState;
-    const ordered = [...targets].sort(([, a], [, b]) => origin
-      ? Math.hypot(a.pose.x - origin.x, a.pose.y - origin.y) - Math.hypot(b.pose.x - origin.x, b.pose.y - origin.y) : 0)
-      .slice(0, AUTO_FARM_PUPPET_DRAW_LIMIT);
-    for (const [identity, target] of ordered) {
+    // Nearest first: each distance is measured once, and the stable sort keeps ties in map order.
+    const ordered = [...targets].map(([identity, target]) => ({ identity, target,
+      distance: origin ? Math.hypot(target.pose.x - origin.x, target.pose.y - origin.y) : 0 }));
+    if (origin) ordered.sort((a, b) => a.distance - b.distance);
+    ordered.length = Math.min(ordered.length, AUTO_FARM_PUPPET_DRAW_LIMIT);
+    for (const { identity, target } of ordered) {
       const presentation = presentations.get(identity);
       if (!presentation) continue;
       let shown = figures.get(identity);
