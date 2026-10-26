@@ -1,4 +1,7 @@
 export const RELEASE_NOTES: Record<string, string[]> = {
+  "0.917.27": [
+    "Builds save your nocked arrow, and equipping a build nocks it again",
+  ],
   "0.917.26": [
     "Craft arrows at the Smith: Steel, Fire, Venom, Frost, Piercing and Star, each with its own effect",
     "Nock a stack from the bag: your bow spends one a shot, and shoots plain arrows when they run out",
@@ -4011,6 +4014,7 @@ const RELEASE_DATES: Record<string, string> = {
 };
 
 export const RELEASE_DAYS: Record<string, string> = {
+  "0.917.27": "2026-10-26",
   "0.917.26": "2026-10-26",
   "0.917.25": "2026-10-26",
   "0.917.24": "2026-10-26",
