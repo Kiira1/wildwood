@@ -4,6 +4,7 @@ export const RELEASE_NOTES: Record<string, string[]> = {
     "Craft tools lower what a craft needs in your bag, and the Smith shows the lower cost",
     "The quest tracker no longer stays ahead of your real quest count",
     "A card's per-card share is dimmed so the total reads first",
+    "A second prompt over the trade market or the Smith shows on top, not behind",
   ],
   "0.917.13": [
     "Card effects show how copies stack: 75% [25%×3], and which parts stay the same",
