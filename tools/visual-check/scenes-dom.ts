@@ -461,15 +461,15 @@ async function builds() {
   await settleCssImages();
 }
 
-/** The HUD quest tracker: one quest on the player's map, two elsewhere with the map named above the enemy. */
+/** The HUD quest tracker: one quest on the player's map, two elsewhere with the map named above the stat. */
 async function questTracker() {
   document.body.style.background = GROUND;
   await importById("hud");
   const [here, there, far] = CAMPAIGN_MAPS;
   const quests = [
-    { mapId: here.id, enemy: "Spitter", target: 80, progress: 34 },
-    { mapId: there.id, enemy: "Needle", target: 60, progress: 12, from: "your guild" },
-    { mapId: far.id, enemy: "Brood", target: 100, progress: 0 },
+    { mapId: here.id, stat: "damage" as const, target: 80, progress: 34 },
+    { mapId: there.id, stat: "health" as const, target: 60, progress: 12, from: "your guild" },
+    { mapId: far.id, stat: "regen" as const, target: 100, progress: 0 },
   ];
   const memory = new Map<string, string>();
   installQuestTracker({ view: () => questTrackerView({ day: 0, quests, bonus: 0, guildPoints: 0, guildName: "" }, here.id,
