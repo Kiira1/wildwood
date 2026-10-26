@@ -209,6 +209,7 @@ import SnapshotProfileCharacterReducer from "./snapshot_profile_character_reduce
 import SpeedUpItemUpgradeWithGemsReducer from "./speed_up_item_upgrade_with_gems_reducer";
 import SpeedUpResearchWithGemsReducer from "./speed_up_research_with_gems_reducer";
 import SpendPrestigePerkPointReducer from "./spend_prestige_perk_point_reducer";
+import StartAdGemsReducer from "./start_ad_gems_reducer";
 import StartAggroRunReducer from "./start_aggro_run_reducer";
 import StartItemUpgradeReducer from "./start_item_upgrade_reducer";
 import StartLoginMoveReducer from "./start_login_move_reducer";
@@ -1953,6 +1954,7 @@ const reducersSchema = __reducers(
   __reducerSchema("speed_up_item_upgrade_with_gems", SpeedUpItemUpgradeWithGemsReducer),
   __reducerSchema("speed_up_research_with_gems", SpeedUpResearchWithGemsReducer),
   __reducerSchema("spend_prestige_perk_point", SpendPrestigePerkPointReducer),
+  __reducerSchema("start_ad_gems", StartAdGemsReducer),
   __reducerSchema("start_aggro_run", StartAggroRunReducer),
   __reducerSchema("start_item_upgrade", StartItemUpgradeReducer),
   __reducerSchema("start_login_move", StartLoginMoveReducer),

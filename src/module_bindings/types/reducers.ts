@@ -181,6 +181,7 @@ import SnapshotProfileCharacterReducer from "../snapshot_profile_character_reduc
 import SpeedUpItemUpgradeWithGemsReducer from "../speed_up_item_upgrade_with_gems_reducer";
 import SpeedUpResearchWithGemsReducer from "../speed_up_research_with_gems_reducer";
 import SpendPrestigePerkPointReducer from "../spend_prestige_perk_point_reducer";
+import StartAdGemsReducer from "../start_ad_gems_reducer";
 import StartAggroRunReducer from "../start_aggro_run_reducer";
 import StartItemUpgradeReducer from "../start_item_upgrade_reducer";
 import StartLoginMoveReducer from "../start_login_move_reducer";
@@ -377,6 +378,7 @@ export type SnapshotProfileCharacterParams = __Infer<typeof SnapshotProfileChara
 export type SpeedUpItemUpgradeWithGemsParams = __Infer<typeof SpeedUpItemUpgradeWithGemsReducer>;
 export type SpeedUpResearchWithGemsParams = __Infer<typeof SpeedUpResearchWithGemsReducer>;
 export type SpendPrestigePerkPointParams = __Infer<typeof SpendPrestigePerkPointReducer>;
+export type StartAdGemsParams = __Infer<typeof StartAdGemsReducer>;
 export type StartAggroRunParams = __Infer<typeof StartAggroRunReducer>;
 export type StartItemUpgradeParams = __Infer<typeof StartItemUpgradeReducer>;
 export type StartLoginMoveParams = __Infer<typeof StartLoginMoveReducer>;

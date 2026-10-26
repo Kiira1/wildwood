@@ -99,6 +99,7 @@ export const ERASURE_TARGETS: readonly ErasureTarget[] = [
   { table: "playerAccessAudit", columns: ["identity","viewer"], pk: "identity", mode: "key" },
   { table: "playerAccountStatus", columns: ["identity"], pk: "identity", mode: "key" },
   { table: "playerAdReward", columns: ["identity"], pk: "identity", mode: "key" },
+  { table: "playerAdWatch", columns: ["identity"], pk: "identity", mode: "key" },
   { table: "playerAudioSetting", columns: ["identity"], pk: "identity", mode: "key" },
   { table: "playerBalanceVersion", columns: ["identity"], pk: "identity", mode: "key" },
   { table: "playerBlock", columns: ["owner","target"], pk: "key", mode: "index", index: "byOwner" },

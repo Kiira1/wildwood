@@ -24,7 +24,7 @@ import { playerAudioSetting, writeAudioSettings } from "./audio-settings";
 import { playerIgnoredDrop, writeIgnoredDrops } from "./ignored-drops";
 import { playerLootSetting, writeLootSettings } from "./loot-settings";
 import { playerProfileSnapshot, requireSnapshotForIcon, takeProfileSnapshot } from "./profile-snapshot";
-import { claimAdGemReward, playerAdReward } from "./ad-gem-reward";
+import { claimAdGemReward, playerAdReward, playerAdWatch, startAdWatch } from "./ad-gem-reward";
 import { playerChatMute, setChatMute } from "./chat-mute";
 import { requireErasureConfirmation } from "./account-erasure";
 import { chatHeartAllowance, chatReactionCooldown, chatReactionSummary, chatReactionUnlock, playerChatHearts, reactionCountsFor, chatReaction, readChatReactions, setChatReaction, grantGemHeartUnlock, isChatModerator, chatModerator, moderatorHeartFor, setChatModerator, removeAccountReactions } from "./chat-reactions";
@@ -1420,7 +1420,7 @@ const spacetimedb = schema({
   playerGemWallet,
   gemTransaction,
   dailyGemBonus,
-  playerAdReward, playerChatMute,
+  playerAdReward, playerAdWatch, playerChatMute,
   balanceApologyNotice,
   playerEquipmentLock, playerItemGift, playerBowSkill, playerSwordSkill, playerStaffSkill, playerWornStaffSkill, playerEquipmentCopy, pendingEquipmentOffer, playerIgnoredDrop, playerLootSetting, playerItemRefine, playerCopyRefine, playerOre, playerRefineResult, playerCard, playerGearSlots, playerCopySlots, playerCardDrop, playerCardAttackCap, playerBossCardRoll, playerBuild, playerBuildName, playerWeaponMastery, playerMasteryLevel, playerGold, playerCardMeter, playerCardShopPurchase, playerItemCollection, playerWornSkill, playerMining, playerMinedNode, playerMiningLevel, playerWoodcutting, playerChoppedTree, playerWoodcuttingLevel, playerCraftSkill, playerCraftLevel, playerTool, oldGearPayout, playerStarterWeapon, gemKillDaily, gemLedgerTrim,
   mailboxLetter, mailboxReceipt, playerJoinDate, mailboxEquipment, accountDeletionRequest,
@@ -3392,7 +3392,12 @@ export const myAdGemReward = spacetimedb.view(
 /** Ten Gems for a watched ad, thirty minutes apart and four a UTC day. Body: ad-gem-reward.ts. */
 export const claimAdGems = spacetimedb.reducer((ctx) => {
   requireControllingPlayer(ctx);
-  claimAdGemReward(ctx, applyGemBalanceChange);
+  claimAdGemReward(ctx, applyGemBalanceChange, patreonStatus(ctx, ctx.sender).tier !== "none");
+});
+/** An ad starts playing: the claim after it pays only once it has run (ad-gem-reward.ts). */
+export const startAdGems = spacetimedb.reducer((ctx) => {
+  requireControllingPlayer(ctx);
+  startAdWatch(ctx);
 });
 export const myChatMute = spacetimedb.view(
   { name: "my_chat_mute", public: true }, t.array(playerChatMute.rowType),

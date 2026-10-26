@@ -1410,6 +1410,12 @@ export const PlayerAdReward = __t.object("PlayerAdReward", {
 });
 export type PlayerAdReward = __Infer<typeof PlayerAdReward>;
 
+export const PlayerAdWatch = __t.object("PlayerAdWatch", {
+  identity: __t.identity(),
+  startedAt: __t.timestamp(),
+});
+export type PlayerAdWatch = __Infer<typeof PlayerAdWatch>;
+
 export const PlayerAggroChallenge = __t.object("PlayerAggroChallenge", {
   identity: __t.identity(),
   active: __t.bool(),
