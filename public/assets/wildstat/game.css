@@ -4742,6 +4742,16 @@
 .offline-progress-row[data-stat-kind="regen"] { --offline-stat-color: var(--stat-regen); }
 .offline-progress-row[data-stat-kind="attack"] { --offline-stat-color: #ffe05d; }
 .offline-progress-note { margin: 14px 0; color: #9fa89b; font-size: 11px; line-height: 1.45; }
+.offline-choices { display: grid; gap: 10px; margin: 14px 0 0; }
+.offline-choices:empty { display: none; }
+.offline-choice { display: grid; gap: 6px; padding: 10px; border: 1px solid rgba(255,255,255,.16); border-radius: 8px; background: rgba(0,0,0,.25); text-align: left; }
+.offline-choice-head { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; }
+.offline-choice-title { color: #eef1ee; font-size: 15px; font-weight: 900; }
+.offline-choice-detail { color: #c9cfc9; font-size: 13px; text-align: right; }
+.offline-choice .offline-progress-stats { gap: 0; margin: 0; }
+.offline-choice .offline-progress-row { padding: 3px 2px; border: 0; border-radius: 0; background: none; font-size: 13px; }
+.offline-choice-collect { justify-self: center; width: min(160px, 100%); border-color: #18371b; background: linear-gradient(#63ad5c, #347536); box-shadow: 0 3px 0 #18371b; }
+.offline-choice-collect:disabled { border-color: #2d2d2d; background: #3e3e3e; box-shadow: none; color: rgba(236,240,236,.62); }
 
 /* The game's own yes/no prompt, in the frame every other window uses. It is
    always raised from another window, so it clears every one of them: the item

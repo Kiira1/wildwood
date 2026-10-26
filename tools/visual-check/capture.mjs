@@ -36,6 +36,7 @@ const VIEWPORTS = {
   "quest-tracker": [{ width: 390, height: 844, full: false }],
   "dps-breakdown": [{ width: 390, height: 844, full: false }, { width: 1280, height: 800, full: false }],
   builds: [{ width: 390, height: 700, full: true }],
+  "offline-choice": [{ width: 390, height: 844, full: true }],
   "exchange-window": [{ width: 1240, height: 700, full: true }],
   "chat-announcement": [{ width: 390, height: 844, full: true }, { width: 1280, height: 800, full: true }],
   "profile-own": [{ width: 390, height: 844, full: false }],

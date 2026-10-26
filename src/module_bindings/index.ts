@@ -69,6 +69,7 @@ import ClaimStarterStaffReducer from "./claim_starter_staff_reducer";
 import ClaimStarterWeaponReducer from "./claim_starter_weapon_reducer";
 import CollectExchangeReducer from "./collect_exchange_reducer";
 import CollectGuildMemberQuestsReducer from "./collect_guild_member_quests_reducer";
+import CollectOfflineProgressAsReducer from "./collect_offline_progress_as_reducer";
 import CompleteOnboardingStepReducer from "./complete_onboarding_step_reducer";
 import ConfigureGemCommerceReducer from "./configure_gem_commerce_reducer";
 import ConfigurePatreonReducer from "./configure_patreon_reducer";
@@ -147,6 +148,7 @@ import RecordStartupTelemetryReducer from "./record_startup_telemetry_reducer";
 import RefineItemReducer from "./refine_item_reducer";
 import ReforgeWeaponReducer from "./reforge_weapon_reducer";
 import RefreshDailyQuestsReducer from "./refresh_daily_quests_reducer";
+import RegisterClientHostReducer from "./register_client_host_reducer";
 import RegisterClientVersionReducer from "./register_client_version_reducer";
 import RegisterProtocolReducer from "./register_protocol_reducer";
 import RenameBuildReducer from "./rename_build_reducer";
@@ -335,6 +337,7 @@ import MyLootSettingsRow from "./my_loot_settings_table";
 import MyMailboxV2Row from "./my_mailbox_v_2_table";
 import MyMinedNodesRow from "./my_mined_nodes_table";
 import MyMiningRow from "./my_mining_table";
+import MyOfflineGatherChoiceRow from "./my_offline_gather_choice_table";
 import MyOfflinePreferenceRow from "./my_offline_preference_table";
 import MyOfflineProgressRow from "./my_offline_progress_table";
 import MyOnboardingRow from "./my_onboarding_table";
@@ -1600,6 +1603,13 @@ const tablesSchema = __schema({
     constraints: [
     ],
   }, MyMiningRow),
+  myOfflineGatherChoice: __table({
+    name: 'my_offline_gather_choice',
+    indexes: [
+    ],
+    constraints: [
+    ],
+  }, MyOfflineGatherChoiceRow),
   myOfflinePreference: __table({
     name: 'my_offline_preference',
     indexes: [
@@ -1814,6 +1824,7 @@ const reducersSchema = __reducers(
   __reducerSchema("claim_starter_weapon", ClaimStarterWeaponReducer),
   __reducerSchema("collect_exchange", CollectExchangeReducer),
   __reducerSchema("collect_guild_member_quests", CollectGuildMemberQuestsReducer),
+  __reducerSchema("collect_offline_progress_as", CollectOfflineProgressAsReducer),
   __reducerSchema("complete_onboarding_step", CompleteOnboardingStepReducer),
   __reducerSchema("configure_gem_commerce", ConfigureGemCommerceReducer),
   __reducerSchema("configure_patreon", ConfigurePatreonReducer),
@@ -1892,6 +1903,7 @@ const reducersSchema = __reducers(
   __reducerSchema("refine_item", RefineItemReducer),
   __reducerSchema("reforge_weapon", ReforgeWeaponReducer),
   __reducerSchema("refresh_daily_quests", RefreshDailyQuestsReducer),
+  __reducerSchema("register_client_host", RegisterClientHostReducer),
   __reducerSchema("register_client_version", RegisterClientVersionReducer),
   __reducerSchema("register_protocol", RegisterProtocolReducer),
   __reducerSchema("rename_build", RenameBuildReducer),

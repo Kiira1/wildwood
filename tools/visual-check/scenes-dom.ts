@@ -28,6 +28,7 @@ import { itemDisplayName } from "../../shared/items";
 import { itemInspectionButtonLabel } from "../../src/ui/item-inspection-controller";
 import { installQuestTracker } from "../../src/ui/quest-tracker";
 import { installDpsBreakdown } from "../../src/ui/dps-breakdown";
+import { createOfflineProgressSummary } from "../../src/ui/offline-progress-summary";
 import { questTrackerView } from "../../src/ui/quest-board-controller";
 import { CAMPAIGN_MAPS } from "../../shared/campaign-registry";
 import { CARDS } from "../../shared/cards";
@@ -480,6 +481,19 @@ async function builds() {
   await settleCssImages();
 }
 
+/** The "While You Were Away" choice: fight, mine or chop, each with its own Collect. */
+async function offlineChoice() {
+  await gameMarkup();
+  document.body.style.background = "#151515";
+  const summary = createOfflineProgressSummary({ acknowledge: () => {}, pending: () => null, readyToShow: () => false });
+  summary.show({
+    mapId: "intermediate_snowlands", seconds: 8 * 3600, kills: 4_210, damage: 1_820, health: 9_400, armor: 640, regen: 120, attackSpeed: 0.004,
+    blocked: false,
+    choice: { rocks: 1_174, miningGain: 7_560, mineOres: { mithril_ore: 2_310, starshard: 17 }, trees: 995, woodcuttingGain: 7_960, chopOres: { yew_log: 2_050 } },
+  });
+  await settleCssImages();
+}
+
 /** The HUD quest tracker: one quest on the player's map, two elsewhere with the map named above the stat. */
 async function questTracker() {
   document.body.style.background = GROUND;
@@ -512,6 +526,6 @@ async function dpsBreakdown() {
   await settleCssImages();
 }
 
-export const DOM_SCENES: Record<string, () => Promise<void>> = { icons, hud, wordmark, shops, "gem-shop": gemShop, "server-boost": serverBoost, "exchange-window": exchangeWindow, grades, "quest-tracker": questTracker, "dps-breakdown": dpsBreakdown, builds,
+export const DOM_SCENES: Record<string, () => Promise<void>> = { icons, hud, wordmark, shops, "gem-shop": gemShop, "server-boost": serverBoost, "exchange-window": exchangeWindow, grades, "quest-tracker": questTracker, "dps-breakdown": dpsBreakdown, builds, "offline-choice": offlineChoice,
   "chat-announcement": chatAnnouncement, "item-window": () => itemWindow(false), "card-window": cardWindow, "item-window-worn": () => itemWindow(true),
   "profile-own": () => profileWindow(true), "profile-other": () => profileWindow(false) };
