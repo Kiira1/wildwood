@@ -27,6 +27,7 @@ import { createBuildsTab } from "../../src/ui/builds-tab";
 import { itemDisplayName } from "../../shared/items";
 import { itemInspectionButtonLabel } from "../../src/ui/item-inspection-controller";
 import { installQuestTracker } from "../../src/ui/quest-tracker";
+import { installDpsBreakdown } from "../../src/ui/dps-breakdown";
 import { questTrackerView } from "../../src/ui/quest-board-controller";
 import { CAMPAIGN_MAPS } from "../../shared/campaign-registry";
 import { CARDS } from "../../shared/cards";
@@ -496,6 +497,21 @@ async function questTracker() {
   await settleCssImages();
 }
 
-export const DOM_SCENES: Record<string, () => Promise<void>> = { icons, hud, wordmark, shops, "gem-shop": gemShop, "server-boost": serverBoost, "exchange-window": exchangeWindow, grades, "quest-tracker": questTracker, builds,
+/** The DPS breakdown switched on, over a bow build with Koi and Dragon: each source's DPS and share. */
+async function dpsBreakdown() {
+  document.body.style.background = GROUND;
+  await importById("hud");
+  const rows = [
+    { source: "bow-hit" as const, perSecond: 12_400 }, { source: "card-koi" as const, perSecond: 3_100 },
+    { source: "card-splash" as const, perSecond: 2_900 }, { source: "bow-storm" as const, perSecond: 2_200 },
+    { source: "bow-ricochet" as const, perSecond: 1_100 }, { source: "card-burn" as const, perSecond: 640 },
+  ];
+  const memory = new Map<string, string>([["wildstat-dps-breakdown-enabled", "true"]]);
+  installDpsBreakdown({ meter: { breakdown: () => rows },
+    storage: () => ({ getItem: key => memory.get(key) ?? null, setItem: (key, value) => { memory.set(key, value); } }) });
+  await settleCssImages();
+}
+
+export const DOM_SCENES: Record<string, () => Promise<void>> = { icons, hud, wordmark, shops, "gem-shop": gemShop, "server-boost": serverBoost, "exchange-window": exchangeWindow, grades, "quest-tracker": questTracker, "dps-breakdown": dpsBreakdown, builds,
   "chat-announcement": chatAnnouncement, "item-window": () => itemWindow(false), "card-window": cardWindow, "item-window-worn": () => itemWindow(true),
   "profile-own": () => profileWindow(true), "profile-other": () => profileWindow(false) };

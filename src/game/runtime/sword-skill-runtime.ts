@@ -6,7 +6,7 @@ import {
 } from "../../../shared/sword-skills";
 import { segmentCircleHit, segmentEllipseHit } from "../weapon-combat";
 import { isSkillSecondaryTarget } from "./bow-skill-procs";
-import { DamageSource } from "./dps-meter";
+import type { DamageSource } from "./dps-meter";
 import type { BossTarget, EnemyShot, EnemyState, PlayerState } from "./types";
 
 type Target = EnemyState | BossTarget;

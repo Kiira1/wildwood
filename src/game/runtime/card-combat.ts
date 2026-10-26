@@ -4,7 +4,7 @@ import {
 import { CARD_CHAIN_RANGE, CARD_SPLASH_MAX_TARGETS, CARD_SPLASH_RADIUS, PRISM_MAX_TARGETS, PRISM_REPEAT_SECONDS } from "../../../shared/card-bounds";
 import { ENEMY_TYPES } from "../enemies";
 import type { BossTarget, EnemyCardStatus, EnemyState, PlayerState } from "./types";
-import { DamageSource } from "./dps-meter";
+import type { DamageSource } from "./dps-meter";
 
 type Target = EnemyState | BossTarget;
 type DamageOverTime = { dps: number; left: number; pending: number; tick: number; color: string };
@@ -86,10 +86,8 @@ export function createCardCombat(deps: {
     const entry = dots.get(target) ?? {};
     const current = entry[kind];
     const dps = total / seconds;
-    entry[kind] = {
-      dps: Math.max(dps, current?.dps ?? 0), left: Math.max(seconds, current?.left ?? 0), pending: current?.pending ?? 0,
-      tick: current?.tick ?? 0, color: COLORS[kind]
-    };
+    entry[kind] = { dps: Math.max(dps, current?.dps ?? 0), left: Math.max(seconds, current?.left ?? 0), pending: current?.pending ?? 0,
+      tick: current?.tick ?? 0, color: COLORS[kind] };
     dots.set(target, entry);
   }
 

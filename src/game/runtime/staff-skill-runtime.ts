@@ -7,7 +7,7 @@ import {
 import { METEOR_SHOWER_GAP_SECONDS } from "../../../shared/mastery-techniques";
 import { isSkillSecondaryTarget } from "./bow-skill-procs";
 import type { BossTarget, EnemyState, PlayerState } from "./types";
-import { DamageSource } from "./dps-meter";
+import type { DamageSource } from "./dps-meter";
 
 type Target = EnemyState | BossTarget;
 export type StaffSkillEffects = {

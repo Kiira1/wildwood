@@ -7,6 +7,7 @@ import type { AccountAudioRemote } from "../coop/services/account-audio-settings
 import { createAccountAudioSync } from "./account-audio-sync";
 import { requiredElement } from "../game/runtime/dom";
 import { playerDps } from "../game/runtime/dps-meter";
+import { installDpsBreakdown } from "./dps-breakdown";
 import { formatCompactNumber } from "../../shared/compact-number";
 import { setHighResolutionCanvas } from "../game/runtime/render/render-budget";
 import {
@@ -54,7 +55,7 @@ type AppShellDependencies = {
 /** Settings, audio lifecycle, fullscreen, and shell account/connection status. */
 export function createAppShellController(dependencies: AppShellDependencies) {
   let feedbackStorage: Storage | undefined;
-  try { feedbackStorage = window.localStorage; } catch { }
+  try { feedbackStorage = window.localStorage; } catch {}
   const feedback = installFeedbackSettings(document, feedbackStorage, () => {
     window.dispatchEvent(new Event("wildstat:toolbar-haptic"));
   });
@@ -243,8 +244,7 @@ export function createAppShellController(dependencies: AppShellDependencies) {
     refreshSettings();
   });
   setInterval(() => { if (dpsVisible) dpsStatus.textContent = `DPS: ${formatCompactNumber(Math.round(playerDps.perSecond()))}`; }, 500);
-  playerDps.installBreakdown();
-  setInterval(() => playerDps.updateBreakdown(), 500);
+  installDpsBreakdown({ meter: playerDps, storage: () => feedbackStorage });
   latencyToggle.addEventListener("click", () => {
     latencyVisible = !latencyVisible;
     writeBoolean(dependencies.storageKeys.latency, latencyVisible);
@@ -391,5 +391,5 @@ function writeBoolean(key: string, value: boolean) {
 }
 
 function writeString(key: string, value: string) {
-  try { localStorage.setItem(key, value); } catch { }
+  try { localStorage.setItem(key, value); } catch {}
 }

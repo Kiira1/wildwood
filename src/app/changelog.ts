@@ -1,4 +1,7 @@
 export const RELEASE_NOTES: Record<string, string[]> = {
+  "0.917.17": [
+    "DPS Breakdown in Settings shows where your damage comes from: each source's DPS and share over the last 20 seconds",
+  ],
   "0.917.16": [
     "Endless bosses are twice the size of their map's enemies, and their hitbox matches the art",
     "The Soul Defense Force is drawn at its full size, matching its hitbox",
@@ -3983,6 +3986,7 @@ const RELEASE_DATES: Record<string, string> = {
 };
 
 export const RELEASE_DAYS: Record<string, string> = {
+  "0.917.17": "2026-10-26",
   "0.917.16": "2026-10-26",
   "0.917.15": "2026-10-26",
   "0.917.14": "2026-10-26",

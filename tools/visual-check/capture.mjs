@@ -34,6 +34,7 @@ const VIEWPORTS = {
   "server-boost": [{ width: 390, height: 844, full: true }],
   grades: [{ width: 460, height: 320, full: true }],
   "quest-tracker": [{ width: 390, height: 844, full: false }],
+  "dps-breakdown": [{ width: 390, height: 844, full: false }, { width: 1280, height: 800, full: false }],
   builds: [{ width: 390, height: 700, full: true }],
   "exchange-window": [{ width: 1240, height: 700, full: true }],
   "chat-announcement": [{ width: 390, height: 844, full: true }, { width: 1280, height: 800, full: true }],
