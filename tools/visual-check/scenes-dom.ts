@@ -491,6 +491,8 @@ async function offlineChoice() {
     blocked: false,
     choice: { rocks: 1_174, miningGain: 7_560, mineOres: { mithril_ore: 2_310, starshard: 17 }, trees: 995, woodcuttingGain: 7_960, chopOres: { yew_log: 2_050 } },
   });
+  // Fight opened, Mine and Chop folded: both states of a row in one capture.
+  document.querySelector<HTMLButtonElement>('.offline-choice[data-activity="fight"] .offline-choice-toggle')?.click();
   await settleCssImages();
 }
 
