@@ -280,7 +280,7 @@
   paint-order: normal;
   text-shadow: none;
 }
-#autoFarmSheet.farm-card[hidden], #hud:has(#chatPanel.is-large) #autoFarmSheet { display: none; }
+#autoFarmSheet.farm-card[hidden], #hud.chat-large #autoFarmSheet { display: none; }
 #chatPanel[hidden] ~ #autoFarmSheet { bottom: calc(var(--toolbar-height) + 12px); }
 #autoFarmSheet.farm-card.is-world-gesture, #autoFarmSheet.farm-card.is-world-gesture * { pointer-events: none; }
 #autoFarmSheet.farm-card .farm-header { display: flex; align-items: center; padding: 0; }
