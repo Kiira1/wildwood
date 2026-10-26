@@ -1,26 +1,21 @@
 import { WOOD_TREE_NODES } from "../../../../shared/woodcutting";
-import { woodTreeDecor } from "../../town-world";
+import { stoneShadowUnder, woodTreeDecor } from "../../town-world";
 import type { Camera } from "../render/camera";
 import { soulFrame, SOUL_SHADOW_STRENGTH, type SoulPropDecor } from "../soul/soul-prop-renderer";
 import { stumpFrame } from "./wood-tree-renderer";
 import { woodcuttingScene } from "./woodcutting-scene";
 
-/** How much wider than its stump a felled tree's shadow is. */
-const STUMP_SHADOW_SPREAD = 1.2;
-
 /**
- * A Timberwood tree's shadow: its own while it stands, and once felled the same shadow shrunk to its stump's width
- * (the pack draws stumps none), as an ore rock borrows the stone's.
+ * A Timberwood tree's shadow: its own while it stands, and once felled the round stone shadow under its stump (the pack
+ * draws stumps none, and a shrunk tree shadow still shows its leaves), as an ore rock has.
  */
 export function groveTreeShadow(treeId: number, felled: boolean): SoulPropDecor | null {
   const node = WOOD_TREE_NODES[treeId];
   if (!node) return null;
-  const tree = woodTreeDecor(node), frame = `${tree.frame}__shadow`, shadow = soulFrame(frame);
-  if (!shadow) return null;
-  const stump = felled ? soulFrame(stumpFrame(treeId)) : null;
-  if (felled && !stump) return null;
-  const s = stump ? stump.w * STUMP_SHADOW_SPREAD / shadow.w : tree.s;
-  return { type: "soulProp", x: tree.x, y: tree.y, s, frame, flip: tree.flip, shadow: true };
+  const tree = woodTreeDecor(node);
+  if (felled) return soulFrame(stumpFrame(treeId)) ? stoneShadowUnder(stumpFrame(treeId), tree.x, tree.y, 1, tree.flip) : null;
+  const frame = `${tree.frame}__shadow`;
+  return soulFrame(frame) ? { type: "soulProp", x: tree.x, y: tree.y, s: tree.s, frame, flip: tree.flip, shadow: true } : null;
 }
 
 /**

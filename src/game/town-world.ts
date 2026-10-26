@@ -452,9 +452,13 @@ function rocksIn(cx: number, cy: number) {
 /** The pack's stone shadow (the only one it has), stretched under each ore rock to its width, just showing past its foot. */
 const ROCK_SHADOW = "Stone_04_Gray__shadow";
 function oreRockShadow(rock: Extract<WorldDecor, { type: "oreRock" }>): WorldDecor {
-  const frame = atlasFrame(rock.frame)!, shadow = atlasFrame(ROCK_SHADOW)!;
-  const s = frame.w * rock.s * .92 / shadow.w, below = (frame.h - frame.ay) * rock.s;
-  return { type: "soulProp", x: rock.x, y: Math.round(rock.y + below + 5 - (shadow.h - shadow.ay) * s), s, frame: ROCK_SHADOW, flip: rock.flip, shadow: true };
+  return stoneShadowUnder(rock.frame, rock.x, rock.y, rock.s, rock.flip);
+}
+/** That stone shadow under any small prop (an ore rock, a felled tree's stump): its width, just showing past its foot. */
+export function stoneShadowUnder(frameName: string, x: number, y: number, scale: number, flip = false): Extract<WorldDecor, { type: "soulProp" }> {
+  const frame = atlasFrame(frameName)!, shadow = atlasFrame(ROCK_SHADOW)!;
+  const s = frame.w * scale * .92 / shadow.w, below = (frame.h - frame.ay) * scale;
+  return { type: "soulProp", x, y: Math.round(y + below + 5 - (shadow.h - shadow.ay) * s), s, frame: ROCK_SHADOW, flip, shadow: true };
 }
 
 /** Every prop in the chunk window around a point: the village's and its rooms' when they are near, and the countryside's. */
