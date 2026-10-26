@@ -23,6 +23,7 @@ const VIEWPORTS = {
   "combat-hits": [{ width: 390, height: 844, full: true }],
   world: [{ width: 1280, height: 800, full: true }],
   town: [{ width: 1280, height: 800, full: true }],
+  "town-grid": [{ width: 1280, height: 800, full: true }],
   forest: [{ width: 1280, height: 800, full: true }],
   bosses: [{ width: 1280, height: 800, full: true }],
   "guild-battlefield": [{ width: 1280, height: 800, full: true }],

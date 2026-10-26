@@ -1,7 +1,7 @@
 // The world and town scenes: whole maps drawn by the game's world renderer at the game's own camera framing.
 import { CAMPAIGN_MAPS } from "../../shared/campaign-registry";
 import { SOUL_MAP_ID } from "../../shared/soul-dimension";
-import { TOWN_CENTER, TOWN_EXCHANGE_CENTER, TOWN_EXCHANGE_PLAZA, TOWN_EXCHANGE_POSITION, TOWN_MAP_ID, TOWN_WEST_BRIDGE } from "../../shared/town";
+import { TOWN_CENTER, TOWN_EXCHANGE_CENTER, TOWN_EXCHANGE_PLAZA, TOWN_EXCHANGE_POSITION, TOWN_MAP_ID, TOWN_WALK_AREA, TOWN_WEST_BRIDGE } from "../../shared/town";
 import { TOWN_OX_DECOR } from "../../src/game/town-world";
 import { attackRangeWithResearch } from "../../shared/utility-research";
 import { guildHallMapId } from "../../shared/guild-hall";
@@ -73,6 +73,20 @@ export async function town() {
     await mapView({ mapId, ...PHONE, parent: phones, title: "town · Ox", at: { x: ox.x + 70, y: ox.y + 90 } }),
     await mapView({ mapId, ...PHONE, parent: phones, title: "town · countryside", at: { x: TOWN_CENTER.x + 3_000, y: TOWN_CENTER.y - 1_500 } }),
     await mapView({ mapId, ...DESKTOP, title: "town · desktop" }),
+  ];
+  for (const view of views) await view.draw();
+}
+
+/** The cells of the Town's 3×3 grid opened to walk: north of the village, the far corners and the grid's outer wall. */
+export async function townGrid() {
+  const phones = strip();
+  const mapId = TOWN_MAP_ID as MapId;
+  const walls = TOWN_WALK_AREA;
+  const views = [
+    await mapView({ mapId, ...PHONE, parent: phones, title: "grid · north of the village", at: { x: TOWN_CENTER.x, y: TOWN_CENTER.y - 2_600 } }),
+    await mapView({ mapId, ...PHONE, parent: phones, title: "grid · north-east corner", at: { x: walls.right - 600, y: walls.top + 600 } }),
+    await mapView({ mapId, ...PHONE, parent: phones, title: "grid · south-west corner", at: { x: walls.left + 600, y: walls.bottom - 600 } }),
+    await mapView({ mapId, ...PHONE, parent: phones, title: "grid · the top wall", at: { x: TOWN_CENTER.x + 1_000, y: walls.top + 40 } }),
   ];
   for (const view of views) await view.draw();
 }

@@ -1,7 +1,7 @@
 import { TOWN_VILLAGE_GROUND } from "../../town-village";
 import { WORLD_WIDTH } from "../../../../shared/rules";
 import { isSoulMap, SOUL_STAT_DETAILS } from "../../../../shared/soul-dimension";
-import { inTownInteriors, isTownMap, TOWN_DOORS, TOWN_EXCHANGE_WALK_AREA, TOWN_GROVE_WALK_AREA, TOWN_INTERIOR_MARGIN, TOWN_VILLAGE_WALK_AREA, TOWN_WALK_AREAS } from "../../../../shared/town";
+import { inTownInteriors, isTownMap, TOWN_DOORS, TOWN_INTERIOR_MARGIN, TOWN_VILLAGE_WALK_AREA, TOWN_WALK_AREA } from "../../../../shared/town";
 import { TOWN_EXCHANGE_LABEL } from "../../town-exchange";
 import { TOWN_EXCHANGE_GROUND } from "../town/exchange-ground";
 import { MINING_NODES } from "../../../../shared/mining";
@@ -1192,18 +1192,23 @@ export function createWorldRenderer(options: WorldRendererOptions) {
 
   /**
    * Where the minimap looks on the Town, or null on any other map (it shows the whole world): the walled village,
-   * or once the player is out past it, the Copper Hills east of it, Timberwood west of it or the market south, and the walk out.
+   * or once the player is out past it, whichever cell of the 3×3 grid they are in: the Copper Hills east, Timberwood west, the market south, countryside elsewhere.
    */
   function townMinimapFrame() {
     if (!isTownMap(options.getMapId())) return null;
     if (inTownInteriors(options.player.x, options.player.y, TOWN_INTERIOR_MARGIN)) {
       return { x: options.player.x - TOWN_ROOMS_MINIMAP_SPAN / 2, y: options.player.y - TOWN_ROOMS_MINIMAP_SPAN / 2, span: TOWN_ROOMS_MINIMAP_SPAN, rooms: true, hills: false, grove: false };
     }
-    const hills = options.player.x > TOWN_VILLAGE_WALK_AREA.right, grove = options.player.x < TOWN_VILLAGE_WALK_AREA.left;
-    const market = !hills && !grove && options.player.y > TOWN_VILLAGE_WALK_AREA.bottom;
-    const area = hills ? { ...TOWN_WALK_AREAS[0], left: TOWN_VILLAGE_WALK_AREA.right - 300 }
-      : grove ? { ...TOWN_GROVE_WALK_AREA, right: TOWN_VILLAGE_WALK_AREA.left + 300 }
-      : market ? { ...TOWN_EXCHANGE_WALK_AREA, top: TOWN_VILLAGE_WALK_AREA.bottom - 300 } : TOWN_VILLAGE_WALK_AREA;
+    // The cell of the 3×3 grid the player is in, with a little of the village's side showing.
+    const village = TOWN_VILLAGE_WALK_AREA, walls = TOWN_WALK_AREA;
+    const hills = options.player.x > village.right, grove = options.player.x < village.left;
+    const north = options.player.y < village.top, south = options.player.y > village.bottom;
+    const area = {
+      left: hills ? village.right - 300 : grove ? walls.left : village.left,
+      right: hills ? walls.right : grove ? village.left + 300 : village.right,
+      top: north ? walls.top : south ? village.bottom - 300 : village.top,
+      bottom: north ? village.top + 300 : south ? walls.bottom : village.bottom,
+    };
     const span = Math.max(area.right - area.left, area.bottom - area.top);
     return { x: (area.left + area.right - span) / 2, y: (area.top + area.bottom - span) / 2, span, rooms: false, hills, grove };
   }
