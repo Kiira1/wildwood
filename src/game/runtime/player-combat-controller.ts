@@ -35,7 +35,8 @@ import { staffBoltColor } from "../staff-look";
 import { createCardCombat } from "./card-combat";
 import { NO_CARDS, cardStatGainFactor, cardValue, type CardTotals } from "../../../shared/card-effects";
 import { bowSkillsWithCards } from "../../../shared/card-bounds";
-import { isSkillBow } from "../../../shared/bow-skills";
+import { isBow, isSkillBow } from "../../../shared/bow-skills";
+import { ARROW_KINDS, PIERCING_ARROW_EXTRA_TARGETS, arrowHitMultiplier, type ArrowId } from "../../../shared/arrows";
 import { addPlayerBaseMaxHealth } from "./player-health";
 import {
   absoluteAttackTimestamps,
@@ -171,6 +172,9 @@ export function createPlayerCombatController(options: {
   hitGeneratedBoss?: (enemy: EnemyState, damage: number, critical: boolean, reflected?: boolean) => boolean;
   /** The Reflect Only prestige challenge: only reflected hits deal damage. */
   reflectOnly?: () => boolean;
+  /** The crafted arrow a bow shoots now (nocked and held), and one fired: spent from the stack (arrow-service.ts). */
+  arrowInPlay?: () => ArrowId | null;
+  onArrowShot?: (arrowId: ArrowId) => void;
   /** Every hit the player lands, after its multipliers: the DPS readout. */
   onDamageDealt?: (amount: number, source: DamageSource) => void;
   spawnBurst: (x: number, y: number, color: string, count?: number, speed?: number) => void;
@@ -416,6 +420,10 @@ export function createPlayerCombatController(options: {
       // Volley raises a Split Shot arrow.
       projectile.damage = weaponDamage(critical) * (staff ? STAFF_BOLT_DAMAGE_FACTOR : 1) * (Math.random() < doubleStrikeChance() ? 2 : 1)
         * (splitShot ? techniques.splitShotFactor() : 1);
+      // A nocked arrow is spent a shot; Steel hits harder, Star's criticals harder (arrows.ts).
+      const ammo = !staff && isBow(weaponItem) ? options.arrowInPlay?.() ?? null : null;
+      projectile.ammo = ammo;
+      if (ammo) { options.onArrowShot?.(ammo); projectile.damage *= arrowHitMultiplier(ammo, critical); }
       projectile.critical = critical;
       projectile.hitLife = player.attackRange / speed * projectileLifeBonus;
       projectile.life = (player.attackRange + PLAYER_PROJECTILE_VISUAL_TAIL) / speed * projectileLifeBonus;
@@ -836,6 +844,9 @@ export function createPlayerCombatController(options: {
     }
     // No spark on a hit: hits are too many to draw sparks for. Deaths keep their burst.
     applyPlayerHit(target, projectile.damage, critical, Math.atan2(projectile.vy, projectile.vx), 'bow-hit');
+    // Fire, Venom and Frost arrows on every hit, the arrow's own and any it pierces.
+    const effect = projectile.ammo ? ARROW_KINDS[projectile.ammo].effect : null;
+    if (effect === "burn" || effect === "poison" || effect === "chill") cardCombat.arrowHit(target, projectile.damage, effect);
     const procs = projectile.skills;
     if (!procs?.arrowStorm && !procs?.ricochet) return;
     projectile.skills = procs.piercingShot ? PIERCE_ONLY : null;
@@ -891,7 +902,8 @@ export function createPlayerCombatController(options: {
       if (projectile.hitLife !== undefined) projectile.hitLife -= projectileStepSeconds;
       projectile.trail -= projectileStepSeconds;
       // Piercing Shot carries the arrow on through regular enemies in its line.
-      while (hit && arrowPassesThrough(projectile.skills, hit.enemy, projectile.pierced?.size ?? 0)) {
+      while (hit && (arrowPassesThrough(projectile.skills, hit.enemy, projectile.pierced?.size ?? 0)
+        || projectile.ammo === "piercing_arrow" && !hit.enemy.isBoss && !hit.enemy.generatedBoss && (projectile.pierced?.size ?? 0) < PIERCING_ARROW_EXTRA_TARGETS)) {
         const pierceX = startX + (endX - startX) * hit.t, pierceY = startY + (endY - startY) * hit.t;
         arrowImpact(projectile, hit.enemy, pierceX, pierceY);
         (projectile.pierced ??= new Set()).add(hit.enemy);

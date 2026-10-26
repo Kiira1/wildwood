@@ -24,6 +24,8 @@ import { swordSkillChance, swordSkillReachMultiplier } from "../../shared/sword-
 import { swordSkillRollFor } from "./sword-skills";
 import { STAFF_BOLT_DAMAGE_FACTOR, isStaff, staffSkillReachMultiplier, weaponAttackInterval } from "../../shared/staff-skills";
 import { isBow } from "../../shared/bow-skills";
+import { arrowOffenseBound } from "../../shared/arrows";
+import { arrowInPlay } from "./arrows";
 import { staffSkillRollFor } from "./staff-skills";
 import type { ModuleReducerCtx as GameReducerContext } from "./index";
 import { readCritRating, readPlayerProgress } from "./wide-stats";
@@ -182,18 +184,20 @@ export function createCombatReport(deps: CombatReportDeps) {
       const staffReach = staff
         ? staffSkillReachMultiplier(rollWithProficiency(staffSkillRollFor(ctx, ctx.sender, loadout.weapon), mastery.level, loadout.skillFactor), technique.meteorFalls) : 1;
       const armorReduction = armorFor(statsFor(withSoulStats(saved, soul, minInterval)).armor).reduction;
+      // A nocked arrow, while the bow in hand has some to shoot (arrows.ts).
+      const arrow = arrowOffenseBound(isBow(loadout.weapon) ? arrowInPlay(ctx, ctx.sender) : null);
       return { saved, earned, statsFor, armorFor, soul, minInterval, research, ranks, cards, gear: {
-        loadout, critical, swing: prestigeSwingMultiplier(ranks),
+        loadout, critical: (rating?: number) => critical(rating) * arrow.critical, swing: prestigeSwingMultiplier(ranks),
         // Projectile count is not a kill reward, so the saved row holds for the whole report.
         armed,
         projectiles: !armed || itemDefinition(loadout.weapon)?.weapon?.mode === "MELEE" ? 1 : Math.max(1, saved.projectileCount),
         // Reflect returns the hit before armor, so armor raises what it adds.
         reach: (prestigeReachMultiplier(ranks, armorReduction) + cardBound.reflect * WORLD_REFLECT_SHARE * preArmorFactor(armorReduction))
           * bowSkillReachMultiplier(bowSkills, technique.stormWaves) * staffReach * cardBound.reach
-          * swordSkillReachMultiplier(swordSkills, technique.whirlwindTicks, technique.cleave),
+          * swordSkillReachMultiplier(swordSkills, technique.whirlwindTicks, technique.cleave) * arrow.reach,
         // A bolt hits a little harder than an arrow, and casts come slower.
         weapon: loadout.weapon, boltDamage: staff ? STAFF_BOLT_DAMAGE_FACTOR : 1,
-        cardDamage: cardBound.damage,
+        cardDamage: cardBound.damage * arrow.damage,
         // Hunter's Mark, Hex and Volley hit harder; Momentum swings faster; Bloodlust heals each swing.
         techniqueDamage: technique.damage, attackSpeed: technique.attackSpeed, healPerSwing: technique.healPerSwing,
         deflectReturn: technique.deflectReturn,

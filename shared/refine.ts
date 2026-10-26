@@ -32,6 +32,13 @@ export const REFINE_ORES = {
   yew_log: { name: "Yew Log", grade: null },
   elder_log: { name: "Elder Log", grade: null },
   arcane_crystal: { name: "Arcane Crystal", grade: null },
+  // Crafted arrows (arrows.ts): stacked as materials, spent by the bow.
+  steel_arrow: { name: "Steel Arrow", grade: null },
+  fire_arrow: { name: "Fire Arrow", grade: null },
+  venom_arrow: { name: "Venom Arrow", grade: null },
+  frost_arrow: { name: "Frost Arrow", grade: null },
+  piercing_arrow: { name: "Piercing Arrow", grade: null },
+  star_arrow: { name: "Star Arrow", grade: null },
 } as const;
 export type OreId = keyof typeof REFINE_ORES;
 /** The four ores a grade refines with. */

@@ -70,7 +70,10 @@ export function createSmithController(deps: {
   dialog.innerHTML = `<header class="farm-header"><h2 id="smithTitle" class="window-banner"><span>The Smith</span></h2></header>`
     + `<div class="quest-body"><div class="smith-views-bar"><div class="inventory-filters smith-views" role="group" aria-label="Smith view"></div></div>`
     // Each tab: the piece picked pinned on top, the grid to pick from under it.
-    + stationViewMarkup("craft", "Gear to craft")
+    // Arrows in a grid of their own under the gear.
+    + stationViewMarkup("craft", "Gear to craft", {
+      after: `<h3 class="station-subhead">Arrows</h3><div class="inventory-items station-grid station-arrows" role="listbox" aria-label="Arrows to craft"></div>`,
+    })
     + stationViewMarkup("reforge", "Weapons to reforge", {
       after: `<p class="farm-map smith-intro">Roll a weapon's skills again for the same materials as crafting it. Each skill keeps the better roll.</p>`,
     })
@@ -217,8 +220,9 @@ export function createSmithController(deps: {
     const chosen = items.find(item => key(item) === selected);
     // Only the tab on screen lists its tiles; picking another tab renders it.
     const craftTiles = view === "craft" && crafts ? crafts.craftTiles() : [];
+    const arrowTiles = view === "craft" && crafts ? crafts.arrowTiles() : [];
     const reforgeTiles = view === "reforge" && crafts ? crafts.reforgeTiles() : [];
-    if (view === "craft") picked.craft = stationPick(craftTiles, picked.craft ?? null);
+    if (view === "craft") picked.craft = stationPick([...craftTiles, ...arrowTiles], picked.craft ?? null);
     if (view === "reforge") picked.reforge = stationPick(reforgeTiles, picked.reforge ?? null);
     // Presence updates also refresh open windows. Keep focus and buttons in place until this window changes.
     const state = JSON.stringify([
@@ -241,6 +245,8 @@ export function createSmithController(deps: {
     } else if (view === "craft" && crafts) {
       viewPart("craft", ".station-detail").replaceChildren(...detailOf(picked.craft ? crafts.craftDetail(picked.craft) : null));
       renderStationGrid(viewPart("craft", ".station-grid"), craftTiles, picked.craft ?? null, pick => { picked.craft = pick; render(); });
+      renderStationGrid(viewPart("craft", ".station-arrows"), arrowTiles, picked.craft ?? null, pick => { picked.craft = pick; render(); });
+      viewPart("craft", ".station-subhead").hidden = !arrowTiles.length;
     } else if (view === "reforge" && crafts) {
       viewPart("reforge", ".station-detail").replaceChildren(...detailOf(picked.reforge ? crafts.reforgeDetail(picked.reforge) : null, "No weapon to reforge yet. Craft one first."));
       renderStationGrid(viewPart("reforge", ".station-grid"), reforgeTiles, picked.reforge ?? null, pick => { picked.reforge = pick; render(); });

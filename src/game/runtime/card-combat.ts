@@ -2,6 +2,7 @@ import {
   CARD_EFFECT_DEFAULTS, NO_CARDS, cardChance, cardDamageDealtMultiplier, cardDamageTakenMultiplier, cardValue, type CardTotals,
 } from "../../../shared/card-effects";
 import { CARD_CHAIN_RANGE, CARD_SPLASH_MAX_TARGETS, CARD_SPLASH_RADIUS, PRISM_MAX_TARGETS, PRISM_REPEAT_SECONDS } from "../../../shared/card-bounds";
+import { FIRE_ARROW_BURN, type ArrowEffect } from "../../../shared/arrows";
 import { ENEMY_TYPES } from "../enemies";
 import type { BossTarget, EnemyCardStatus, EnemyState, PlayerState } from "./types";
 import type { DamageSource } from "./dps-meter";
@@ -289,8 +290,19 @@ export function createCardCombat(deps: {
     }
   }
 
+  /** A nocked arrow's hit (arrows.ts): Fire burns, Venom poisons and weakens, Frost chills, on every hit, cards or not. */
+  function arrowHit(target: Target, damage: number, effect: ArrowEffect) {
+    if (!(damage > 0) || target.dead) return;
+    const regular = isRegular(target) ? target : null, defaults = CARD_EFFECT_DEFAULTS;
+    if (effect === "burn") damageOverTime(target, "burn", damage * FIRE_ARROW_BURN.share, FIRE_ARROW_BURN.seconds);
+    else if (effect === "poison") {
+      damageOverTime(target, "poison", damage * defaults.poison.share, defaults.poison.seconds);
+      if (regular) setStatus(regular, "weaken", defaults.poison.weaken, defaults.poison.seconds);
+    } else if (effect === "chill" && regular) setStatus(regular, "slow", defaults.chill.slow, defaults.chill.seconds);
+  }
+
   return {
-    hitMultiplier, firstHitCrit, afterHit, reap, onKill, secondWind, incoming, absorb, afterHurt, afterReflect, update,
+    hitMultiplier, firstHitCrit, afterHit, arrowHit, reap, onKill, secondWind, incoming, absorb, afterHurt, afterReflect, update,
     /** The shield in play and its most, for the health bar. */
     shield: () => ({ amount: shield, max: player.maxHp * Math.max(0, cardValue(cards(), "shield")) / 100 }),
   };

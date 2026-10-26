@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
+import { STEEL_ARROW_DAMAGE } from "../../../shared/arrows";
 import { BOW_ATTACK_SPEED_BONUS } from "../../../shared/bow-skills";
 import {
   attackReadyAtWithoutTarget,
@@ -1105,5 +1106,41 @@ describe("staff combat", () => {
     const bow = createCombatHarness({ equippedWeapon: () => "ion_bow" }), staff = createCombatHarness({ equippedWeapon: () => "ion_staff" });
     for (const state of [bow, staff]) Object.assign(state.player, { damage: 10, attackRate: 1, projectileCount: 1 });
     expect(staff.controller.expectedDps() / bow.controller.expectedDps()).toBeCloseTo(.75 / (1 + BOW_ATTACK_SPEED_BONUS), 6);
+  });
+});
+
+describe("crafted arrows", () => {
+  /** A bow firing for `seconds` at enemies in a line east of the player, with `held` arrows of a kind nocked. */
+  function shoot(arrowId: "steel_arrow" | "piercing_arrow" | null, held: number, seconds: number, line = 1) {
+    let now = 0, left = held;
+    const spent: string[] = [];
+    const state = createCombatHarness({ nowSeconds: () => now, equippedWeapon: () => "ion_bow", random: () => .99,
+      arrowInPlay: () => arrowId && left > 0 ? arrowId : null, onArrowShot: id => { spent.push(id); left--; } });
+    state.bosses.dragon.dead = true;
+    Object.assign(state.player, { x: 500, y: 500, hp: 100, maxHp: 100, damage: 10, attackRate: 1, attackRange: 400, projectileCount: 1, knockback: 0 });
+    const lifecycle = createEnemyLifecycle(state.enemies, state.spawnSites, () => {});
+    for (let id = 0; id < line; id++) lifecycle.spawnFromSite({ id, type: "Spitter", x: 700 + id * 60, y: 500, campName: "Line", leashRange: 500, alive: false, respawnAt: 0 });
+    for (const enemy of state.enemies) enemy.hp = enemy.maxHp = 100_000;
+    for (let frame = 0; frame < seconds * 60; frame++) { now += 1 / 60; state.controller.attackNearest(); state.controller.updateProjectiles(1 / 60); }
+    return { spent, lost: state.enemies.map(enemy => 100_000 - enemy.hp) };
+  }
+
+  it("spends one a shot while any are held, Steel hitting 10% harder, then shoots plain arrows", () => {
+    const plain = shoot(null, 0, 3), steel = shoot("steel_arrow", 100, 3);
+    expect(plain.spent).toEqual([]);
+    expect(steel.spent.length).toBeGreaterThan(2);
+    expect(steel.lost[0] / plain.lost[0]).toBeCloseTo(STEEL_ARROW_DAMAGE, 6);
+    // Two arrows held: two spent, the rest plain.
+    const short = shoot("steel_arrow", 2, 3);
+    expect(short.spent).toEqual(["steel_arrow", "steel_arrow"]);
+    expect(short.lost[0]).toBeGreaterThan(plain.lost[0]);
+    expect(short.lost[0]).toBeLessThan(steel.lost[0]);
+  });
+
+  it("carries a Piercing arrow through one more enemy in its line, and no further", () => {
+    const plain = shoot(null, 0, 3, 3), piercing = shoot("piercing_arrow", 100, 3, 3);
+    expect(plain.lost.slice(1)).toEqual([0, 0]);
+    expect(piercing.lost[1]).toBeCloseTo(piercing.lost[0], 6);
+    expect(piercing.lost[2]).toBe(0);
   });
 });

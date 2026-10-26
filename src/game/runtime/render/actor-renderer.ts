@@ -4,6 +4,7 @@ import { residentDrawable } from "./resident-image";
 import { decodedImage } from "./decoded-image";
 import { isMeleeWeapon } from "../../weapon-combat";
 import { paintArrowProjectile, paintRockProjectile, rockProjectileSize } from "./weapon-projectile-renderer";
+import { ARROW_ART_ROTATION, ARROW_SPRITE_SIZE, arrowImage } from "./arrow-images";
 export { rockProjectileSize } from "./weapon-projectile-renderer";
 import { ENEMY_TYPES, REWARD_DATA, rewardAmountLabel, rewardStatLabel, type EnemyDefinition, type LoadedEnemySprite, type LoadedSpriteLayer } from "../../enemies";
 import { clamp } from "../../math";
@@ -384,7 +385,10 @@ export function createActorRenderer(options: {
     const weaponItem = localShotItem();
     const projectileKind = enemy ? undefined : projectileKindForWeapon(weaponItem);
     let source: HTMLCanvasElement | HTMLImageElement | null = null;
-    if (projectileKind === "ARROW") source = arrowSprite();
+    const ammo = !enemy && projectileKind === "ARROW" && "ammo" in projectile ? projectile.ammo : null;
+    const art = ammo ? arrowImage(ammo) : null;
+    if (art) source = art;
+    else if (projectileKind === "ARROW") source = arrowSprite();
     else if (projectileKind === "BOLT") source = boltSprite(staffBoltColor(weaponItem));
     else if (projectileKind === "ROCK") {
       const image = options.itemSprite(weaponItem);
@@ -393,11 +397,11 @@ export function createActorRenderer(options: {
     if (!source) return null;
     const sourceWidth = source instanceof HTMLImageElement ? source.naturalWidth : source.width;
     const sourceHeight = source instanceof HTMLImageElement ? source.naturalHeight : source.height;
-    const { width, height } = projectileKind === "ROCK"
+    const { width, height } = art ? { width: ARROW_SPRITE_SIZE, height: ARROW_SPRITE_SIZE } : projectileKind === "ROCK"
       ? rockProjectileSize(weaponItem, sourceWidth, sourceHeight)
       : { width: sourceWidth, height: sourceHeight };
     const rotation = projectileKind === "ARROW" || projectileKind === "ROCK" || projectileKind === "BOLT"
-      ? Math.atan2(projectile.vy, projectile.vx)
+      ? Math.atan2(projectile.vy, projectile.vx) + (art ? ARROW_ART_ROTATION : 0)
       : undefined;
     return { source, left: x - width / 2, top: y - height / 2, width, height, rotation };
   }
@@ -1018,7 +1022,14 @@ export function createActorRenderer(options: {
       ? projectileKindForWeapon(weaponItem)
       : undefined;
     if (projectileKind === "ARROW") {
-      drawArrow(x, y, Math.atan2(projectile.vy, projectile.vx));
+      const angle = Math.atan2(projectile.vy, projectile.vx), ammo = "ammo" in projectile ? projectile.ammo : null;
+      const art = ammo ? arrowImage(ammo) : null;
+      // A crafted arrow flies as its own art (arrow-images.ts).
+      if (art) {
+        ctx.save(); ctx.translate(x, y); ctx.rotate(angle + ARROW_ART_ROTATION);
+        ctx.drawImage(residentDrawable(art), -ARROW_SPRITE_SIZE / 2, -ARROW_SPRITE_SIZE / 2, ARROW_SPRITE_SIZE, ARROW_SPRITE_SIZE);
+        ctx.restore();
+      } else drawArrow(x, y, angle);
       return;
     }
     if (projectileKind === "BOLT") {

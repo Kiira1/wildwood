@@ -131,6 +131,7 @@ async function icons() {
   }, { ...inventory, selectedItemId: "" }, "EQUIPMENT", {
     onInspect: () => {}, upgradeLevel: () => 0, slotTier: () => 7, refineLevel, slotCapacity: items.length + copies.length,
     copies, nextSlotCost: 150n,
+    ores: { iron_ore: 12, pine_log: 900, steel_arrow: 1_240, fire_arrow: 80, piercing_arrow: 12_500 }, nockedArrow: "steel_arrow",
   });
   const preview = createInventoryCharacterPreview(byId<HTMLCanvasElement>("inventoryCharacterCanvas"), await playerAppearance());
   const drawPreview = () => preview.draw({ visible: true, inventory, skinTone: 2, power: 54_321 });
@@ -161,9 +162,9 @@ async function wordmark() {
 }
 
 /**
- * The Smith on each of Craft, Reforge and Refine, the Weapon Seller on Sell and the Armor Seller on Buy, filled by their
- * own window code from fake rows. Each window keeps its real size, so its pinned detail and grid show as in the game;
- * they are stacked so one full-page capture shows all five.
+ * The Smith on each of Craft (gear, then an arrow picked), Reforge and Refine, the Weapon Seller on Sell and the Armor
+ * Seller on Buy, filled by their own window code from fake rows. Each window keeps its real size, so its pinned detail
+ * and grid show as in the game; they are stacked so one full-page capture shows all six.
  */
 async function shops() {
   await gameMarkup();
@@ -174,7 +175,7 @@ async function shops() {
     dialog.farm-sheet[open] { position: relative !important; inset: auto !important; margin: 12px auto !important; }
   `;
   document.head.append(unpin);
-  const ores = { pine_log: 900, oak_log: 40, copper_ore: 300, iron_ore: 12, starshard: 5 };
+  const ores = { pine_log: 900, oak_log: 40, copper_ore: 300, iron_ore: 12, starshard: 5, steel_arrow: 1_240, fire_arrow: 80 };
   const bow = { arrowStorm: 3.1, ricochet: 1.2, piercingShot: 0 }, sword = { whirlwind: 2, deflect: 0, shockwave: 1.5 };
   const done = async () => ({ ok: true });
   const held = [
@@ -185,13 +186,14 @@ async function shops() {
     { itemId: "fine_light_armor", copyId: 0n, equipped: true },
     { itemId: "common_ranger_boots", copyId: 0n, equipped: true },
   ];
-  for (const view of ["craft", "reforge", "refine"] as const) {
+  // Craft twice: once on the gear, once with Fire Arrow picked.
+  for (const view of ["craft", "craft", "reforge", "refine"] as const) {
     createSmithController({
       inTown: () => true, items: () => held, refineLevel: (_itemId, copyId) => copyId ? 2 : 7, slotTier: () => 3, ores: () => ores, refine: done,
       showMessage: () => {},
       craft: {
         craftSkills: () => ({ fletching: BigInt(craftExperienceForLevel(24)), smithing: BigInt(craftExperienceForLevel(6)) }),
-        ores: () => ores, masteryLevels: () => ({ archery: 20 }), bagFull: () => false, craft: done,
+        ores: () => ores, masteryLevels: () => ({ archery: 20 }), bagFull: () => false, craft: done, craftArrows: done,
         weapons: () => [
           { itemId: "rare_bow", copyId: 0n, equipped: true, roll: bow },
           { itemId: "rare_bow", copyId: 7n, equipped: false, roll: { arrowStorm: 0, ricochet: 2, piercingShot: 0.8 } },
@@ -201,6 +203,8 @@ async function shops() {
       },
     }).open(view);
   }
+  const arrowSmith = document.querySelectorAll<HTMLElement>(".smith-sheet")[1];
+  arrowSmith?.querySelector<HTMLElement>('.station-arrows [data-item-id="fire_arrow"]')?.click();
   try { localStorage.setItem("wildstat.gearSellerView.weapons", "sell"); localStorage.setItem("wildstat.gearSellerView.armor", "buy"); } catch { /* the default views */ }
   const seller: GearSellerDeps = {
     inTown: () => true, showMessage: () => {}, gold: () => 12_480n, masteryLevels: () => ({ archery: 20 }),
@@ -219,6 +223,10 @@ async function shops() {
   createGearSellerController("armor", seller).open();
   for (const dialog of document.querySelectorAll<HTMLDialogElement>("dialog[open]")) { dialog.close(); dialog.show(); }
   await settleCssImages();
+  // The arrow's grid sits under the gear's: scrolled to it.
+  const scroll = arrowSmith?.querySelector<HTMLElement>('[data-view="craft"] .station-scroll');
+  const heading = scroll?.querySelector<HTMLElement>(".station-subhead");
+  if (scroll && heading) scroll.scrollTop += heading.getBoundingClientRect().top - scroll.getBoundingClientRect().top - 4;
 }
 
 /** The gem Shop on the web: the Patreon rows and the dev note with its three frames and the Diamond Galaxy set. */

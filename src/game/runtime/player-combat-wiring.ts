@@ -64,6 +64,8 @@ export function createPlayerCombat(deps: PlayerCombatWiringDeps) {
 
   return createPlayerCombatController({
     onDamageDealt: (amount, source) => playerDps.record(amount, source),
+    arrowInPlay: () => client?.arrowInPlay?.() ?? null,
+    onArrowShot: arrowId => client?.recordArrowShot?.(arrowId),
     onEnemyDefeated: enemy => later.soul().defeated(enemy) || (later.onboarding()?.enemyDefeated() ?? false),
     soulStatOf: enemy => later.soul().soulStatOf(enemy),
     onSoulKill: stat => later.soul().soulKill(stat),

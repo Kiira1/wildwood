@@ -1139,6 +1139,9 @@ export type MyMinedNodes = __Infer<typeof MyMinedNodes>;
 export const MyMining = __t.object("MyMining", {});
 export type MyMining = __Infer<typeof MyMining>;
 
+export const MyNockedArrow = __t.object("MyNockedArrow", {});
+export type MyNockedArrow = __Infer<typeof MyNockedArrow>;
+
 export const MyOfflineGatherChoice = __t.object("MyOfflineGatherChoice", {});
 export type MyOfflineGatherChoice = __Infer<typeof MyOfflineGatherChoice>;
 
@@ -2053,6 +2056,12 @@ export const PlayerNameTag = __t.object("PlayerNameTag", {
   showDevTag: __t.bool(),
 });
 export type PlayerNameTag = __Infer<typeof PlayerNameTag>;
+
+export const PlayerNockedArrow = __t.object("PlayerNockedArrow", {
+  identity: __t.identity(),
+  arrowId: __t.string(),
+});
+export type PlayerNockedArrow = __Infer<typeof PlayerNockedArrow>;
 
 export const PlayerOfflinePreference = __t.object("PlayerOfflinePreference", {
   identity: __t.identity(),

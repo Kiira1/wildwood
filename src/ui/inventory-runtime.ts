@@ -58,6 +58,8 @@ export function createInventoryRuntime(deps: InventoryRuntimeDeps) {
     refineLevel: (itemId, copyId) => client?.itemRefine?.(itemId, copyId) ?? 0,
     lookRefine: lookRefine(itemId => client?.itemRefine?.(itemId) ?? 0, itemId => client?.cosmeticRefine?.(itemId) ?? 0),
     ores: () => client?.ores?.() ?? {},
+    nockedArrow: () => client?.nockedArrow?.() ?? null,
+    nockArrow: async arrowId => client?.nockArrow?.(arrowId),
     cards: cardsPort(() => client),
     slotTier: slot => client?.slotUpgradeTier?.(slot) ?? 0,
     inventorySlotsUnlocked: () => client?.inventorySlotsUnlocked?.() ?? 0,

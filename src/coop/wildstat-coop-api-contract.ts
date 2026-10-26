@@ -118,6 +118,7 @@ type ExpectedApiKey =
   | "startAdGems"
   | "chatMute"
   | "runTimingWith"
+  | "nockedArrow" | "arrowInPlay" | "recordArrowShot" | "nockArrow" | "craftArrows"
   | "runTiming"
   | "soulStats"
   | "soulLevel"
