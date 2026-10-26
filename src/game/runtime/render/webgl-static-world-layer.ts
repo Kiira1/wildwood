@@ -693,7 +693,8 @@ function initializeWebGLStaticWorldLayer(overlayCanvas: HTMLCanvasElement, overl
   function drawSprites(recording: SpriteRecording) {
     if (!enabled || !spritePass || !renderedFrame || gl.isContextLost()) return false;
     try {
-      const largestUpload = spritePass.draw(recording, Math.max(1, Math.round(renderedFrame.width * renderedFrame.dpr)), Math.max(1, Math.round(renderedFrame.height * renderedFrame.dpr)));
+      const backingWidth = Math.max(1, Math.round(renderedFrame.width * renderedFrame.dpr));
+      const largestUpload = spritePass.draw(recording, backingWidth, Math.max(1, Math.round(renderedFrame.height * renderedFrame.dpr)));
       // getError waits for the GPU, so only a large upload (an atlas page) is checked; an error from a small one
       // stays flagged until then, and a context that runs out of memory is lost.
       if (largestUpload >= LARGE_UPLOAD_BYTES) {
