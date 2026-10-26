@@ -9,8 +9,8 @@
   /* Quest tracker: top left under the gem row until dragged. Three quests in play, this map's first and bright. */
   .quest-tracker { position: fixed; top: calc(var(--hud-safe-top) + var(--player-hud-visual-height) + 40px); left: var(--hud-safe-left); z-index: 5; width: min(196px, 46vw); padding: 0 0 4px; border: var(--hud-border) solid var(--hud-frame); border-radius: var(--hud-radius-small); background: var(--hud-surface); box-shadow: var(--ui-shadow); outline: var(--hud-seam); outline-offset: -1px; color: #fff; font: 700 11px/1.25 "Wildstat Chat", sans-serif; pointer-events: auto; }
   .quest-tracker[hidden] { display: none; }
-  /* Under the FPS readout when it shows, the same 4px apart. */
-  body:has(#fpsStatus:not([hidden])) .quest-tracker { top: calc(var(--hud-safe-top) + var(--player-hud-visual-height) + 74px); }
+  /* Under the FPS readout when it shows, the same 4px apart (body.fps-status-shown, app-shell-controller.ts). */
+  body.fps-status-shown .quest-tracker { top: calc(var(--hud-safe-top) + var(--player-hud-visual-height) + 74px); }
   .quest-tracker .quest-tracker-header:active { cursor: grabbing; }
   .quest-tracker.is-world-gesture, .quest-tracker.is-world-gesture * { pointer-events: none; }
   .quest-tracker .quest-tracker-header { display: flex; align-items: center; gap: 6px; width: 100%; min-height: 30px; margin: 0; padding: 4px 8px; border: 0; border-radius: 0; background: transparent; box-shadow: none; color: inherit; font: inherit; font-size: 13px; text-align: left; cursor: grab; touch-action: none; }
@@ -727,23 +727,29 @@
      own colours showed through), then its outline as a solid image drawn from
      the same line rule as the characters (--galaxy-outline), so the line stays
      black and no sky shows past it. One grid cell stacks them; the sky, the art,
-     the outline and the mask are set inline (galaxyArtStyle in item-presentation.ts). */
+     the outline and the mask are set inline (galaxyArtStyle in item-presentation.ts).
+     The sky is its own layer (.galaxy-sky) two tiles wider and one taller than
+     the icon, slid by transform: the compositor moves it, where a drifting
+     background-position restyled the page every frame. */
   .has-galaxy-finish {
-    display: grid; grid-template: 1fr / 1fr; isolation: isolate;
-    background-size: 96px 96px;
-    background-repeat: repeat;
-    background-position: 0 0;
+    position: relative;
+    display: grid; grid-template: 1fr / 1fr; isolation: isolate; overflow: hidden;
     -webkit-mask-position: center; mask-position: center;
     -webkit-mask-size: contain; mask-size: contain;
     -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat;
     image-rendering: auto;
+  }
+  .galaxy-sky {
+    position: absolute; z-index: -1; top: -96px; right: 0; bottom: 0; left: -192px;
+    background: var(--galaxy-sky) 0 0 / 96px 96px repeat;
+    pointer-events: none;
     animation: galaxy-art-drift 40s linear infinite;
   }
   .has-galaxy-finish::before, .has-galaxy-finish::after { content: ""; grid-area: 1 / 1; pointer-events: none; }
   .has-galaxy-finish::before { background: var(--galaxy-art) center / contain no-repeat; filter: grayscale(1); mix-blend-mode: overlay; }
   .has-galaxy-finish::after { background: var(--galaxy-outline) center / contain no-repeat; }
-  @keyframes galaxy-art-drift { to { background-position: 192px 96px; } }
-  @media (prefers-reduced-motion: reduce) { .has-galaxy-finish { animation: none; } }
+  @keyframes galaxy-art-drift { to { transform: translate(192px, 96px); } }
+  @media (prefers-reduced-motion: reduce) { .galaxy-sky { animation: none; } }
   /* Where a plain image of the item stood, its galaxy span takes the image's place and size. */
   .item-art-image.has-galaxy-finish { display: grid; }
   .map-guide-drop-art .item-art-image { width: 50px; height: 50px; }
@@ -1330,8 +1336,20 @@
     border-color: #fff0ad;
     border-radius: 5px;
     background: transparent;
-    box-shadow: 0 0 5px rgba(255,206,67,.42), var(--ui-shadow);
+    box-shadow: 0 0 4px rgba(255,206,67,.35), var(--ui-shadow);
     transition: filter 120ms ease, transform 120ms ease;
+  }
+
+  /* The pulse fades a wider glow in and out: opacity runs on the compositor, a box-shadow keyframe repaints every frame.
+     On top (its box is empty), so the play arrow is not lifted into a layer of its own and blurred. */
+  .respawn-ad-glow {
+    position: absolute;
+    z-index: 2;
+    inset: -2px;
+    border-radius: inherit;
+    box-shadow: 0 0 8px rgba(255,215,79,.5);
+    opacity: 0;
+    pointer-events: none;
     animation: respawn-reward-glow 2.8s ease-in-out infinite;
   }
 
@@ -1349,8 +1367,8 @@
   }
 
   @keyframes respawn-reward-glow {
-    0%, 100% { box-shadow: 0 0 4px rgba(255,206,67,.35), var(--ui-shadow); }
-    50% { box-shadow: 0 0 8px rgba(255,215,79,.58), var(--ui-shadow); }
+    0%, 100% { opacity: 0; }
+    50% { opacity: 1; }
   }
 
   .respawn-ad-video-icon::after,
@@ -1552,7 +1570,7 @@
     filter: drop-shadow(0 0 4px var(--item-drop-color)) drop-shadow(0 0 10px var(--item-drop-color));
     image-rendering: pixelated;
   }
-  .item-drop-sprite.has-galaxy-finish { background-size: 96px 96px; background-repeat: repeat; background-position: 0 0; image-rendering: auto; }
+  .item-drop-sprite.has-galaxy-finish { image-rendering: auto; }
 
   .item-drop-name {
     color: var(--item-drop-color);
@@ -2284,7 +2302,7 @@
   .browser-rewarded-ad-timer { min-width: 4ch; font: 900 clamp(38px, 12vw, 76px)/1 var(--font-rounded); font-variant-numeric: tabular-nums; text-align: center; }
 
   @media (prefers-reduced-motion: reduce) {
-    .respawn-ad-video-icon,
+    .respawn-ad-glow,
     #connectionPanel .wildstat-wordmark-title,
     #accountChoicePanel .wildstat-wordmark-title,
     .claim-card,
