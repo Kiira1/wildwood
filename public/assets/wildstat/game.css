@@ -5138,3 +5138,22 @@ html.text-outline-shadow .death-countdown { text-shadow: var(--text-outline-ring
   :is(.inventory-item, .equipment-slot)[data-grade="12"] { --grade: #5fe3d6; } /* Celestial: aqua */
   :is(.inventory-item, .equipment-slot)[data-grade="13"] { --grade: #f5dc45; } /* Divine: gold */
   :is(.inventory-item, .equipment-slot)[data-grade="14"] { --grade: #eeeaf5; } /* Eternal: pearl */
+
+
+  #dpsBreakdownSheet {
+    position: absolute;
+    width: fit-content;
+    height: fit-content;
+    border-radius: 4px;
+    z-index: 4;
+    background-color: #00000070;
+    bottom: 0px;
+    display: grid;
+    right: 2px;
+    top: 350px;
+    padding: 6px 8px;
+    font: 700 14px "Wildstat Chat", sans-serif;
+  }
+
+  .damage-source-bar { display: block; height: 4px; overflow: hidden; border-radius: 2px; background: rgba(255,255,255,.14); width: 250px; padding: 4px 4x; }
+  .damage-source-bar > span { display: block; height: 100%; background: #e6e6e6; }

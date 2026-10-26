@@ -54,7 +54,7 @@ type AppShellDependencies = {
 /** Settings, audio lifecycle, fullscreen, and shell account/connection status. */
 export function createAppShellController(dependencies: AppShellDependencies) {
   let feedbackStorage: Storage | undefined;
-  try { feedbackStorage = window.localStorage; } catch {}
+  try { feedbackStorage = window.localStorage; } catch { }
   const feedback = installFeedbackSettings(document, feedbackStorage, () => {
     window.dispatchEvent(new Event("wildstat:toolbar-haptic"));
   });
@@ -243,6 +243,8 @@ export function createAppShellController(dependencies: AppShellDependencies) {
     refreshSettings();
   });
   setInterval(() => { if (dpsVisible) dpsStatus.textContent = `DPS: ${formatCompactNumber(Math.round(playerDps.perSecond()))}`; }, 500);
+  playerDps.installBreakdown();
+  setInterval(() => playerDps.updateBreakdown(), 500);
   latencyToggle.addEventListener("click", () => {
     latencyVisible = !latencyVisible;
     writeBoolean(dependencies.storageKeys.latency, latencyVisible);
@@ -389,5 +391,5 @@ function writeBoolean(key: string, value: boolean) {
 }
 
 function writeString(key: string, value: string) {
-  try { localStorage.setItem(key, value); } catch {}
+  try { localStorage.setItem(key, value); } catch { }
 }
