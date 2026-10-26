@@ -237,6 +237,8 @@ function appendRemoteMotionSample(existing: RemotePlayerTarget, sample: Omit<Rem
 
 /** The longest a tab waits between asks for missing movement detail. */
 const MOTION_DETAIL_RECOVERY_MAX_MS = 30_000;
+/** Swapping one watched player for a nearer one waits this long; a free slot or a departure does not. */
+const MOTION_INTEREST_SWAP_MS = 3_000;
 /** A failed presence subscription's first retry, and the longest wait it backs off to. */
 const SUBSCRIPTION_RETRY_MIN_MS = 1_000, SUBSCRIPTION_RETRY_MAX_MS = 30_000;
 
@@ -269,6 +271,7 @@ export function createPresenceService(dependencies: PresenceServiceDependencies)
   let submittedMotionNetworkIds: number[] = [];
   let motionInterestInFlight = false;
   let motionInterestNeedsSync = true;
+  let motionInterestChangedAt = Number.NEGATIVE_INFINITY;
   let remotePlayersVisible = false;
   let missingMotionDetailSince: number | null = null;
   let lastMotionDetailRecoveryAt = Number.NEGATIVE_INFINITY;
@@ -479,23 +482,34 @@ export function createPresenceService(dependencies: PresenceServiceDependencies)
     );
   }
 
+  /** A slot opened or closed, or a watched player left the map, stopped steering or went out of sight. */
+  function motionInterestUrgent(next: readonly number[], available: ReadonlySet<number>) {
+    if (next.length !== desiredMotionNetworkIds.length) return true;
+    const sampled = new Set(latestMapSamples.map(sample => sample.networkId));
+    return desiredMotionNetworkIds.some(networkId => !available.has(networkId) || !sampled.has(networkId));
+  }
+
   function refreshMotionInterest() {
     if (mapPlayerSubscriptionTransitioning) return;
     const now = monotonicNowMs();
     const position = localState;
+    // A farmer playing as a puppet needs no movement stream: the slots go to players who steer.
+    const available = new Set([...motionIdentities].filter(([, identity]) => !puppets.has(identity)).map(([networkId]) => networkId));
     const next = remotePlayersVisible && position
       ? selectPlayerMotionInterest({
         samples: latestMapSamples,
         originX: position.x,
         originY: position.y,
         localNetworkId: localMotionNetworkId,
-        // A farmer playing as a puppet needs no movement stream: the slots go to players who steer.
-        availableNetworkIds: new Set([...motionIdentities].filter(([, identity]) => !puppets.has(identity)).map(([networkId]) => networkId)),
+        availableNetworkIds: available,
         previousNetworkIds: desiredMotionNetworkIds,
       })
       : [];
-    if (!samePlayerMotionInterest(next, desiredMotionNetworkIds)) {
+    if (!samePlayerMotionInterest(next, desiredMotionNetworkIds) && (
+      motionInterestUrgent(next, available) || now - motionInterestChangedAt >= MOTION_INTEREST_SWAP_MS
+    )) {
       desiredMotionNetworkIds = next;
+      motionInterestChangedAt = now;
       missingMotionDetailSince = null;
       motionDetailRecoveryDelayMs = PLAYER_MOTION_DETAIL_RECOVERY_MS;
       for (const networkId of detailedMotionReadyNetworkIds) {
@@ -513,6 +527,7 @@ export function createPresenceService(dependencies: PresenceServiceDependencies)
     latestMapFrameReceivedAt = 0;
     desiredMotionNetworkIds = [];
     submittedMotionNetworkIds = [];
+    motionInterestChangedAt = Number.NEGATIVE_INFINITY;
     detailedMotionIdentities.clear();
     detailedMotionReadyNetworkIds.clear();
     motionInterestInFlight = false;
