@@ -225,8 +225,12 @@ export function createQuestBoardRuntime(deps: Parameters<typeof createQuestBoard
     refreshAt = performance.now() + 60_000;
     void source.refreshWeeklyQuests?.()?.catch?.(() => {});
   }
-  // Each quest's count as last shown: never below the server's, never backwards.
-  const shown = new Map<string, number>();
+  // Each quest's count as last shown, never below the server's. A kill report goes up within a minute, so two
+  // minutes after the last kill the server's count stands: kills it did not pay never leave the tracker ahead.
+  const SHOWN_FOR_MS = 120_000;
+  const counted = new Map<string, { count: number; atMs: number }>();
+  const shown = { get: (key: string) => { const entry = counted.get(key); return entry && performance.now() - entry.atMs < SHOWN_FOR_MS ? entry.count : undefined; },
+    set: (key: string, count: number) => { counted.set(key, { count, atMs: performance.now() }); }, clear: () => counted.clear() };
   let shownDay = -1;
   return {
     /** A regular enemy died: count it against the quests in play at once, ahead of the server's report. */

@@ -392,6 +392,8 @@
   #townBtn.is-town-cooldown .toolbar-icon { visibility: hidden; }
   .inventory-notice { position: absolute; top: 12%; left: calc(50% + 8px); width: 8px; height: 8px; border: 1px solid #fff; border-radius: 50%; background: #e63d3d; box-shadow: 0 1px 0 var(--ui-outline); pointer-events: none; }
   .inventory-notice[hidden] { display: none; }
+  /* A card effect's "[40%×3]": one card's share times the copies, dimmed so the total reads first. */
+  .card-effect-stack { opacity: .6; }
   /* Join requests waiting, for the guild's President and Vice President; the Guilds button uses the Inventory's dot. */
   .guild-request-dot { position: absolute; top: 3px; right: 3px; width: 8px; height: 8px; border: 1px solid #fff; border-radius: 50%; background: #e63d3d; box-shadow: 0 1px 0 var(--ui-outline); pointer-events: none; }
   .guild-request-dot[hidden] { display: none; }

@@ -1,4 +1,10 @@
 export const RELEASE_NOTES: Record<string, string[]> = {
+  "0.917.14": [
+    "An offer that trades the moment it goes up says Sold or Bought, and a letter confirms it",
+    "Craft tools lower what a craft needs in your bag, and the Smith shows the lower cost",
+    "The quest tracker no longer stays ahead of your real quest count",
+    "A card's per-card share is dimmed so the total reads first",
+  ],
   "0.917.13": [
     "Card effects show how copies stack: 75% [25%×3], and which parts stay the same",
   ],
@@ -3968,6 +3974,7 @@ const RELEASE_DATES: Record<string, string> = {
 };
 
 export const RELEASE_DAYS: Record<string, string> = {
+  "0.917.14": "2026-10-26",
   "0.917.13": "2026-10-26",
   "0.917.12": "2026-10-25",
   "0.917.11": "2026-10-24",

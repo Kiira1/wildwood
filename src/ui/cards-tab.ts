@@ -8,6 +8,7 @@ import { PRESTIGE_PERKS, type PrestigePerkRanks } from "../../shared/prestige-pe
 import { cardPortrait } from "./card-portrait";
 import { formatCompactNumber } from "./number-format";
 import type { ItemInspectionAction } from "./item-inspection-controller";
+import { fillCardEffect } from "./card-effect-line";
 
 const RARITY_ORDER = { regular: 0, elite: 1, boss: 2 } as const;
 const CARD_ORDER = new Map(CARDS.map((card, index) => [card.id, index]));
@@ -363,7 +364,7 @@ export function createCardsTab(options: {
     effects.className = "cards-equip-effects";
     for (const effect of card.effects) {
       const line = document.createElement("li");
-      line.textContent = cardEffectText(effect, copies);
+      fillCardEffect(line, cardEffectText(effect, copies));
       if (effect.value < 0) line.className = "is-cost";
       effects.append(line);
     }
