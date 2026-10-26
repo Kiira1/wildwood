@@ -205,15 +205,14 @@ export function regularEnemyAggroRetainRadius(acquireRadius: number, authoredLea
   return Math.max(leash, acquire + REGULAR_ENEMY_AGGRO_RELEASE_PADDING);
 }
 
-function distanceSquaredTo(enemyX: number, enemyY: number, candidate: RegularEnemyAggroCandidate) {
-  const dx = quantizeRegularEnemyCoordinate(candidate.x) - quantizeRegularEnemyCoordinate(enemyX);
-  const dy = quantizeRegularEnemyCoordinate(candidate.y) - quantizeRegularEnemyCoordinate(enemyY);
-  return dx * dx + dy * dy;
-}
-
 function stableCandidateOrder(left: RegularEnemyAggroCandidate, right: RegularEnemyAggroCandidate) {
   if (left.id === right.id) return 0;
   return left.id < right.id ? -1 : 1;
+}
+
+function nearerCandidate(left: RegularEnemyAggroCandidate, leftDistanceSquared: number, right: RegularEnemyAggroCandidate, rightDistanceSquared: number) {
+  const distanceDifference = leftDistanceSquared - rightDistanceSquared;
+  return distanceDifference ? distanceDifference < 0 : stableCandidateOrder(left, right) < 0;
 }
 
 /** Deterministic closest-player selection with a small target-switch dead band. */
@@ -228,21 +227,28 @@ export function selectRegularEnemyAggroTarget(options: {
   const acquireRadius = Math.max(0, options.acquireRadius);
   const retainRadius = Math.max(acquireRadius, options.retainRadius);
   // The first of each in nearest-then-stable order, found in one pass: copying and sorting the candidates ran for every enemy each step.
-  const before = (left: RegularEnemyAggroCandidate, right: RegularEnemyAggroCandidate) => {
-    const distanceDifference = distanceSquaredTo(options.enemyX, options.enemyY, left) - distanceSquaredTo(options.enemyX, options.enemyY, right);
-    return distanceDifference ? distanceDifference < 0 : stableCandidateOrder(left, right) < 0;
-  };
+  // The enemy's grid point is rounded once and each candidate's squared distance worked out once.
+  const enemyX = quantizeRegularEnemyCoordinate(options.enemyX);
+  const enemyY = quantizeRegularEnemyCoordinate(options.enemyY);
   let best: RegularEnemyAggroCandidate | null = null, current: RegularEnemyAggroCandidate | null = null;
+  let bestDistanceSquared = 0, currentDistanceSquared = 0;
   for (const candidate of options.candidates) {
+    const dx = quantizeRegularEnemyCoordinate(candidate.x) - enemyX;
+    const dy = quantizeRegularEnemyCoordinate(candidate.y) - enemyY;
+    const distanceSquared = dx * dx + dy * dy;
     const candidateAcquireRadius = Math.max(0, candidate.acquireRadius ?? acquireRadius);
-    if (distanceSquaredTo(options.enemyX, options.enemyY, candidate) <= candidateAcquireRadius * candidateAcquireRadius && (!best || before(candidate, best))) best = candidate;
-    if (options.currentTargetId && candidate.id === options.currentTargetId && (!current || before(candidate, current))) current = candidate;
+    if (distanceSquared <= candidateAcquireRadius * candidateAcquireRadius && (!best || nearerCandidate(candidate, distanceSquared, best, bestDistanceSquared))) {
+      best = candidate;
+      bestDistanceSquared = distanceSquared;
+    }
+    if (options.currentTargetId && candidate.id === options.currentTargetId && (!current || nearerCandidate(candidate, distanceSquared, current, currentDistanceSquared))) {
+      current = candidate;
+      currentDistanceSquared = distanceSquared;
+    }
   }
-  if (!current || distanceSquaredTo(options.enemyX, options.enemyY, current) > retainRadius * retainRadius) return best;
+  if (!current || currentDistanceSquared > retainRadius * retainRadius) return best;
   if (!best || best.id === current.id) return current;
-  const bestDistance = Math.sqrt(distanceSquaredTo(options.enemyX, options.enemyY, best));
-  const currentDistance = Math.sqrt(distanceSquaredTo(options.enemyX, options.enemyY, current));
-  return bestDistance + TARGET_SWITCH_ADVANTAGE < currentDistance ? best : current;
+  return Math.sqrt(bestDistanceSquared) + TARGET_SWITCH_ADVANTAGE < Math.sqrt(currentDistanceSquared) ? best : current;
 }
 
 export function deterministicRegularEnemyAttackInterval(
