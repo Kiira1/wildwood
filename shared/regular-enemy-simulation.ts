@@ -106,6 +106,51 @@ function smoothstep(value: number) {
   return amount * amount * (3 - 2 * amount);
 }
 
+type AmbientSite = {
+  homeX: number;
+  homeY: number;
+  phaseOffset: number;
+  animationPhase: number;
+  segment: number;
+  previousX: number;
+  previousY: number;
+  nextX: number;
+  nextY: number;
+  holdFraction: number;
+  facingX: -1 | 1;
+};
+// Per-site hashes and the current segment's waypoints, kept between steps: the same numbers, worked out once per segment.
+const ambientSites = new Map<string, AmbientSite[]>();
+function ambientSite(mapId: string, siteId: number, homeX: number, homeY: number) {
+  let sites = ambientSites.get(mapId);
+  if (!sites) {
+    sites = [];
+    ambientSites.set(mapId, sites);
+  }
+  let site = sites[siteId];
+  if (!site || !Object.is(site.homeX, homeX) || !Object.is(site.homeY, homeY)) {
+    site = {
+      homeX,
+      homeY,
+      phaseOffset: regularEnemySiteUnit("ambient-phase", mapId, siteId) * AMBIENT_SEGMENT_MS,
+      animationPhase: regularEnemySiteUnit("animation-phase", mapId, siteId) * TAU,
+      segment: Number.NaN,
+      previousX: 0,
+      previousY: 0,
+      nextX: 0,
+      nextY: 0,
+      holdFraction: 0,
+      facingX: 1,
+    };
+    sites[siteId] = site;
+  }
+  return site;
+}
+
+function ambientNow(serverNowMs: number) {
+  return Number.isFinite(serverNowMs) ? Math.max(0, serverNowMs) : 0;
+}
+
 /** Pure ambient pose at an authoritative time; no frame-integrated RNG state. */
 export function regularEnemyAmbientPose(
   mapId: string,
@@ -114,27 +159,38 @@ export function regularEnemyAmbientPose(
   homeY: number,
   serverNowMs: number,
 ): RegularEnemyAmbientPose {
-  const now = Number.isFinite(serverNowMs) ? Math.max(0, serverNowMs) : 0;
-  const phaseOffset = regularEnemySiteUnit("ambient-phase", mapId, siteId) * AMBIENT_SEGMENT_MS;
-  const timeline = now + phaseOffset;
+  const now = ambientNow(serverNowMs);
+  const site = ambientSite(mapId, siteId, homeX, homeY);
+  const timeline = now + site.phaseOffset;
   const segment = Math.floor(timeline / AMBIENT_SEGMENT_MS);
   const segmentProgress = timeline / AMBIENT_SEGMENT_MS - segment;
-  const previous = waypoint(mapId, siteId, segment - 1, homeX, homeY, previousPoint);
-  const next = waypoint(mapId, siteId, segment, homeX, homeY, nextPoint);
-  const holdFraction = .44 + regularEnemySiteUnit("ambient-hold", mapId, siteId, segment) * .25;
+  if (site.segment !== segment) {
+    const previous = waypoint(mapId, siteId, segment - 1, homeX, homeY, previousPoint);
+    const next = waypoint(mapId, siteId, segment, homeX, homeY, nextPoint);
+    site.previousX = previous.x;
+    site.previousY = previous.y;
+    site.nextX = next.x;
+    site.nextY = next.y;
+    site.holdFraction = .44 + regularEnemySiteUnit("ambient-hold", mapId, siteId, segment) * .25;
+    const facingDelta = next.x - previous.x;
+    site.facingX = Math.abs(facingDelta) > .5
+      ? facingDelta < 0 ? -1 : 1
+      : regularEnemySiteUnit("ambient-facing", mapId, siteId, segment) < .5 ? -1 : 1;
+    site.segment = segment;
+  }
+  const holdFraction = site.holdFraction;
   const travelProgress = smoothstep((segmentProgress - holdFraction) / Math.max(.01, 1 - holdFraction));
-  const x = previous.x + (next.x - previous.x) * travelProgress;
-  const y = previous.y + (next.y - previous.y) * travelProgress;
-  const facingDelta = next.x - previous.x;
-  const facingX = Math.abs(facingDelta) > .5
-    ? facingDelta < 0 ? -1 : 1
-    : regularEnemySiteUnit("ambient-facing", mapId, siteId, segment) < .5 ? -1 : 1;
   return {
-    x,
-    y,
-    facingX,
-    phase: (now / 1_000 * 3 + regularEnemySiteUnit("animation-phase", mapId, siteId) * TAU) % TAU,
+    x: site.previousX + (site.nextX - site.previousX) * travelProgress,
+    y: site.previousY + (site.nextY - site.previousY) * travelProgress,
+    facingX: site.facingX,
+    phase: (now / 1_000 * 3 + site.animationPhase) % TAU,
   };
+}
+
+/** regularEnemyAmbientPose(...).phase alone. */
+export function regularEnemyAmbientPhase(mapId: string, siteId: number, homeX: number, homeY: number, serverNowMs: number) {
+  return (ambientNow(serverNowMs) / 1_000 * 3 + ambientSite(mapId, siteId, homeX, homeY).animationPhase) % TAU;
 }
 
 export function quantizeRegularEnemyCoordinate(value: number) {
