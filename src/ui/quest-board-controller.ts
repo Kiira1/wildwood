@@ -85,9 +85,8 @@ export function questTrackerView(state: QuestState | null, mapId: string, mapNam
   if (!state?.quests.length) return null;
   const active = activeQuestIndices(state.quests);
   if (!active.length) return null;
-  const own = state.quests.filter(ownQuest);
   return {
-    done: own.filter(questDone).length, total: own.length || WEEKLY_QUEST_COUNT,
+    ...weekCount(state.quests),
     items: active.map(index => {
       const quest = state.quests[index];
       const count = Math.min(quest.target, Math.max(quest.progress, shownCount(`${quest.mapId}:${questTarget(quest)}:${index}`) ?? 0));
@@ -103,12 +102,21 @@ export function questTrackerView(state: QuestState | null, mapId: string, mapNam
 }
 export type QuestTrackerView = NonNullable<ReturnType<typeof questTrackerView>>;
 
+/**
+ * The week's count on the tracker and the courtyard board: a player's own fifteen and every quest collected from the
+ * guild's pool, so collecting more goes past 15/15 (20/30). A quest someone else took no longer counts here.
+ */
+function weekCount(quests: readonly WeeklyQuest[]) {
+  const own = quests.filter(ownQuest), collected = quests.filter(quest => !ownQuest(quest));
+  return { done: [...own, ...collected].filter(questDone).length, total: (own.length || WEEKLY_QUEST_COUNT) + collected.length };
+}
+
 /** What the board in the courtyard shows: three papers, ticked once the week's quests run out, and the week's count. */
 export function questBoardWorldStatus(state: QuestState | null) {
   if (!state?.quests.length) return null;
   const open = activeQuestIndices(state.quests).length;
-  const own = state.quests.filter(ownQuest);
-  return { finished: [0, 1, 2].map(paper => paper >= open), timer: `${own.filter(questDone).length}/${own.length} done` };
+  const week = weekCount(state.quests);
+  return { finished: [0, 1, 2].map(paper => paper >= open), timer: `${week.done}/${week.total} done` };
 }
 
 /** Home's Quest Board: a game window with the week's quests, three at a time. */
