@@ -65,6 +65,26 @@ export const REFLECT_ONLY_TICK_SECONDS = .1;
 /** More kills a second than any map respawns (about 3.3 on Endless): Second Wind heals once per kill. */
 export const SECOND_WIND_KILLS_PER_SECOND = 4;
 
+// The gear's damage and skill chance factors are pure in the worn items and their levels, so recent
+// loadouts keep theirs. Only numeric levels are keyed; anything else is worked out each time.
+const gearFactorMemo = new Map<string, { equipment: number; skillFactor: number }>();
+const GEAR_FACTOR_MEMO_SIZE = 256;
+const levelKey = (level: ItemLevel) => typeof level === "number" ? `${level}`
+  : level && typeof level.tier === "number" && typeof level.refine === "number" ? `${level.tier}/${level.refine}` : null;
+function gearFactors(weapon: string, head: string, chest: string, feet: string, levels: ItemLevel[]) {
+  const work = () => ({ equipment: equipmentDamageFactor(weapon, head, chest, levels[0], levels[1], levels[2]),
+    skillFactor: armorSkillChanceFactor(head, chest) * (hasBootStat(feet) ? bootSkillChanceFactor(feet, levels[3]) : 1) });
+  const parts = levels.map(levelKey);
+  if (parts.includes(null) || ![weapon, head, chest, feet].every(id => typeof id === "string")) return work();
+  const key = JSON.stringify([weapon, head, chest, feet, ...parts]);
+  let factors = gearFactorMemo.get(key);
+  if (!factors) {
+    gearFactorMemo.set(key, factors = work());
+    if (gearFactorMemo.size > GEAR_FACTOR_MEMO_SIZE) gearFactorMemo.delete(gearFactorMemo.keys().next().value!);
+  }
+  return factors;
+}
+
 export function createCombatReport(deps: CombatReportDeps) {
   const {
     attackIntervalForProgress, itemUpgradeLevelFor, inventoryForProgress,
@@ -91,15 +111,14 @@ export function createCombatReport(deps: CombatReportDeps) {
       if (level === undefined) levels.set(key, level = itemUpgradeLevelFor(ctx, ctx.sender, itemId));
       return level;
     };
-    const [weaponLevel, headLevel, chestLevel] = [levelFor(weapon), levelFor(head), levelFor(chest)];
+    const feet = inventory.includes(progress.equippedFeet) ? progress.equippedFeet : "";
     const warcraft = 1 + (research?.warcraft ?? 0) * .02;
-    // The gear's bonuses and the class set (items.ts equipmentDamageFactor).
-    const equipment = equipmentDamageFactor(weapon, head, chest, weaponLevel, headLevel, chestLevel);
+    // The gear's bonuses and the class set (items.ts equipmentDamageFactor); Magic armor and Mystic Boots
+    // raise skill chances as Skill Proficiency does.
+    const { equipment, skillFactor } = gearFactors(weapon, head, chest, feet,
+      [levelFor(weapon), levelFor(head), levelFor(chest), hasBootStat(feet) ? levelFor(feet) : 0]);
     // The active cards: attack cards multiply damage as they do power.
     const cards = cardStatFactors(cardTotals);
-    // Magic armor and Mystic Boots raise skill chances as Skill Proficiency does.
-    const feet = inventory.includes(progress.equippedFeet) ? progress.equippedFeet : "";
-    const skillFactor = armorSkillChanceFactor(head, chest) * (hasBootStat(feet) ? bootSkillChanceFactor(feet, levelFor(feet)) : 1);
     return { weapon, rightHand, levelFor, cardTotals, cards, skillFactor,
       damage: (base: number) => base * equipment * warcraft * cards.damage };
   }
