@@ -3,6 +3,7 @@ import { installMovableHudCard } from './movable-hud-card';
 import { renderBooleanSetting } from './settings';
 import { createStatTrackerModel, TRACKED_STATS, type TrackedStat, type TrackerBuild, type TrackerValues } from './stat-tracker-model';
 import { setClassName, setHidden, setText } from './dom-write';
+import { installStatTrackerDps } from './stat-tracker-dps';
 
 const LABELS = { power: 'Power', hp: 'Max HP', damage: 'Damage', armor: 'Armor', regen: 'Regen', attackSpeed: 'Atk Speed', critDamage: 'Crit Dmg', kills: 'Kills' };
 const ENABLED_KEY = 'wildstat-native-stat-tracker-enabled';
@@ -137,7 +138,7 @@ export function installStatTracker(options: {
   compactLabel.className = 'stat-tracker-compact-option';
   const compactToggle = document.createElement('input');
   compactToggle.type = 'checkbox';
-  compactLabel.append(compactToggle, 'Compact mode');
+  compactLabel.append(compactToggle, 'Compact');
   settings.querySelector('.stat-tracker-filters')!.before(compactLabel);
   const compactOptions = document.createElement('fieldset');
   compactOptions.className = 'stat-tracker-compact-options';
@@ -216,6 +217,7 @@ export function installStatTracker(options: {
     renderCompact();
   });
   const cells = new Map(TRACKED_STATS.map(stat => [stat, panel.querySelectorAll<HTMLTableCellElement>(`[data-stat="${stat}"] td`)]));
+  const dps = installStatTrackerDps(panel, settings, options.storage);
   let enabled = false, lastSave = 0, collapsed = false;
   try {
     enabled = options.storage.getItem(ENABLED_KEY) === 'true';
@@ -228,6 +230,7 @@ export function installStatTracker(options: {
     handle.textContent = `${compact && !collapsed ? 'Stats' : 'Stat tracker'} ${collapsed ? '▸' : '▾'}`;
     for (const element of panel.querySelectorAll<HTMLElement>('table, footer, .stat-tracker-gear')) element.hidden = collapsed;
     if (collapsed) showSettings(false);
+    dps.refresh();
     movable.place();
   }
   function refresh() {
@@ -239,6 +242,7 @@ export function installStatTracker(options: {
     if (panel.hidden && !settings.hidden) showSettings(false);
     if (result && Date.now() - lastSave >= 10_000) { model.save(); lastSave = Date.now(); }
     if (panel.hidden || !result) return;
+    dps.refresh();
     if (wasHidden) movable.place();
     const seconds = Math.floor(result.elapsedMs / 1000);
     setText(clock, `${String(Math.floor(seconds / 3600)).padStart(2, '0')}:${String(Math.floor(seconds / 60) % 60).padStart(2, '0')}:${String(seconds % 60).padStart(2, '0')}`);
@@ -267,7 +271,10 @@ export function installStatTracker(options: {
   }
   toggle.addEventListener('click', () => setEnabled(!enabled));
 
-  reset.addEventListener('click', () => { if (options.read()) { refresh(); model.reset(); refresh(); } });
+  reset.addEventListener('click', () => {
+    if (dps.resetVisibleView()) return;
+    if (options.read()) { refresh(); model.reset(); refresh(); }
+  });
   // Pointer activation should not move keyboard focus onto the reset button.
   reset.addEventListener('pointerdown', event => event.preventDefault());
   // Dragging, keyboard moves and keeping its touches out of the world: the shared HUD card.

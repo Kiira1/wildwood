@@ -15,7 +15,7 @@ export const DAMAGE_SOURCE_NAMES = {
 export type DamageSource = keyof typeof DAMAGE_SOURCE_NAMES;
 
 export function createDpsMeter(now: () => number = () => performance.now()) {
-  const hits: { at: number; amount: number; source: DamageSource }[] = [];
+  const hits: { at: number; amount: number; source: DamageSource; beforeBreakdownReset?: boolean }[] = [];
   const prune = (at: number) => { while (hits.length && at - hits[0].at > DPS_BREAKDOWN_WINDOW_MS) hits.shift(); };
   /** Damage over the time the hits cover, at least a second and at most the window, so a fight's first hits read true. */
   const seconds = (at: number, firstAt: number, window: number) => Math.min(window, Math.max(1_000, at - firstAt)) / 1_000;
@@ -33,14 +33,19 @@ export function createDpsMeter(now: () => number = () => performance.now()) {
       if (!recent.length) return 0;
       return recent.reduce((sum, hit) => sum + hit.amount, 0) / seconds(at, recent[0].at, DPS_WINDOW_MS);
     },
+    /** Clear the breakdown without resetting the separate short-window HUD readout. */
+    resetBreakdown() {
+      for (const hit of hits) hit.beforeBreakdownReset = true;
+    },
     /** Each source's damage per second over the breakdown window, biggest first. */
     breakdown() {
       const at = now();
       prune(at);
-      if (!hits.length) return [];
+      const breakdownHits = hits.filter(hit => !hit.beforeBreakdownReset);
+      if (!breakdownHits.length) return [];
       const totals = new Map<DamageSource, number>();
-      for (const hit of hits) totals.set(hit.source, (totals.get(hit.source) ?? 0) + hit.amount);
-      const span = seconds(at, hits[0].at, DPS_BREAKDOWN_WINDOW_MS);
+      for (const hit of breakdownHits) totals.set(hit.source, (totals.get(hit.source) ?? 0) + hit.amount);
+      const span = seconds(at, breakdownHits[0].at, DPS_BREAKDOWN_WINDOW_MS);
       return [...totals].map(([source, damage]) => ({ source, perSecond: damage / span })).sort((a, b) => b.perSecond - a.perSecond);
     },
   };

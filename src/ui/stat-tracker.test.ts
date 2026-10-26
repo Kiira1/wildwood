@@ -4,8 +4,9 @@ import { installStatTracker } from './stat-tracker';
 import { TRACKED_STATS, type TrackerValues } from './stat-tracker-model';
 import { attackCapInterval, attackSpeedLabel, critDamageLabel } from '../../shared/stat-rating';
 import { criticalDamage, type CriticalDamageParts } from '../../shared/critical-damage';
+import { playerDps } from '../game/runtime/dps-meter';
 
-afterEach(() => { vi.useRealTimers(); vi.unstubAllGlobals(); });
+afterEach(() => { vi.useRealTimers(); vi.unstubAllGlobals(); vi.restoreAllMocks(); });
 function setup(saved: Record<string, string> = {}) {
   vi.useFakeTimers();
   const { document, window } = parseHTML('<html><body><div id="hud"></div><button id="statTrackerToggle"></button></body></html>');
@@ -38,6 +39,28 @@ function setup(saved: Record<string, string> = {}) {
     setCap: (nextRaise: number, nextRate: number) => { raise = nextRaise; rate = nextRate; },
     setCrit: (next: CriticalDamageParts) => { crit = next; } };
 }
+
+it('switches DPS views with source shares and keeps each reset independent', () => {
+  vi.spyOn(playerDps, 'breakdown').mockReturnValue([
+    { source: 'staff-direct', perSecond: 75 }, { source: 'staff-splash', perSecond: 25 },
+  ]);
+  const resetDps = vi.spyOn(playerDps, 'resetBreakdown');
+  const s = setup({ 'wildstat-stat-tracker-dps-switch': 'true', 'wildstat-stat-tracker-compact': 'true' });
+  const switchButton = s.panel.querySelector<HTMLButtonElement>('.stat-tracker-view-switch')!;
+  const reset = s.panel.querySelector<HTMLButtonElement>('.stat-tracker-reset')!;
+  vi.advanceTimersByTime(2000);
+  switchButton.click();
+  expect(s.panel.querySelector('.stat-tracker-handle')!.textContent).toBe('DPS ▾');
+  expect(s.panel.querySelector('table')!.hidden).toBe(true);
+  expect(s.panel.querySelector('.stat-tracker-dps-row')!.getAttribute('style')).toContain('75%');
+  reset.click();
+  expect(resetDps).toHaveBeenCalledTimes(1);
+  expect(s.panel.querySelector('.stat-tracker-time')!.textContent).toBe('00:00:02');
+  switchButton.click();
+  reset.click();
+  expect(resetDps).toHaveBeenCalledTimes(1);
+  expect(s.panel.querySelector('.stat-tracker-time')!.textContent).toBe('00:00:00');
+});
 
 it('defaults to full mode and hides compact options until enabled, retaining timer and reset', () => {
   const s = setup();
