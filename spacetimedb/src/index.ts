@@ -183,7 +183,7 @@ import {
 } from "../../shared/rules";
 import { readPlayerProgress, withDuelWide } from "./wide-stats";
 import { playerInventory, playerWideStats, duelWideStats, duelReplayWideStats, playerCombatRating } from "./wide-stats-table";
-import { LEGACY_CLIENT_ERRORS, sameConnection, sessionForContext, requireSession, blockedSession, isSupportedProtocol, requireCurrentLegalConsent, requireChatAge, requireSupportedSessionProtocol, requireControllingPlayer, isDeveloperIdentity, isDatabaseOwnerIdentity, isVirtualPlayer, requireDeveloperSession, requireDeveloper, touchPlayerAccessAudit, backfillKnownAccessAudit, sameIdentity, hasSpacetimeAuthAccount } from "./session-guards";
+import { LEGACY_CLIENT_ERRORS, sameConnection, sessionForContext, requireSession, blockedSession, isSupportedProtocol, requireCurrentLegalConsent, requireChatAge, requireSupportedSessionProtocol, requireControllingPlayer, requireControllingPlayerRow, isDeveloperIdentity, isDatabaseOwnerIdentity, isVirtualPlayer, requireDeveloperSession, requireDeveloper, touchPlayerAccessAudit, backfillKnownAccessAudit, sameIdentity, hasSpacetimeAuthAccount } from "./session-guards";
 import { defaultPlayerProgress, samePlayerProgressValues, hasFreshProgress, resultIncludesContributor, contributedToLatestPrismshell, forestItemCountForProgress, inventoryForProgress, slotUpgradeKey, itemUpgradeLevelFor, itemLevelFor, playerOwnsItem, restoreItemToProgress, equippedHeadForProgress, equippedChestForProgress, equippedFeetForProgress, equippedRightHandForProgress, equippedLeftHandForProgress, cosmeticEquipmentForProgress, equipmentPresentationForProgress, leaderboardAppearanceForProgress, maxHealthForProgress } from "./progress-helpers";
 import { researchForPlayer, assertResearchAvailable, activeResearchIsAvailable, removeResearchCompletionSchedules, completeActiveResearch, ensureResearchCompletionSchedule, reconcileActiveResearch } from "./research-runtime";
 import { ensurePlayerLifetime, finishLifetimeSession, markPlayerBalanceCurrent, playerBalanceProgress, effectivePowerStatsForProgress, effectivePowerForProgress, powerFieldsForProgress, researchedDamage, researchedArmor, researchedRegen } from "./player-power";
@@ -3255,7 +3255,8 @@ const EnemyDefeatEntry = t.object("EnemyDefeat", { enemy: t.string(), count: t.u
 // Plus the milliseconds the client simulated since its previous report (0 when it cannot say); see simulationClock.
 const enemyDefeatReportArgs = { streamId: t.string(), sequence: t.u64(), mapId: t.string(), simulatedMillis: t.u32(), enemies: t.array(EnemyDefeatEntry) };
 function recordEnemyDefeatsFor(ctx: any, batch: EnemyDefeatBatch, clocks?: DefeatClocks) {
-    const player = requireControllingPlayer(ctx);
+    // Only the map and power are read here; the position is worked out below if the row is written.
+    const player = requireControllingPlayerRow(ctx);
     if (activeDuelFor(ctx, ctx.sender)) throw new SenderError("Enemy rewards require your account world connection.");
     // Everything the combat bound reads, read once for the whole report, the save included when the sync wrote none.
     const { worn, progress } = syncCardAttackCapFor(ctx, ctx.sender), combat = combatBoundForReport(ctx, worn, progress);
@@ -3286,7 +3287,7 @@ function recordEnemyDefeatsFor(ctx: any, batch: EnemyDefeatBatch, clocks?: Defea
       // so write when that changes; the row is exact when written and never
       // more than one displayed step behind.
       if (compactNumberChanged(player.powerLevel, power.powerLevel)) {
-        const nextPlayer = { ...player, ...power };
+        const nextPlayer = { ...playerWithMotion(ctx, player), ...power };
         updateSnapshotRow(ctx, "player", nextPlayer);
         syncPlayerMotionIdentity(ctx, playerWithMotion(ctx, nextPlayer));
       }
