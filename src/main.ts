@@ -395,6 +395,7 @@ import { MAX_PLAYER_STAT, PLAYER_SPAWN } from "../shared/rules";
     guildQuestBonus: () => coop?.weeklyQuests?.()?.bonus ?? 1,
     serverBoost: () => coop?.serverBoostMultiplier?.() ?? 1,
     prestigePerks: () => coop?.prestigePerks?.(), cards: () => coop?.activeCardStats?.(), equippedFeet: () => inventory.equippedFeet,
+    equippedWeapon: () => inventory.equippedRightHand || inventory.equippedLeftHand,
     itemLevel: coopAccess.itemLevel,
     player,
     getRanks: () => coop?.researchInPlay?.(),

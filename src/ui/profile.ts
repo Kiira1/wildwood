@@ -167,7 +167,9 @@ export function profileStatDisplayRows(
   };
   const minAttackInterval = stats.capInterval, baseAttackInterval = stats.attackInterval;
   const baseAttackSpeed = attackSpeedLabel(1 / baseAttackInterval, 1 / minAttackInterval);
-  const attackSpeed = `${stats.attackRate.toFixed(2)}/s`;
+  // A bow shoots faster than the character's own speed (bow-skills.ts): its row shows the shots it fires.
+  const bowSpeed = stats.weaponInterval < stats.attackInterval ? stats.attackInterval / stats.weaponInterval : 1;
+  const attackSpeed = `${(stats.attackRate * bowSpeed).toFixed(2)}/s`;
   // A sword reaches its own range, with the same Tech, Long Shot, cards and Archery on top (weaponAttackRange).
   const reach = stats.range, baseRange = Math.max(1, reach - from.range.tech - from.range.prestige - addedRange.cards - addedRange.mastery);
   const rangeValue = (value: number) => `+${Math.round(value * 10) / 10} range`;
@@ -204,13 +206,14 @@ export function profileStatDisplayRows(
     {
       kind: "attack", label: "Attack Speed:", base: baseAttackSpeed,
       equationOperator: "×",
-      multiplier: multiplierValue(1), total: attackSpeedLabel(stats.attackRate, 1 / minAttackInterval), equationTotal: attackSpeed,
+      multiplier: multiplierValue(bowSpeed), total: attackSpeedLabel(stats.attackRate * bowSpeed, 1 / minAttackInterval), equationTotal: attackSpeed,
       // Attacks a second, never the rating behind them; the cap beside it shows how close the player is.
       expandedDetail: `${(1 / minAttackInterval).toFixed(2)}/s Cap${momentum ? ` · ${((1 + momentum) / minAttackInterval).toFixed(2)}/s Momentum` : ""}`,
       // The soul's own share, which adds to the run's and is kept through prestige.
       // The soul adds attacks a second flat (soulAttackSpeedBonus), so its line is that, not a rating.
       sources: [...soulSource(from.attackSpeed.soul, value => Number.isFinite(value) ? `${value.toFixed(3)}/s` : "Max"),
-        ...(momentum ? [{ label: "Momentum" as const, value: `+${Math.round(momentum * 100)}%` }] : [])],
+        ...(momentum ? [{ label: "Momentum" as const, value: `+${Math.round(momentum * 100)}%` }] : []),
+        ...(bowSpeed > 1 ? [{ label: "Equipment" as const, value: `+${Math.round((bowSpeed - 1) * 100)}% (Bow)` }] : [])],
     },
     {
       kind: "range", label: "Attack Range:", base: statValue(baseRange),
@@ -271,6 +274,7 @@ export function profileStatDisplayRows(
       ...(critChance.techPercent ? [{ label: "Tech" as const, value: `+${critChance.techPercent}%` }] : []),
       ...(critChance.prestige ? [{ label: "Prestige" as const, value: `+${percentPoints(critChance.prestige)}` }] : []),
       ...(critChance.cards ? [{ label: "Cards" as const, value: `+${percentPoints(critChance.cards)}` }] : []),
+      ...(critChance.weapon ? [{ label: "Equipment" as const, value: `+${percentPoints(critChance.weapon)} (Bow)` }] : []),
     ],
   });
   // A rating on a curve toward 100× (shared/stat-rating.ts): crit camps' rating, the soul's on top, then

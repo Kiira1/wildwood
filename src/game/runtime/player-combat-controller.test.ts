@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
+import { BOW_ATTACK_SPEED_BONUS } from "../../../shared/bow-skills";
 import {
   attackReadyAtWithoutTarget,
   createPlayerCombatController,
@@ -1079,8 +1080,8 @@ describe("staff combat", () => {
   it("casts slower, heavier bolts that burst on the whole pack", () => {
     const twang = vi.fn(), swish = vi.fn();
     const bow = cast("ion_bow", 6.7, { playBowAttackSound: twang }), staff = cast("ion_staff", 6.7, { playSwordAttackSound: swish });
-    // Casts every 1.35 s against the bow's every second.
-    expect(twang).toHaveBeenCalledTimes(7);
+    // Casts every 1.35 s against the bow's quicker shots (bow-skills.ts), 1.15 a second.
+    expect(twang).toHaveBeenCalledTimes(Math.floor(6.7 * (1 + BOW_ATTACK_SPEED_BONUS)) + 1);
     expect(swish).toHaveBeenCalledTimes(5);
     const arrow = equipmentDamage(10, "ion_bow", "", ""), bolt = equipmentDamage(10, "ion_staff", "", "") * STAFF_BOLT_DAMAGE_FACTOR;
     // The bow's arrows strike only the nearest; every bolt bursts on all three at full damage.
@@ -1100,9 +1101,9 @@ describe("staff combat", () => {
     expect(spawnParticle).not.toHaveBeenCalled();
   });
 
-  it("counts a staff at three quarters of its tier's bow against one target", () => {
+  it("counts a staff at three quarters of its tier's bow against one target, before the bow's quicker shots", () => {
     const bow = createCombatHarness({ equippedWeapon: () => "ion_bow" }), staff = createCombatHarness({ equippedWeapon: () => "ion_staff" });
     for (const state of [bow, staff]) Object.assign(state.player, { damage: 10, attackRate: 1, projectileCount: 1 });
-    expect(staff.controller.expectedDps() / bow.controller.expectedDps()).toBeCloseTo(.75, 6);
+    expect(staff.controller.expectedDps() / bow.controller.expectedDps()).toBeCloseTo(.75 / (1 + BOW_ATTACK_SPEED_BONUS), 6);
   });
 });

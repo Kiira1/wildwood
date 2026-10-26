@@ -1,4 +1,7 @@
 export const RELEASE_NOTES: Record<string, string[]> = {
+  "0.917.25": [
+    "Bows shoot 15% faster and have +10% crit chance, shown in the profile",
+  ],
   "0.917.23": [
     "A stump's shadow is a plain round one, not a small leafy tree's",
   ],
@@ -4004,6 +4007,7 @@ const RELEASE_DATES: Record<string, string> = {
 };
 
 export const RELEASE_DAYS: Record<string, string> = {
+  "0.917.25": "2026-10-26",
   "0.917.24": "2026-10-26",
   "0.917.23": "2026-10-26",
   "0.917.22": "2026-10-26",

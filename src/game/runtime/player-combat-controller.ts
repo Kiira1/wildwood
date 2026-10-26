@@ -26,8 +26,8 @@ import type { WeaponSkillRoll } from "../../../shared/weapon-skills";
 import { createSwordSkillRuntime, type SwordSkillEffects } from "./sword-skill-runtime";
 import { createStaffSkillRuntime, type StaffSkillEffects } from "./staff-skill-runtime";
 import {
-  STAFF_BOLT_DAMAGE_FACTOR, STAFF_BOLT_SPEED_FACTOR, STAFF_DPS_FACTOR, STAFF_SPLASH_RADIUS, isStaff, rollBoltSkillProcs, staffSkillBossDamageMultiplier,
-  weaponAttackInterval,
+  STAFF_BOLT_DAMAGE_FACTOR, STAFF_BOLT_SPEED_FACTOR, STAFF_SPLASH_RADIUS, isStaff, rollBoltSkillProcs, staffSkillBossDamageMultiplier,
+  weaponAttackInterval, weaponHitFactor,
 } from "../../../shared/staff-skills";
 import { masteryBlastScale, masteryInPlay, rollWithProficiency, type MasteryInPlay, type MasteryPoints } from "../../../shared/weapon-mastery";
 import { createMasteryTechniqueRuntime } from "./mastery-technique-runtime";
@@ -933,11 +933,11 @@ export function createPlayerCombatController(options: {
 
   /** Weapon damage a second as the player stands, criticals averaged in: what Soul Dimension enemies are built against. */
   function expectedDps() {
-    const chance = Math.max(0, Math.min(1, researchCriticalChance()));
-    const projectiles = isMeleeWeapon(options.equippedWeapon()) ? 1 : Math.max(1, player.projectileCount ?? 1);
-    // A staff's slower, heavier casts, against one target (its bursts reach more, which this leaves out).
-    const staff = isStaff(options.equippedWeapon()) ? STAFF_DPS_FACTOR : 1;
-    return weaponDamage(false) * staff * (1 + chance * (researchCriticalDamageMultiplier() - 1)) * projectiles / Math.max(.05, player.attackRate);
+    const chance = Math.max(0, Math.min(1, researchCriticalChance())), weapon = options.equippedWeapon();
+    const projectiles = isMeleeWeapon(weapon) ? 1 : Math.max(1, player.projectileCount ?? 1);
+    // A staff's slower, heavier casts and a bow's quicker shots, against one target (a staff's bursts reach more, which this leaves out).
+    return weaponDamage(false) * weaponHitFactor(weapon) * (1 + chance * (researchCriticalDamageMultiplier() - 1)) * projectiles
+      / Math.max(.05, weaponAttackInterval(weapon, player.attackRate));
   }
 
   /** expectedDps with Double Strike and Arrow Storm in, against one enemy: what the Soul Defense Force is built against. */

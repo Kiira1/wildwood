@@ -23,6 +23,7 @@ import { cardChance, cardValue } from "../../shared/card-effects";
 import { swordSkillChance, swordSkillReachMultiplier } from "../../shared/sword-skills";
 import { swordSkillRollFor } from "./sword-skills";
 import { STAFF_BOLT_DAMAGE_FACTOR, isStaff, staffSkillReachMultiplier, weaponAttackInterval } from "../../shared/staff-skills";
+import { isBow } from "../../shared/bow-skills";
 import { staffSkillRollFor } from "./staff-skills";
 import type { ModuleReducerCtx as GameReducerContext } from "./index";
 import { readCritRating, readPlayerProgress } from "./wide-stats";
@@ -161,7 +162,7 @@ export function createCombatReport(deps: CombatReportDeps) {
         prestigePerkValue(ranks, "splitShot") > 0 || cardChance(loadout.cardTotals, "splitShot") > 0);
       // Steady Aim and Focus crit without any crit chance at all.
       const crits = (research?.criticalChance ?? 0) > 0 || prestigePerkValue(ranks, "keenEdge") > 0 || loadout.cards.critChance > 0 || cardBound.crits
-        || technique.crits;
+        || technique.crits || isBow(loadout.weapon);
       const critical = (rating = 0) => crits
         ? criticalDamageMultiplier({ researchRank: research?.criticalDamage, perks: ranks, soul: soul?.critDamage, rating, capRank: research?.critCap,
           card: loadout.cards.critDamage }) : 1;
