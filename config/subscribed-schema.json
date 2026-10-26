@@ -679,6 +679,13 @@
       "regen:u64",
       "speed:u64"
     ],
+    "my_run_timing": [
+      "identity:identity",
+      "prestige:u32",
+      "startPlayedMicros:u64",
+      "wholeRun:bool",
+      "bossClears:string"
+    ],
     "my_server_boost_trigger": [
       "identity:identity",
       "lastTriggeredAtMs:f64"

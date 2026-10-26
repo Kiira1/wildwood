@@ -117,6 +117,8 @@ type ExpectedApiKey =
   | "claimAdGems"
   | "startAdGems"
   | "chatMute"
+  | "runTimingWith"
+  | "runTiming"
   | "soulStats"
   | "soulLevel"
   | "rewardKills"

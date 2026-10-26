@@ -102,6 +102,7 @@ export const ERASURE_TARGETS: readonly ErasureTarget[] = [
   { table: "playerAdWatch", columns: ["identity"], pk: "identity", mode: "key" },
   { table: "playerClientHost", columns: ["identity"], pk: "id", mode: "index", index: "byIdentity" },
   { table: "offlineGatherChoice", columns: ["identity"], pk: "identity", mode: "key" },
+  { table: "playerRunTiming", columns: ["identity"], pk: "identity", mode: "key" },
   { table: "playerAudioSetting", columns: ["identity"], pk: "identity", mode: "key" },
   { table: "playerBalanceVersion", columns: ["identity"], pk: "identity", mode: "key" },
   { table: "playerBlock", columns: ["owner","target"], pk: "key", mode: "index", index: "byOwner" },

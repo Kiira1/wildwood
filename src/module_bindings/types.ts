@@ -1169,6 +1169,9 @@ export type MyResearchRanks = __Infer<typeof MyResearchRanks>;
 export const MyRewardKills = __t.object("MyRewardKills", {});
 export type MyRewardKills = __Infer<typeof MyRewardKills>;
 
+export const MyRunTiming = __t.object("MyRunTiming", {});
+export type MyRunTiming = __Infer<typeof MyRunTiming>;
+
 export const MyServerBoostTrigger = __t.object("MyServerBoostTrigger", {});
 export type MyServerBoostTrigger = __Infer<typeof MyServerBoostTrigger>;
 
@@ -2268,6 +2271,15 @@ export const PlayerRewardKills = __t.object("PlayerRewardKills", {
   speed: __t.u64(),
 });
 export type PlayerRewardKills = __Infer<typeof PlayerRewardKills>;
+
+export const PlayerRunTiming = __t.object("PlayerRunTiming", {
+  identity: __t.identity(),
+  prestige: __t.u32(),
+  startPlayedMicros: __t.u64(),
+  wholeRun: __t.bool(),
+  bossClears: __t.string(),
+});
+export type PlayerRunTiming = __Infer<typeof PlayerRunTiming>;
 
 export const PlayerSession = __t.object("PlayerSession", {
   connectionId: __t.connectionId(),

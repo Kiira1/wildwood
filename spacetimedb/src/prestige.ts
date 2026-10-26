@@ -1,4 +1,5 @@
 import { challengeActive, challengeWinReady, reflectRewardsInPlay, resumeParkedChallenge, setPrestigeChallenge } from "./prestige-challenge";
+import { startRunTiming } from "./run-timing";
 import { attackIntervalUnderNewCap } from "../../shared/stat-rating";
 import { updateSnapshotRow } from "./snapshot-row-writes";
 import { guildQuestBonusFor } from "./daily-quests";
@@ -158,6 +159,7 @@ export function createPrestige(deps: PrestigeDeps) {
       prestigedAt: ctx.timestamp,
     };
     if (current) ctx.db.playerPrestige.identity.update(next); else ctx.db.playerPrestige.insert(next);
+    startRunTiming(ctx, ctx.sender, next.level);
     recordPrestige(ctx);
     resetProgressToDefaults(ctx, activePlayer, { research: true, lifetimeKills: true, slotTiers: true, items: true });
     return next;

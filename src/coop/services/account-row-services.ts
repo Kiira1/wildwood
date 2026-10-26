@@ -3,6 +3,7 @@ import { createOfflineProgressPreference } from "./offline-progress-watch";
 import { createBowSkills } from "./bow-skills";
 import { createAdGemReward } from "./ad-gem-reward";
 import { createChatMute } from "./chat-mute";
+import { createRunTimingRows } from "./run-timing-service";
 import { createSoulDimensionRows } from "./soul-dimension-service";
 import { createGuildHallRows } from "./guild-hall-service";
 import { createItemRefineRows } from "./item-refine-service";
@@ -75,6 +76,7 @@ export function createAccountRowServices(connection: () => DbConnection | null, 
   const bowSkills = createBowSkills(notify);
   const adGemReward = createAdGemReward(notify);
   const chatMute = createChatMute(notify);
+  const runTiming = createRunTimingRows(notify);
   const soulDimension = createSoulDimensionRows(connection, notify);
   const guildHall = createGuildHallRows(connection, notify);
   const itemRefine = createItemRefineRows(notify, slotTierFor);
@@ -126,6 +128,7 @@ export function createAccountRowServices(connection: () => DbConnection | null, 
       bowSkills.watch(current, isCurrent);
       adGemReward.watch(current, isCurrent);
       chatMute.watch(current, isCurrent);
+      runTiming.watch(current, isCurrent);
       soulDimension.watch(current, isCurrent);
       guildHall.watch(current, isCurrent);
       itemRefine.watch(current, isCurrent);
@@ -149,6 +152,7 @@ export function createAccountRowServices(connection: () => DbConnection | null, 
       ...bowSkills.api,
       ...adGemReward.api,
       ...chatMute.api,
+      ...runTiming.api,
       ...soulDimension.api,
       ...guildHall.api,
       ...itemRefine.api,

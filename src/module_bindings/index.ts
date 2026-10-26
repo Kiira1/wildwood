@@ -347,6 +347,7 @@ import MyProceduralBossRow from "./my_procedural_boss_table";
 import MyRefineResultRow from "./my_refine_result_table";
 import MyResearchRanksRow from "./my_research_ranks_table";
 import MyRewardKillsRow from "./my_reward_kills_table";
+import MyRunTimingRow from "./my_run_timing_table";
 import MyServerBoostTriggerRow from "./my_server_boost_trigger_table";
 import MySocialHubRow from "./my_social_hub_table";
 import MySocialMessagesRow from "./my_social_messages_table";
@@ -1673,6 +1674,13 @@ const tablesSchema = __schema({
     constraints: [
     ],
   }, MyRewardKillsRow),
+  myRunTiming: __table({
+    name: 'my_run_timing',
+    indexes: [
+    ],
+    constraints: [
+    ],
+  }, MyRunTimingRow),
   myServerBoostTrigger: __table({
     name: 'my_server_boost_trigger',
     indexes: [
