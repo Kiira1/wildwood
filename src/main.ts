@@ -729,7 +729,6 @@ import { MAX_PLAYER_STAT, PLAYER_SPAWN } from "../shared/rules";
   const giftsAndMail = createGiftsAndMail({
     coop: coopAccess, e: gameElements, playing: () => session.hasStarted() && !inTutorial(), guildPanel: () => guildPanel, showMessage,
   });
-  const { mailbox } = giftsAndMail;
 
   const reconnectOverlay = createReconnectOverlay({
     coop: coopAccess, e: gameElements, hasStarted: () => session.hasStarted(),
@@ -786,7 +785,6 @@ import { MAX_PLAYER_STAT, PLAYER_SPAWN } from "../shared/rules";
       session.start(markIntro, restoreServerPosition);
       recordGameplayReady();
       finishStartup();
-      mailbox.refresh();
       giftsAndMail.refresh();
       applyGameplayPauseState();
     };
@@ -818,7 +816,6 @@ import { MAX_PLAYER_STAT, PLAYER_SPAWN } from "../shared/rules";
     }
     mapAssets.cancelPreload();
     session.end();
-    mailbox.refresh();
     giftsAndMail.refresh();
   }
 
@@ -890,7 +887,7 @@ import { MAX_PLAYER_STAT, PLAYER_SPAWN } from "../shared/rules";
     windows: { playerSafety, profileWindow, inventory: inventoryController, smith, cardSeller, gearSellers }, leaderboard, runtimeHud, slotUpgrades,
     inTutorial, isRunning: session.isRunning, moveSpeed: () => playerStats.moveSpeed(), playerInput,
     reconcileMap: () => { if (!inTutorial()) mapController.reconcileMapFromServer(); },
-    syncLifetimeKills: progress.syncLifetimeKills, refreshGemCounter, refreshMailbox: mailbox.refresh, refreshGiftsAndMail: giftsAndMail.refresh,
+    syncLifetimeKills: progress.syncLifetimeKills, refreshGemCounter, refreshGiftsAndMail: giftsAndMail.refresh,
     refreshDevPanel: devPanel.refresh, loadProgress, resetMovementSync: playerController.resetMovementSync,
     syncBossState: () => bossController.forMap(currentMapId)?.sync(), finishStartup, updateProtocolGate, refreshChat: chatRuntime.requestRefresh,
     updateDuelControls, refreshAppStatus: appShell.refreshStatus, refreshReconnectOverlay: reconnectOverlay.refresh,
