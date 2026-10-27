@@ -662,8 +662,9 @@ it.each(personalBossCases)('applies ranged and sword criticals to %s', (mapId, k
   for (const weapon of ['starter_stone', 'wooden_sword']) {
     let now = 1;
     const hit = vi.fn();
+    const damageRecorded = vi.fn();
     const state = createCombatHarness({ currentMapId: () => mapId,
-      nowSeconds: () => now, equippedWeapon: () => weapon, hitPersonalBoss: hit,
+      nowSeconds: () => now, equippedWeapon: () => weapon, hitPersonalBoss: hit, onDamageDealt: damageRecorded,
       researchCriticalChance: () => 1, researchCriticalDamageMultiplier: () => 2 });
     state.enemies.length = 0;
     const boss = state.bosses[kind];
@@ -674,6 +675,8 @@ it.each(personalBossCases)('applies ranged and sword criticals to %s', (mapId, k
       state.controller.attackNearest(); state.controller.updateProjectiles(1 / 60);
     }
     expect(hit, weapon).toHaveBeenCalled();
+    expect(damageRecorded).toHaveBeenCalled();
+    expect(damageRecorded.mock.calls.every(call => call[2] === boss)).toBe(true);
     // Twice the hit: 10 damage with the weapon's own bonus (the stone has none).
     const critical = 2 * equipmentDamage(10, weapon, "", "");
     expect(hit.mock.calls.every(call => Math.abs(call[0] - critical) < 1e-9 && call[3] === true), weapon).toBe(true);
@@ -682,8 +685,9 @@ it.each(personalBossCases)('applies ranged and sword criticals to %s', (mapId, k
 
 it('passes Endless critical damage and the critical flag to its hit display', () => {
   let now = 1; const hit = vi.fn(() => true);
+  const damageRecorded = vi.fn();
   const state = createCombatHarness({ currentMapId: () => "", nowSeconds: () => now,
-    researchCriticalChance: () => 1, researchCriticalDamageMultiplier: () => 2, hitGeneratedBoss: hit });
+    researchCriticalChance: () => 1, researchCriticalDamageMultiplier: () => 2, hitGeneratedBoss: hit, onDamageDealt: damageRecorded });
   state.enemies.length = 0;
   Object.assign(state.player, { x: 500, y: 500, damage: 10, attackRange: 200, hp: 100 });
   createEnemyLifecycle(state.enemies, state.spawnSites, () => {}).spawnFromSite({ id: 0, type: 'Spitter',
@@ -691,6 +695,8 @@ it('passes Endless critical damage and the critical flag to its hit display', ()
   state.enemies[0].generatedBoss = true;
   for (let i = 0; i < 90; i++) { now += 1 / 60; state.controller.attackNearest(); state.controller.updateProjectiles(1 / 60); }
   expect(hit).toHaveBeenCalledWith(state.enemies[0], 20, true, false);   // a swing, not a reflect
+  expect(damageRecorded).toHaveBeenCalled();
+  expect(damageRecorded.mock.calls.every(call => call[2] === state.enemies[0])).toBe(true);
 });
 
 it("tells Auto Farm whether the build feeds on adds: Reflect or Second Wind", () => {

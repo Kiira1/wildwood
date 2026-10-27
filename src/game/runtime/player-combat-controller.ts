@@ -176,7 +176,8 @@ export function createPlayerCombatController(options: {
   arrowInPlay?: () => ArrowId | null;
   onArrowShot?: (arrowId: ArrowId) => void;
   /** Every hit the player lands, after its multipliers: the DPS readout. */
-  onDamageDealt?: (amount: number, source: DamageSource) => void;
+  onDamageDealt?: (amount: number, source: DamageSource, target: EnemyState | BossTarget) => void;
+  onCombatTick?: () => void;
   spawnBurst: (x: number, y: number, color: string, count?: number, speed?: number) => void;
   spawnParticle: (x: number, y: number, vx: number, vy: number, life: number, maxLife: number, size: number, color: string) => void;
   spawnDamageNumber: (x: number, y: number, amount: number, critical?: boolean, damageTaken?: boolean, reflected?: boolean) => void;
@@ -793,8 +794,8 @@ export function createPlayerCombatController(options: {
       damage *= cardCombat.hitMultiplier(target) * techniques.hitFactor(target, critical);
     }
     if ((target.isBoss || target.generatedBoss) && weaponHit) damage *= 1 + bossSlayer();
-    options.onDamageDealt?.(damage * (1 - iaidoShare), source);
-    if (iaidoShare > 0) options.onDamageDealt?.(damage * iaidoShare, "card-koi");
+    options.onDamageDealt?.(damage * (1 - iaidoShare), source, target);
+    if (iaidoShare > 0) options.onDamageDealt?.(damage * iaidoShare, "card-koi", target);
     // A reflected hit shows blue, so the player can see Reflect fire.
     if (!target.isBoss && !target.generatedBoss) spawnDamageNumber(target.x, target.y, damage, critical, false, reflected);
     target.hurt = .12;
@@ -880,6 +881,7 @@ export function createPlayerCombatController(options: {
   }
 
   function updateProjectiles(dt: number) {
+    options.onCombatTick?.();
     const nowSeconds = options.nowSeconds();
     if (stormHits.length) landStormHits(nowSeconds);
     syncAttackTimeline(nowSeconds);
