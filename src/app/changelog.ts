@@ -2,6 +2,7 @@ export const RELEASE_NOTES: Record<string, string[]> = {
   "0.917.30": [
     "Time away you don't collect is kept and added to your next time away, up to your offline limit",
     "The World Map has a Town page: the village, Timberwood, the Copper Hills and the Trade Chrysanthemum, and where you are",
+    "The Town runs smoother, especially when it's busy and in Firefox and Safari",
   ],
   "0.917.29": [
     "Faster loading and smoother play, especially on phones",
