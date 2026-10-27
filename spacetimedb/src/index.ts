@@ -1,4 +1,5 @@
 import { playerPrestigeChallenge, playerPrestigeChallengeParked, prestigeChallengeBackup, prestigeChallengeRun, restorePrestigeChallenge } from "./prestige-challenge";
+import { standsAtResearch } from "./research-station";
 import { playerDailyQuest, guildQuestWeek, guildMemberQuestWeek, soloQuestWeek, playerQuestWeekTotal, ensureDailyQuests, pruneOldGuildQuestWeeks, recordDailyQuestKills, memberQuestStanding, questCollectStanding, collectMemberQuests, moveSoloQuestsToGuild, refreshQuestBonus } from "./daily-quests";
 import { duelCombatSnapshot } from "./duel-combat-snapshot";
 import { playerEquipmentLock, setEquipmentLock } from "./equipment-locks";
@@ -2928,7 +2929,7 @@ export const savePlayerProgress = spacetimedb.reducer(
 export const startResearch = spacetimedb.reducer(
   { researchId: t.string() },
   (ctx, { researchId }) => {
-    requireControllingPlayer(ctx);
+    if (!standsAtResearch(ctx, requireControllingPlayer(ctx))) throw new SenderError("Go to Tech Research in Town first.");
     if (!isResearchId(researchId)) throw new SenderError("Unknown research.");
     const research = researchForPlayer(ctx, ctx.sender);
     const active = ctx.db.activeResearch.identity.find(ctx.sender);

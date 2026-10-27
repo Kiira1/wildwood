@@ -1,4 +1,8 @@
 export const RELEASE_NOTES: Record<string, string[]> = {
+  "0.917.33": [
+    "Your nocked arrow and how many are left show beside your gold while you hold a bow; tap it to manage them",
+    "Research can only be started at Tech Research in Town",
+  ],
   "0.917.32": [
     "Fixed the Stat Tracker's attack speed with a bow at the cap",
     "Added an optional DPS Breakdown view to Stat Tracker",
@@ -4038,6 +4042,7 @@ const RELEASE_DATES: Record<string, string> = {
 };
 
 export const RELEASE_DAYS: Record<string, string> = {
+  "0.917.33": "2026-10-27",
   "0.917.32": "2026-10-27",
   "0.917.31": "2026-10-27",
   "0.917.30": "2026-10-26",
