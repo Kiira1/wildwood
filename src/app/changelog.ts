@@ -1,4 +1,7 @@
 export const RELEASE_NOTES: Record<string, string[]> = {
+  "0.917.32": [
+    "Fixed the Stat Tracker's attack speed with a bow at the cap",
+  ],
   "0.917.31": [
     "Profile and Stat Tracker show a bow's full attack speed above the cap instead of Max",
     "Swords turn gold at ★10 and sapphire at ★20, matching Medium armor",
@@ -4030,6 +4033,7 @@ const RELEASE_DATES: Record<string, string> = {
 };
 
 export const RELEASE_DAYS: Record<string, string> = {
+  "0.917.32": "2026-10-27",
   "0.917.31": "2026-10-27",
   "0.917.30": "2026-10-26",
   "0.917.29": "2026-10-26",

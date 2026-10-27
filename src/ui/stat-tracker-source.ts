@@ -7,10 +7,11 @@ import { criticalDamage, type CriticalDamageParts } from "../../shared/critical-
 import { formatArmorReduction } from "../game/combat";
 import { weaponAttackInterval } from "../../shared/staff-skills";
 
-/** Attacks a second as fired: a bow shoots past the cap, so it reads its own speed, never the cap's Max. */
+/** Attacks a second as fired, " Max" at the cap: a bow at the cap reads its own faster speed, still marked Max. */
 function attackSpeedDetail(attackRate: number, cap: AttackCapArg, weapon: unknown) {
   const interval = Math.max(attackRate, attackCapInterval(cap)), fired = weaponAttackInterval(weapon, interval);
-  return fired < interval ? `${(1 / fired).toFixed(2)}/s` : attackSpeedLabel(1 / interval, 1 / attackCapInterval(cap)).replace(" (Max)", " Max");
+  const label = attackSpeedLabel(1 / interval, 1 / attackCapInterval(cap)).replace(" (Max)", " Max");
+  return fired < interval ? `${(1 / fired).toFixed(2)}/s${label.endsWith(" Max") ? " Max" : ""}` : label;
 }
 
 /**
