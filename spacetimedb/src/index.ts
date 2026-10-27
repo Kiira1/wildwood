@@ -61,7 +61,7 @@ import { playerStarterWeapon, registerStarterChest } from "./starter-chest";
 import { playerCraftSkill, playerCraftLevel, registerCrafting } from "./crafting";
 import { playerTool, registerTools } from "./tools";
 import { mergeOldGearPayout, oldGearPayout, payOutOldGear } from "./old-gear-payout";
-import { playerCard, playerGearSlots, playerCopySlots, playerCardDrop, registerGearCards } from "./gear-cards"; import { playerActiveCard, registerActiveCards } from "./active-cards"; import { playerCardAttackCap, syncCardAttackCap } from "./card-attack-cap"; import { playerBuild, playerBuildName, registerBuilds } from "./builds"; import { playerWornSkill, syncWornSkill } from "./worn-skill";
+import { playerCard, playerGearSlots, playerCopySlots, playerCardDrop, registerGearCards } from "./gear-cards"; import { playerActiveCard, registerActiveCards } from "./active-cards"; import { playerCardAttackCap, syncCardAttackCap, syncCardAttackCapFor } from "./card-attack-cap"; import { playerBuild, playerBuildName, registerBuilds } from "./builds"; import { playerWornSkill, syncWornSkill } from "./worn-skill";
 import { awardCardDrops, playerBossCardRoll, playerCardMeter } from "./card-drops"; import { playerCardShopPurchase, registerCardShop } from "./card-shop";
 import { awardRegularEnemyLoot } from "./enemy-loot-award";
 import { moderateReportedMessage } from "./chat-report-moderation";
@@ -183,7 +183,7 @@ import {
 } from "../../shared/rules";
 import { readPlayerProgress, withDuelWide } from "./wide-stats";
 import { playerInventory, playerWideStats, duelWideStats, duelReplayWideStats, playerCombatRating } from "./wide-stats-table";
-import { LEGACY_CLIENT_ERRORS, sameConnection, sessionForContext, requireSession, blockedSession, isSupportedProtocol, requireCurrentLegalConsent, requireChatAge, requireSupportedSessionProtocol, requireControllingPlayer, isDeveloperIdentity, isDatabaseOwnerIdentity, isVirtualPlayer, requireDeveloperSession, requireDeveloper, touchPlayerAccessAudit, backfillKnownAccessAudit, sameIdentity, hasSpacetimeAuthAccount } from "./session-guards";
+import { LEGACY_CLIENT_ERRORS, sameConnection, sessionForContext, requireSession, blockedSession, isSupportedProtocol, requireCurrentLegalConsent, requireChatAge, requireSupportedSessionProtocol, requireControllingPlayer, requireControllingPlayerRow, isDeveloperIdentity, isDatabaseOwnerIdentity, isVirtualPlayer, requireDeveloperSession, requireDeveloper, touchPlayerAccessAudit, backfillKnownAccessAudit, sameIdentity, hasSpacetimeAuthAccount } from "./session-guards";
 import { defaultPlayerProgress, samePlayerProgressValues, hasFreshProgress, resultIncludesContributor, contributedToLatestPrismshell, forestItemCountForProgress, inventoryForProgress, slotUpgradeKey, itemUpgradeLevelFor, itemLevelFor, playerOwnsItem, restoreItemToProgress, equippedHeadForProgress, equippedChestForProgress, equippedFeetForProgress, equippedRightHandForProgress, equippedLeftHandForProgress, cosmeticEquipmentForProgress, equipmentPresentationForProgress, leaderboardAppearanceForProgress, maxHealthForProgress } from "./progress-helpers";
 import { researchForPlayer, assertResearchAvailable, activeResearchIsAvailable, removeResearchCompletionSchedules, completeActiveResearch, ensureResearchCompletionSchedule, reconcileActiveResearch } from "./research-runtime";
 import { ensurePlayerLifetime, finishLifetimeSession, markPlayerBalanceCurrent, playerBalanceProgress, effectivePowerStatsForProgress, effectivePowerForProgress, powerFieldsForProgress, researchedDamage, researchedArmor, researchedRegen } from "./player-power";
@@ -3255,10 +3255,11 @@ const EnemyDefeatEntry = t.object("EnemyDefeat", { enemy: t.string(), count: t.u
 // Plus the milliseconds the client simulated since its previous report (0 when it cannot say); see simulationClock.
 const enemyDefeatReportArgs = { streamId: t.string(), sequence: t.u64(), mapId: t.string(), simulatedMillis: t.u32(), enemies: t.array(EnemyDefeatEntry) };
 function recordEnemyDefeatsFor(ctx: any, batch: EnemyDefeatBatch, clocks?: DefeatClocks) {
-    const player = requireControllingPlayer(ctx);
-    if (activeDuelFor(ctx, ctx.sender)) throw new SenderError("Enemy rewards require your account world connection."); const worn = syncCardAttackCap(ctx, ctx.sender);
-    // Everything the combat bound reads, read once for the whole report.
-    const combat = combatBoundForReport(ctx, worn);
+    // Only the map and power are read here; the position is worked out below if the row is written.
+    const player = requireControllingPlayerRow(ctx);
+    if (activeDuelFor(ctx, ctx.sender)) throw new SenderError("Enemy rewards require your account world connection.");
+    // Everything the combat bound reads, read once for the whole report, the save included when the sync wrote none.
+    const { worn, progress } = syncCardAttackCapFor(ctx, ctx.sender), combat = combatBoundForReport(ctx, worn, progress);
     const accepted = acceptEnemyDefeats(ctx, batch, permittedDefeatMaps(ctx, player, TOWN_MAP_ID), combat, clocks);
     if (!accepted) return;
     const enforce = () => {
@@ -3275,9 +3276,10 @@ function recordEnemyDefeatsFor(ctx: any, batch: EnemyDefeatBatch, clocks?: Defea
     if (!accepted.count && !accepted.bossCleared) { enforce(); return; }
     // Validation wrote no progress, so the row the bound read is still current.
     const base = accepted.count ? combat.savedProgress() : null;
+    let rewarded: any;
     if (accepted.count) {
       const next = combat.rewardedProgress()!;
-      const rewarded = awardRegularEnemyLoot(ctx, batch.mapId, accepted.lootCount, accepted.balance, { progress: next });
+      rewarded = awardRegularEnemyLoot(ctx, batch.mapId, accepted.lootCount, accepted.balance, { progress: next });
       updateSnapshotRow(ctx, "playerProgress", rewarded);
       const power = combat.powerFields(rewarded);
       // Both rows below are broadcast to everyone on the map, and kills move
@@ -3285,25 +3287,26 @@ function recordEnemyDefeatsFor(ctx: any, batch: EnemyDefeatBatch, clocks?: Defea
       // so write when that changes; the row is exact when written and never
       // more than one displayed step behind.
       if (compactNumberChanged(player.powerLevel, power.powerLevel)) {
-        const nextPlayer = { ...player, ...power };
+        const nextPlayer = { ...playerWithMotion(ctx, player), ...power };
         updateSnapshotRow(ctx, "player", nextPlayer);
         syncPlayerMotionIdentity(ctx, playerWithMotion(ctx, nextPlayer));
       }
     }
     const gate = accepted.bossCleared ? recordBossGateClear(ctx, batch.mapId) : null;
-    awardCardDrops(ctx, ctx.sender, batch.mapId, accepted.kills, accepted.bossCleared ? 1 : 0, 1, worn);
-    awardWeaponMastery(ctx, ctx.sender, (base ?? gate?.previousProgress ?? combat.savedProgress())?.equippedRightHand, accepted.count, Boolean(gate));
-    // New regular loot goes on when it beats the slot.
-    autoEquip.equipNewUpgrades(ctx, ctx.sender, base ?? gate?.previousProgress);
+    awardCardDrops(ctx, ctx.sender, batch.mapId, accepted.kills, accepted.bossCleared ? 1 : 0, 1, worn, combat.luck);
+    awardWeaponMastery(ctx, ctx.sender, (base ?? gate?.previousProgress ?? combat.savedProgress())?.equippedRightHand, accepted.count, Boolean(gate),
+      combat.inChallenge);
+    // New regular loot goes on when it beats the slot. A gate clear wrote the save again after the loot.
+    autoEquip.equipNewUpgrades(ctx, ctx.sender, base ?? gate?.previousProgress, gate ? undefined : rewarded);
     if (accepted.count) {
       const lifetime = ensurePlayerLifetime(ctx);
       const enemyKills = lifetime.enemyKills + BigInt(accepted.count);
       ctx.db.playerLifetime.identity.update({ ...lifetime, enemyKills });
       recordAnalyticsMilestone(ctx, "kill");
       killGems.grantKillGems(ctx, ctx.sender, accepted.count, enemyKills);
-      recordDailyQuestKills(ctx, ctx.sender, batch.mapId, accepted.kills); noteEnemyDefeats(ctx, batch.mapId, accepted.rewards);
+      recordDailyQuestKills(ctx, ctx.sender, batch.mapId, accepted.kills, combat.bonuses().quest); noteEnemyDefeats(ctx, batch.mapId, accepted.rewards);
     }
-    awardKillGold(ctx, ctx.sender, accepted.count, Boolean(gate), worn);
+    awardKillGold(ctx, ctx.sender, accepted.count, Boolean(gate), worn, combat);
     enforce();
     if (!accepted.restrict && gate) {
       recordAnalyticsMilestone(ctx, "boss");
