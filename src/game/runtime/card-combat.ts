@@ -138,17 +138,14 @@ export function createCardCombat(deps: {
     return true;
   }
 
-  /**
-   * After a weapon hit lands (reflected hits are not weapon hits): lifesteal, splash and each proc's roll.
-   * A staff's blast hits pass `canSplash` false: a splash card never splashes off a splash.
-   */
-  function afterHit(target: Target, damage: number, angle: number, canSplash = true) {
+  /** After a weapon hit lands (reflected hits are not weapon hits): lifesteal, splash and each proc's roll. */
+  function afterHit(target: Target, damage: number, angle: number) {
     const worn = cards();
     if (worn === NO_CARDS || !(damage > 0)) return;
     const steal = cardValue(worn, "lifesteal");
     if (steal > 0 && player.hp > 0) player.hp = Math.min(player.maxHp, player.hp + damage * steal / 100);
     const regular = isRegular(target) ? target : null;
-    if (canSplash) splashAround(target, damage * cardValue(worn, "splash") / 100);
+    splashAround(target, damage * cardValue(worn, "splash") / 100);
     const defaults = CARD_EFFECT_DEFAULTS;
     for (const proc of worn.procs) {
       if (deps.random() * 100 >= proc.chance) continue;
@@ -156,7 +153,7 @@ export function createCardCombat(deps: {
       else if (proc.effect === "poison") {
         damageOverTime(target, "poison", damage * defaults.poison.share, defaults.poison.seconds);
         if (regular) setStatus(regular, "weaken", defaults.poison.weaken, defaults.poison.seconds);
-      } else if (proc.effect === "splash") { if (canSplash) splashAround(target, damage * (proc.share ?? 0)); }
+      } else if (proc.effect === "splash") splashAround(target, damage * (proc.share ?? 0));
       else if (proc.effect === "chainLightning") {
         chainLightning(target, damage * (proc.share ?? defaults.chainLightning.share), proc.targets ?? defaults.chainLightning.targets);
       } else if (!regular || regular.dead) continue;

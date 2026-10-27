@@ -820,7 +820,7 @@ export function createPlayerCombatController(options: {
       // Any hit can leave it under Reap's threshold, not only a weapon's.
       else cardCombat.reap(target);
     }
-    if (weaponHit) cardCombat.afterHit(target, damage, angle, source !== 'staff-splash');
+    if (weaponHit) cardCombat.afterHit(target, damage, angle);
   }
 
   /** A few motionless sparks along a line, so a bounce reads as a streak. */
