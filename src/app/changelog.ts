@@ -1,4 +1,7 @@
 export const RELEASE_NOTES: Record<string, string[]> = {
+  "0.917.30": [
+    "Time away you don't collect is kept and added to your next time away, up to your offline limit",
+  ],
   "0.917.29": [
     "Faster loading and smoother play, especially on phones",
   ],
@@ -4020,6 +4023,7 @@ const RELEASE_DATES: Record<string, string> = {
 };
 
 export const RELEASE_DAYS: Record<string, string> = {
+  "0.917.30": "2026-10-26",
   "0.917.29": "2026-10-26",
   "0.917.28": "2026-10-26",
   "0.917.27": "2026-10-26",
