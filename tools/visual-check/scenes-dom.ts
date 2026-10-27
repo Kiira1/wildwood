@@ -17,6 +17,7 @@ import { createGemShopController } from "../../src/ui/gem-shop-controller";
 import { markChatAnnouncement } from "../../src/ui/chat-announcement-line";
 import { createDiamondLookDrawer } from "../../src/game/runtime/diamond-look-preview";
 import { installServerBoostHud } from "../../src/ui/server-boost-hud";
+import { createHudArrowChip } from "../../src/ui/hud-arrow-chip";
 import { createExchangeController } from "../../src/ui/exchange-window";
 import { appendBagTileContents } from "../../src/ui/bag-item-tile";
 import { createItemInspectionController } from "../../src/ui/item-inspection-controller";
@@ -157,6 +158,19 @@ async function hud() {
   }, { hp: 840, maxHp: 1_200 }, "Rymel", 12, 12_345, false, PLAYER_GENDER_MALE, "p-local", false);
   byId("hudGemBalance").textContent = "1,250";
   applyProfileIcon(byId("playerHudProfileIcon"), 0);
+  await settleCssImages();
+}
+
+/** The HUD corner as the game builds it: gems, gold and the nocked arrow chip with a bow in hand. */
+async function hudArrow() {
+  const doc = await gameMarkup();
+  document.body.style.background = GROUND;
+  for (const node of doc.body.children) document.body.append(document.importNode(node, true));
+  await import("../../src/ui/game-shell");
+  byId("start").remove();
+  byId("hudGemBalance").textContent = "1,250";
+  byId("hudGoldBalance").textContent = "8,420";
+  createHudArrowChip({ weapon: () => "rare_bow", nocked: () => "fire_arrow", held: () => 1_240, open: () => {} })();
   await settleCssImages();
 }
 
@@ -566,6 +580,6 @@ async function worldMapTown() {
   await settleCssImages();
 }
 
-export const DOM_SCENES: Record<string, () => Promise<void>> = { "world-map-town": worldMapTown, icons, hud, wordmark, shops, "gem-shop": gemShop, "server-boost": serverBoost, "exchange-window": exchangeWindow, grades, "quest-tracker": questTracker, "dps-breakdown": dpsBreakdown, builds, "offline-choice": offlineChoice,
+export const DOM_SCENES: Record<string, () => Promise<void>> = { "world-map-town": worldMapTown, icons, hud, "hud-arrow": hudArrow, wordmark, shops, "gem-shop": gemShop, "server-boost": serverBoost, "exchange-window": exchangeWindow, grades, "quest-tracker": questTracker, "dps-breakdown": dpsBreakdown, builds, "offline-choice": offlineChoice,
   "chat-announcement": chatAnnouncement, "item-window": () => itemWindow(false), "card-window": cardWindow, "item-window-worn": () => itemWindow(true),
   "profile-own": () => profileWindow(true), "profile-other": () => profileWindow(false) };

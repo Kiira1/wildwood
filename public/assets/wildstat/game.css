@@ -1752,6 +1752,9 @@
   .hud-gem-balance { color: #fff; font-size: 11px; font-weight: 900; text-shadow: 0 1px #071c29; }
   .hud-secondary-controls { position: fixed; top: calc(var(--hud-safe-top) + var(--player-hud-visual-height) + 6px); left: var(--hud-safe-left); z-index: 5; display: flex; align-items: center; gap: 3px; pointer-events: auto; }
   .hud-secondary-controls .hud-gem-wallet { position: static; }
+  .hud-arrow-chip { margin: 0; color: #fff; cursor: pointer; pointer-events: auto; touch-action: manipulation; }
+  .hud-arrow-chip[hidden] { display: none; }
+  .hud-arrow-chip.is-empty { opacity: .55; }
   .player-visibility-toggle { display: grid; place-items: center; width: 40px; height: 32px; margin: 0; padding: 6px 9px; border: 0; border-radius: 6px; background: transparent; box-shadow: none; color: #fff; cursor: pointer; touch-action: manipulation; }
   .player-visibility-toggle svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; filter: drop-shadow(0 1px 1px #000); }
   .player-visibility-toggle:disabled { opacity: .65; cursor: default; }

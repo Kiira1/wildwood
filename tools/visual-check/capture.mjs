@@ -30,6 +30,7 @@ const VIEWPORTS = {
   "guild-battlefield": [{ width: 1280, height: 800, full: true }],
   icons: [{ width: 390, height: 844, full: true }, { width: 1280, height: 800, full: true }],
   hud: [{ width: 390, height: 844, full: false }, { width: 1280, height: 800, full: false }],
+  "hud-arrow": [{ width: 390, height: 844, full: false }, { width: 1280, height: 800, full: false }],
   wordmark: [{ width: 390, height: 844, full: false }, { width: 1280, height: 800, full: false }],
   shops: [{ width: 390, height: 844, full: true }, { width: 1280, height: 800, full: true }],
   "gem-shop": [{ width: 390, height: 844, full: true }],
