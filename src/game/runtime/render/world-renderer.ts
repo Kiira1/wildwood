@@ -41,6 +41,7 @@ import { mapWorldLayout } from "../../map-layout";
 import { isGuildHallMap } from "../../../../shared/guild-hall";
 import { portalTravelScene } from "./portal-glimpse";
 import { createShrunkImages, deviceScale } from "./shrunk-image";
+import { createPresizedTiles } from "./presized-tiles";
 import { freezeEntry, markCanvasChanged, releaseFrozen, type FrozenImage } from "./frozen-canvas";
 import { createChangeSignature } from "./change-signature";
 import { createGlowCache } from "./glow-cache";
@@ -273,6 +274,7 @@ export function createWorldRenderer(options: WorldRendererOptions) {
   let lavaRocksRenderedByWebGL = false;
   const viewport = () => options.getViewport();
   const visibleSize = () => ({ width: viewport().width / camera.zoom, height: viewport().height / camera.zoom });
+  const drawPresizedTile = createPresizedTiles();
   const snapToWorldPixel = (value: number) => snapWorldRenderCoordinate(value, camera.zoom, options.getDevicePixelRatio());
   // Scanned once per rebuild of the world (or change in its decor count), not twice a frame.
   let lavaRocksKnown = { generation: -1, count: -1, found: false };
@@ -579,7 +581,7 @@ export function createWorldRenderer(options: WorldRendererOptions) {
         const source = staticTile(tileX, tileY);
         if (source === staticTilePlaceholder) unpainted = true;
         if (useWebGL) gpuTiles.push({ key, source, left, top, width: right - left, height: bottom - top });
-        else ctx.drawImage(source, left, top, right - left, bottom - top);
+        else drawPresizedTile(ctx, source, left, top, right - left, bottom - top);
       }
     }
     // The edge ring is useful for movement, but it never needs a placeholder
