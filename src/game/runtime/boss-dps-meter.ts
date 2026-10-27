@@ -3,12 +3,12 @@ import type { DamageSource } from './dps-meter';
 export type DpsBossTarget = { dead: boolean; hp: number; encounter?: bigint | null };
 
 /** Only source totals are retained for a fight, rather than a growing list of hits. */
-export function createBossDpsMeter(now: () => number) {
+export function createBossDpsMeter<Source extends string = DamageSource>(now: () => number) {
   let target: DpsBossTarget | null = null;
   let encounter: bigint | null | undefined;
   let started = 0, ended: number | null = null;
   let finished = false;
-  const totals = new Map<DamageSource, number>();
+  const totals = new Map<Source, number>();
   function tick() {
     if (target && ended === null && (target.dead || target.encounter !== encounter)) {
       ended = now();
@@ -17,7 +17,7 @@ export function createBossDpsMeter(now: () => number) {
   }
   return {
     tick,
-    record(amount: number, source: DamageSource, boss: DpsBossTarget) {
+    record(amount: number, source: Source, boss: DpsBossTarget) {
       tick();
       if (boss.dead) return;
       if (target !== boss || encounter !== boss.encounter) {

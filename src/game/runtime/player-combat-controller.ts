@@ -37,7 +37,7 @@ import { NO_CARDS, cardStatGainFactor, cardValue, type CardTotals } from "../../
 import { bowSkillsWithCards } from "../../../shared/card-bounds";
 import { isBow, isSkillBow } from "../../../shared/bow-skills";
 import { ARROW_KINDS, PIERCING_ARROW_EXTRA_TARGETS, arrowHitMultiplier, type ArrowId } from "../../../shared/arrows";
-import { addPlayerBaseMaxHealth } from "./player-health";
+import { addPlayerBaseMaxHealth, healPlayer } from "./player-health";
 import {
   absoluteAttackTimestamps,
   attackAnimationClockAt,
@@ -246,7 +246,7 @@ export function createPlayerCombatController(options: {
     player, enemies, currentMapId: options.currentMapId, equippedWeapon: options.equippedWeapon,
     activeBoss: activeMapBoss, roll: weaponSkills, nowSeconds: options.nowSeconds, random,
     isDueling, onCombat: options.onCombat, effects: options.skillEffects, hit: applyPlayerHit,
-    extraWhirlwindTicks: techniques.whirlwindTicks, deflectReturn: techniques.deflectReturn,
+    extraWhirlwindTicks: techniques.whirlwindTicks, deflectReturn: techniques.deflectReturn, reach: () => attackRange(),
   });
   const staffSkills = createStaffSkillRuntime({
     player, enemies, currentMapId: options.currentMapId, equippedWeapon: options.equippedWeapon,
@@ -631,7 +631,7 @@ export function createPlayerCombatController(options: {
     incrementKills();
     techniques.kill();
     // Regular enemy kills only; bosses and duel opponents do not trigger healing. Second Wind cards add to the perk.
-    if (player.hp > 0) player.hp = Math.min(player.maxHp, player.hp + player.maxHp * ((options.prestigeSecondWind?.() ?? 0) + cardCombat.secondWind()));
+    healPlayer(player, player.maxHp * ((options.prestigeSecondWind?.() ?? 0) + cardCombat.secondWind()), "second-wind");
     cardCombat.onKill();
     const site = spawnSites[enemy.siteId];
     if (site) scheduleEnemyRespawn(site);

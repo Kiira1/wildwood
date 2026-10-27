@@ -6,6 +6,7 @@ import { FIRE_ARROW_BURN, type ArrowEffect } from "../../../shared/arrows";
 import { ENEMY_TYPES } from "../enemies";
 import type { BossTarget, EnemyCardStatus, EnemyState, PlayerState } from "./types";
 import type { DamageSource } from "./dps-meter";
+import { healPlayer } from "./player-health";
 
 type Target = EnemyState | BossTarget;
 type DamageOverTime = { dps: number; left: number; pending: number; tick: number; color: string };
@@ -143,7 +144,7 @@ export function createCardCombat(deps: {
     const worn = cards();
     if (worn === NO_CARDS || !(damage > 0)) return;
     const steal = cardValue(worn, "lifesteal");
-    if (steal > 0 && player.hp > 0) player.hp = Math.min(player.maxHp, player.hp + damage * steal / 100);
+    if (steal > 0) healPlayer(player, damage * steal / 100, "lifesteal");
     const regular = isRegular(target) ? target : null;
     splashAround(target, damage * cardValue(worn, "splash") / 100);
     const defaults = CARD_EFFECT_DEFAULTS;
@@ -218,7 +219,7 @@ export function createCardCombat(deps: {
     }
     const panic = CARD_EFFECT_DEFAULTS.panicHeal;
     if (player.hp > 0 && player.hp < player.maxHp * panic.below && deps.random() * 100 < cardChance(worn, "panicHeal")) {
-      player.hp = Math.min(player.maxHp, player.hp + player.maxHp * panic.heal);
+      healPlayer(player, player.maxHp * panic.heal, "panic-heal");
       deps.spawnBurst(player.x, player.y, "#7cf08f", 14, 120);
     }
     const web = cardValue(worn, "web");

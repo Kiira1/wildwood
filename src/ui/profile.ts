@@ -208,7 +208,8 @@ export function profileStatDisplayRows(
     {
       kind: "attack", label: "Attack Speed:", base: baseAttackSpeed,
       equationOperator: "×",
-      multiplier: multiplierValue(bowSpeed), total: attackSpeedLabel(stats.attackRate * bowSpeed, 1 / minAttackInterval), equationTotal: attackSpeed,
+      // A bow's speed goes past the cap, so its total is never shown as the cap's Max.
+      multiplier: multiplierValue(bowSpeed), total: bowSpeed > 1 ? attackSpeed : attackSpeedLabel(stats.attackRate, 1 / minAttackInterval), equationTotal: attackSpeed,
       // Attacks a second, never the rating behind them; the cap beside it shows how close the player is.
       expandedDetail: `${(1 / minAttackInterval).toFixed(2)}/s Cap${momentum ? ` · ${((1 + momentum) / minAttackInterval).toFixed(2)}/s Momentum` : ""}`,
       // The soul's own share, which adds to the run's and is kept through prestige.
