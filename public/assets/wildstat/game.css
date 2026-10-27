@@ -93,7 +93,11 @@
   .stat-tracker-settings .stat-tracker-opacity { display: grid; gap: 2px; margin: 4px 10px 8px; color: var(--muted); font-size: 11px; }
   .stat-tracker-filters, .stat-tracker-compact-options { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 2px 8px; margin: 0 10px 8px; padding: 6px 0 0; border: 0; border-top: 1px solid var(--border); }
   .stat-tracker-filters legend, .stat-tracker-compact-options legend { float: left; grid-column: 1 / -1; width: 100%; margin-bottom: 2px; padding: 0; color: var(--muted); font-size: 11px; }
+  .stat-tracker-show-options { margin: 0 10px 8px; border-top: 1px solid var(--border); }
+  .stat-tracker-show-options > summary { padding: 8px 0; cursor: pointer; font: inherit; font-size: 11px; color: var(--muted); }
+  .stat-tracker-show-options > :is(.stat-tracker-filters, .stat-tracker-compact-options) { margin: 0; padding: 0; border: 0; }
   .stat-tracker-settings label:not(.stat-tracker-opacity) { display: flex; align-items: center; gap: 6px; min-height: 28px; cursor: pointer; }
+  .stat-tracker.stat-tracker-settings [hidden] { display: none; }
   .stat-tracker-settings input[type="checkbox"] { width: 16px; height: 16px; margin: 0; accent-color: var(--green); cursor: pointer; }
   .stat-tracker:not(.stat-tracker-settings).is-compact { min-width: 0; width: max-content; font-size: 12px; }
   .stat-tracker-stat-icon { display: block; width: 16px; height: 16px; }
@@ -113,6 +117,9 @@
   .stat-tracker-dps-details dd { text-align: right; }
   .stat-tracker-dps-heading, .stat-tracker-dps-details p { color: var(--muted); font-size: 11px; }
   .stat-tracker-dps-details p { margin: 4px 0; }
+  .stat-tracker-dps-status { display: flex; align-items: center; gap: 6px; }
+  .stat-tracker-dps-status p { flex: 1; min-width: 0; }
+  .stat-tracker .stat-tracker-dps-back { flex: 0 0 auto; padding-inline: 2px; font-size: 11px; }
   .is-position-locked :is(.stat-tracker-handle, .dps-breakdown-handle), .mysterious-ore-timer.is-position-locked .mysterious-ore-timer-handle { cursor: default; }
   .is-position-locked :is(.stat-tracker-handle, .dps-breakdown-handle)::after, .is-position-locked .mysterious-ore-timer-handle::after { content: ""; display: inline-block; width: 10px; height: 12px; margin-left: 5px; vertical-align: -1px; background: currentColor; mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 16'%3E%3Cpath d='M2 6V4a4 4 0 0 1 8 0v2h1v10H1V6zm2 0h4V4a2 2 0 0 0-4 0z'/%3E%3C/svg%3E") center / contain no-repeat; }
   .stat-tracker.is-compact header { gap: 2px; padding: 0 2px; }

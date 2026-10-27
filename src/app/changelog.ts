@@ -1,4 +1,11 @@
 export const RELEASE_NOTES: Record<string, string[]> = {
+  "0.917.31": [
+    "Added an optional DPS Breakdown view to Stat Tracker",
+    "Switch views in the tracker; Reset only clears the selected view",
+    "Stats and DPS now have separate timers",
+    "Auto-track bosses tracks full boss fights and pins the result",
+    "Tracker display options now expand on demand",
+  ],
   "0.917.30": [
     "Time away you don't collect is kept and added to your next time away, up to your offline limit",
     "The World Map has a Town page: the village, Timberwood, the Copper Hills and the Trade Chrysanthemum, and where you are",
@@ -4025,6 +4032,7 @@ const RELEASE_DATES: Record<string, string> = {
 };
 
 export const RELEASE_DAYS: Record<string, string> = {
+  "0.917.31": "2026-10-27",
   "0.917.30": "2026-10-26",
   "0.917.29": "2026-10-26",
   "0.917.28": "2026-10-26",

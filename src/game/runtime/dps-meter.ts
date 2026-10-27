@@ -1,3 +1,5 @@
+import { createBossDpsMeter, type DpsBossTarget } from './boss-dps-meter';
+
 /** The local player's damage per second over the last few seconds, for the on-screen DPS readout. */
 export const DPS_WINDOW_MS = 5_000;
 /** The DPS breakdown reads a longer window, so procs and skills settle into their share. */
@@ -15,14 +17,22 @@ export const DAMAGE_SOURCE_NAMES = {
 export type DamageSource = keyof typeof DAMAGE_SOURCE_NAMES;
 
 export function createDpsMeter(now: () => number = () => performance.now()) {
+  const boss = createBossDpsMeter(now);
+  let showBoss = false;
+  let started: number | null = null;
   const hits: { at: number; amount: number; source: DamageSource; beforeBreakdownReset?: boolean }[] = [];
   const prune = (at: number) => { while (hits.length && at - hits[0].at > DPS_BREAKDOWN_WINDOW_MS) hits.shift(); };
   /** Damage over the time the hits cover, at least a second and at most the window, so a fight's first hits read true. */
   const seconds = (at: number, firstAt: number, window: number) => Math.min(window, Math.max(1_000, at - firstAt)) / 1_000;
   return {
-    record(amount: number, source: DamageSource) {
+    record(amount: number, source: DamageSource, target?: DpsBossTarget) {
       if (!(amount > 0) || !Number.isFinite(amount)) return;
       const at = now();
+      started ??= at;
+      if (target && !target.dead) {
+        boss.record(amount, source, target);
+        showBoss = true;
+      }
       prune(at);
       hits.push({ at, amount, source });
     },
@@ -35,8 +45,18 @@ export function createDpsMeter(now: () => number = () => performance.now()) {
     },
     /** Clear the breakdown without resetting the separate short-window HUD readout. */
     resetBreakdown() {
+      started = null;
       for (const hit of hits) hit.beforeBreakdownReset = true;
     },
+    elapsedMs: () => started === null ? 0 : Math.max(0, now() - started),
+    bossSnapshot: boss.snapshot,
+    autoBossSnapshot: () => {
+      const fight = boss.snapshot();
+      return showBoss && fight.rows.length ? fight : null;
+    },
+    resetBoss: () => { boss.reset(); showBoss = false; },
+    dismissBoss: () => { showBoss = false; },
+    tickBoss: boss.tick,
     /** Each source's damage per second over the breakdown window, biggest first. */
     breakdown() {
       const at = now();
@@ -53,3 +73,6 @@ export function createDpsMeter(now: () => number = () => performance.now()) {
 
 /** The game's own meter: the combat wiring records each hit, the HUD readout reads it. */
 export const playerDps = createDpsMeter();
+
+/** Independent history for the integrated tracker, including its reset and boss views. */
+export const statTrackerDps = createDpsMeter();

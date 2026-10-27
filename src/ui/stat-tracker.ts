@@ -142,10 +142,14 @@ export function installStatTracker(options: {
   settings.querySelector('.stat-tracker-filters')!.before(compactLabel);
   const compactOptions = document.createElement('fieldset');
   compactOptions.className = 'stat-tracker-compact-options';
-  const compactLegend = document.createElement('legend');
-  compactLegend.textContent = 'Compact display';
-  compactOptions.append(compactLegend);
-  compactLabel.after(compactOptions);
+  compactOptions.setAttribute('aria-label', 'Compact display');
+  const compactDisclosure = document.createElement('details');
+  compactDisclosure.className = 'stat-tracker-show-options stat-tracker-compact-disclosure';
+  const compactSummary = document.createElement('summary');
+  compactSummary.textContent = 'Compact display';
+  compactDisclosure.append(compactSummary, compactOptions);
+  compactLabel.after(compactDisclosure);
+  compactDisclosure.addEventListener('toggle', () => { if (!settings.hidden) placeSettings(); });
   const iconsLabel = document.createElement('label');
   iconsLabel.className = 'stat-tracker-compact-option';
   const iconsToggle = document.createElement('input');
@@ -183,6 +187,7 @@ export function installStatTracker(options: {
   function renderCompact() {
     panel.classList.toggle('is-compact', compact);
     compactOptions.hidden = !compact;
+    compactDisclosure.hidden = !compact;
     // Keep at least one numeric column visible, even after restoring an invalid preference.
     if (!columnOptions.some(column => column.input.checked)) columnOptions[2].input.checked = true;
     const visibleColumns = columnOptions.filter(column => column.input.checked).length;
@@ -218,6 +223,16 @@ export function installStatTracker(options: {
   });
   const cells = new Map(TRACKED_STATS.map(stat => [stat, panel.querySelectorAll<HTMLTableCellElement>(`[data-stat="${stat}"] td`)]));
   const dps = installStatTrackerDps(panel, settings, options.storage);
+  const filters = settings.querySelector<HTMLFieldSetElement>('.stat-tracker-filters')!;
+  const showOptions = document.createElement('details');
+  showOptions.className = 'stat-tracker-show-options';
+  const showSummary = document.createElement('summary');
+  showSummary.textContent = 'Stats to display';
+  filters.querySelector('legend')!.remove();
+  filters.setAttribute('aria-label', 'Stats to show');
+  filters.before(showOptions);
+  showOptions.append(showSummary, filters);
+  showOptions.addEventListener('toggle', () => { if (!settings.hidden) placeSettings(); });
   let enabled = false, lastSave = 0, collapsed = false;
   try {
     enabled = options.storage.getItem(ENABLED_KEY) === 'true';
