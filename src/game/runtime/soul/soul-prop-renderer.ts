@@ -57,13 +57,16 @@ export function createSoulPropRenderer(options: {
   devicePixelRatio: () => number;
   /** Seconds, for the pack's animations. */
   time: () => number;
+  /** True when the 2D canvas draws this frame's world itself (no WebGL sprites): frames drawn larger are cut at size too. */
+  drawsOnCanvas?: () => boolean;
 }) {
   // Live draws copy each frame cut at its size on screen (shrunk-image.ts); baking into tiles (a target) draws from the sheet.
   const shrunkImages = createShrunkImages();
   const sheetFrame = (ctx: CanvasRenderingContext2D, image: HTMLImageElement | ImageBitmap, frame: { x: number; y: number; w: number; h: number }, w: number, h: number, live: boolean) => {
     if (!live) return null;
     const scale = deviceScale(ctx);
-    return shrunkImages(image, w * scale, h * scale, ctx.imageSmoothingEnabled, frame);
+    const grow = Boolean(options.drawsOnCanvas?.());
+    return shrunkImages(image, w * scale, h * scale, ctx.imageSmoothingEnabled, frame, grow);
   };
   const drawSignpostSprite = createTownSignpostSprites();
   return function drawSoulProp(item: SoulPropDecor, target?: CanvasRenderingContext2D) {
