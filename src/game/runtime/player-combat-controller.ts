@@ -245,7 +245,7 @@ export function createPlayerCombatController(options: {
     player, enemies, currentMapId: options.currentMapId, equippedWeapon: options.equippedWeapon,
     activeBoss: activeMapBoss, roll: weaponSkills, nowSeconds: options.nowSeconds, random,
     isDueling, onCombat: options.onCombat, effects: options.skillEffects, hit: applyPlayerHit,
-    extraWhirlwindTicks: techniques.whirlwindTicks, deflectReturn: techniques.deflectReturn,
+    extraWhirlwindTicks: techniques.whirlwindTicks, deflectReturn: techniques.deflectReturn, reach: () => attackRange(),
   });
   const staffSkills = createStaffSkillRuntime({
     player, enemies, currentMapId: options.currentMapId, equippedWeapon: options.equippedWeapon,

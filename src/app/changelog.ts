@@ -2,6 +2,7 @@ export const RELEASE_NOTES: Record<string, string[]> = {
   "0.917.31": [
     "Profile and Stat Tracker show a bow's full attack speed above the cap instead of Max",
     "Swords turn gold at ★10 and sapphire at ★20, matching Medium armor",
+    "Whirlwind grows with your attack range, so it reaches anything your sword can hit, bosses included",
   ],
   "0.917.30": [
     "Time away you don't collect is kept and added to your next time away, up to your offline limit",
