@@ -279,14 +279,14 @@ describe("Arrows from the Smith", () => {
     await ann.tab.coop.nockArrow("steel_arrow");
     await ann.tab.play(500);
     expect(ann.tab.coop.arrowInPlay()).toBe("steel_arrow");
-    // Arrows fired come off the stack at once; the server takes them a few seconds later.
+    // Arrows fired come off the stack at once; the server takes them some seconds later.
     for (let shot = 0; shot < 150; shot++) ann.tab.coop.recordArrowShot("steel_arrow");
     expect(ann.tab.coop.ores().steel_arrow).toBe(50);
-    await ann.tab.play(4_000);
+    await ann.tab.play(16_000);
     expect(held.ore("steel_arrow")).toBe(50);
     // More reported than held: the server takes what there is, and the bow is back to plain arrows.
     for (let shot = 0; shot < 80; shot++) ann.tab.coop.recordArrowShot("steel_arrow");
-    await ann.tab.play(4_000);
+    await ann.tab.play(16_000);
     expect(held.ore("steel_arrow")).toBe(0);
     expect(ann.tab.coop.arrowInPlay()).toBeNull();
     // The nock is the account's: still nocked after a reload, ready for the next stack.

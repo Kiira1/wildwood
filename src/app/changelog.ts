@@ -1,7 +1,17 @@
 export const RELEASE_NOTES: Record<string, string[]> = {
+  "0.917.30": [
+    "Time away you don't collect is kept and added to your next time away, up to your offline limit",
+    "The World Map has a Town page: the village, Timberwood, the Copper Hills and the Trade Chrysanthemum, and where you are",
+    "The Town runs smoother, especially when it's busy and in Firefox and Safari",
+  ],
+  "0.917.29": [
+    "Faster loading and smoother play, especially on phones",
+  ],
+  "0.917.28": [
+    "Stat bonuses show as multipliers (Damage ×1.23) instead of percentages; chances and move speed stay as %",
+  ],
   "0.917.27": [
-    "Added an optional DPS Breakdown view to Stat Tracker",
-    "Switch views in the tracker; Reset only clears the selected view",
+    "Builds save your nocked arrow, and equipping a build nocks it again",
   ],
   "0.917.26": [
     "Craft arrows at the Smith: Steel, Fire, Venom, Frost, Piercing and Star, each with its own effect",
@@ -4015,6 +4025,9 @@ const RELEASE_DATES: Record<string, string> = {
 };
 
 export const RELEASE_DAYS: Record<string, string> = {
+  "0.917.30": "2026-10-26",
+  "0.917.29": "2026-10-26",
+  "0.917.28": "2026-10-26",
   "0.917.27": "2026-10-26",
   "0.917.26": "2026-10-26",
   "0.917.25": "2026-10-26",
@@ -4708,17 +4721,32 @@ export function releaseNotes(version: string) {
   return RELEASE_NOTES[version] ?? [];
 }
 
+type RecentRelease = { version: string; notes: string[]; date: string };
+// Newest first, sorted once; each window is cached by its cutoff day.
+let releasesNewestFirst: { release: RecentRelease; dayMs: number | null }[] | null = null;
+const recentWindows = new Map<string, RecentRelease[]>();
+
+function sortedReleases() {
+  return releasesNewestFirst ??= Object.entries(RELEASE_NOTES)
+    .sort(([a], [b]) => b.localeCompare(a, undefined, { numeric: true }))
+    .map(([version, notes]) => {
+      const day = releaseDay(version);
+      return { release: { version, notes, date: releaseDate(version) }, dayMs: day === null ? null : new Date(`${day}T00:00:00`).getTime() };
+    });
+}
+
 export function recentReleaseNotes(days = 2, today = new Date(), minimumReleases = 10) {
   const cutoff = new Date(today);
   cutoff.setHours(0, 0, 0, 0);
   cutoff.setDate(cutoff.getDate() - Math.max(0, days - 1));
   const minimum = Math.max(0, Math.floor(minimumReleases));
-  return Object.entries(RELEASE_NOTES)
-    .sort(([a], [b]) => b.localeCompare(a, undefined, { numeric: true }))
-    .filter(([version], index) => {
-      if (index < minimum) return true;
-      const day = releaseDay(version);
-      return day !== null && new Date(`${day}T00:00:00`).getTime() >= cutoff.getTime();
-    })
-    .map(([version, notes]) => ({ version, notes, date: releaseDate(version) }));
+  const key = `${cutoff.getTime()}:${minimum}`;
+  const cached = recentWindows.get(key);
+  if (cached) return cached;
+  const releases = sortedReleases()
+    .filter(({ dayMs }, index) => index < minimum || (dayMs !== null && dayMs >= cutoff.getTime()))
+    .map(({ release }) => release);
+  if (recentWindows.size > 16) recentWindows.clear();
+  recentWindows.set(key, releases);
+  return releases;
 }

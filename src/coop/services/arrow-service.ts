@@ -3,8 +3,10 @@ import { arrowsSpent, isArrowId, type ArrowId } from "../../../shared/arrows";
 import type { OreId } from "../../../shared/refine";
 
 type Ores = Readonly<Partial<Record<OreId, number>>>;
-/** Spent arrows go to the server this often, and when the page hides. */
-const FLUSH_MS = 3_000;
+/** Spent arrows go to the server this often, and when the page hides or before a call that reads the bag. */
+const FLUSH_MS = 15_000;
+/** The bag's arrow count redraws at most this often while the bow fires. */
+const NOTIFY_MS = 500;
 
 /**
  * The nocked arrow (my_nocked_arrow) and the arrows the bow has fired that the server has not taken yet. Shots are
@@ -16,6 +18,20 @@ export function createArrowRows(connection: () => DbConnection | null, notify: (
   const spent = new Map<ArrowId, number>();
   let pending: Partial<Record<OreId, number>> = {};
   let timer: ReturnType<typeof setTimeout> | null = null;
+  let countTimer: ReturnType<typeof setTimeout> | null = null;
+  let countShownAt = Number.NEGATIVE_INFINITY;
+
+  function showCount() {
+    countShownAt = Date.now();
+    countTimer = null;
+    notify();
+  }
+  function countChanged() {
+    if (countTimer) return;
+    const wait = countShownAt + NOTIFY_MS - Date.now();
+    if (wait <= 0) showCount();
+    else countTimer = setTimeout(showCount, wait);
+  }
 
   function rebuildPending() {
     pending = {};
@@ -66,7 +82,7 @@ export function createArrowRows(connection: () => DbConnection | null, notify: (
         spent.set(arrowId, (spent.get(arrowId) ?? 0) + arrowsSpent(1, saveChance));
         const before = pending[arrowId] ?? 0;
         rebuildPending();
-        if ((pending[arrowId] ?? 0) !== before) notify();
+        if ((pending[arrowId] ?? 0) !== before) countChanged();
         timer ??= setTimeout(flush, FLUSH_MS);
       },
       async nockArrow(arrowId: ArrowId | null) {

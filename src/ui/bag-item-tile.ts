@@ -54,16 +54,17 @@ export function appendOreTileContents(button: HTMLElement, oreId: OreId, count: 
   button.append(art, label, stack);
 }
 
-/** Damage, Max Health and Regen as short coloured values. */
+/** Damage, Max Health and Regen as short coloured multipliers. */
 function statValues(itemId: string, tier: number, refine: number) {
   const bonuses = document.createElement("span");
   bonuses.className = "inventory-item-bonuses";
   for (const stat of itemStats(itemId, { tier, refine })) {
-    const match = /^(DAMAGE|MAX HEALTH|REGEN) (\+[\d.]+)(%?)$/.exec(stat);
+    // A multiplier ("×1.23") as written; an old flat amount ("+5") shortened.
+    const match = /^(DAMAGE|MAX HEALTH|REGEN) (?:(×\S+)|\+([\d.]+))$/.exec(stat);
     if (!match) continue;
     const value = document.createElement("span");
     value.dataset.statKind = match[1] === "DAMAGE" ? "damage" : match[1] === "MAX HEALTH" ? "health" : "regen";
-    value.textContent = `+${formatEquipmentAmount(Number(match[2]))}${match[3]}`;
+    value.textContent = match[2] ?? `+${formatEquipmentAmount(Number(match[3]))}`;
     value.title = stat;
     value.setAttribute("aria-label", stat);
     bonuses.append(value);

@@ -185,13 +185,13 @@ describe("player stat golden fixtures", () => {
     expect(profileRows(fixture)).toMatchInlineSnapshot(`
       [
         "health | 100 1.00 = 100 | ",
-        "damage | 3 1.05 = 3 | Equipment +5%",
+        "damage | 3 1.05 = 3 | Equipment ×1.05",
         "armor | 0 1.00 = 0 (0% Block) | ",
         "attack | 0.64/s 1.15 = 0.74/s (0.74/s) 3.00/s Cap | Equipment +15% (Bow)",
         "range | 200 1.00 = 200 | ",
         "regen | 0.20/s 1.00 = 0.20/s | ",
         "speed | 200 1.00 = 200 | ",
-        "stat-gain | 1.00 1.00 = +0% (1.00×) | ",
+        "stat-gain | 1.00 1.00 = ×1 | ",
         "critical | 0% 10% = 10% | Equipment +10% (Bow)",
         "critical-damage | 1.05× 0.00× = 1.05× (1.05×) 5× Cap | ",
       ]
@@ -250,14 +250,14 @@ describe("player stat golden fixtures", () => {
     `);
     expect(profileRows(fixture)).toMatchInlineSnapshot(`
       [
-        "health | 4,200 1.63 = 6,836 | Tech +16%, Equipment +28.8%, Slot Upgrade +11.52%",
-        "damage | 380 2.18 = 827 | Tech +20%, Equipment +36%, Slot Upgrade +17.28%, Refine +15.98%, Class Set +5%, Cards +2%",
-        "armor | 45 1.67 = 75 (23.4% Block) | Tech +12%, Boots +45%, Cards +3%",
+        "health | 4,200 1.63 = 6,836 | Tech ×1.16, Equipment ×1.29, Slot Upgrade ×1.09",
+        "damage | 380 2.18 = 827 | Tech ×1.2, Equipment ×1.36, Slot Upgrade ×1.13, Refine ×1.1, Class Set ×1.05, Cards ×1.02",
+        "armor | 45 1.67 = 75 (23.4% Block) | Tech ×1.12, Boots ×1.45, Cards ×1.03",
         "attack | 1.43/s 1.15 = 1.64/s (1.64/s) 3.00/s Cap | Equipment +15% (Bow)",
         "range | 200 1.12 = 224 | Tech +20 range, Mastery +4 range",
-        "regen | 9.00/s 1.58 = 14.2/s | Tech +10%, Equipment +28.8%, Slot Upgrade +9.22%, Refine +5.7%",
+        "regen | 9.00/s 1.58 = 14.2/s | Tech ×1.1, Equipment ×1.29, Slot Upgrade ×1.07, Refine ×1.04",
         "speed | 200 1.21 = 243 | Tech +10%, Tech +9 speed, Armor +6%",
-        "stat-gain | 1.10 1.00 = +10% (1.10×) | Tech 1.10×",
+        "stat-gain | 1.10 1.00 = ×1.1 | Tech ×1.1",
         "critical | 0% 14% = 14% | Tech +4%, Equipment +10% (Bow)",
         "critical-damage | 1.05× 0.25× = 1.30× (1.30×) 5× Cap | Tech +0.15×",
         "riposte | 0% 1.5% = 1.5% (Reflects 100% of each hit before armor, up to half your max health; no cap in Reflect Only; half in duels) | Cards +1.5%",
@@ -317,14 +317,14 @@ describe("player stat golden fixtures", () => {
     `);
     expect(profileRows(fixture)).toMatchInlineSnapshot(`
       [
-        "health | 2.50m 20.57 = 51.5m | Soul +1,500, Tech +110%, Equipment +120%, Slot Upgrade +278.4%, Refine +517.92%, Cards -3.6%",
-        "damage | 180,400 41.76 = 7.53m | Soul +400, Tech +120%, Equipment +180%, Slot Upgrade +432%, Refine +918%, Class Set +5%, Cards +10.9%",
-        "armor | 2,460 2.14 = 5,259 (57.7% Block) | Soul +60, Tech +100%, Cards +6.9%",
+        "health | 2.50m 20.57 = 51.5m | Soul +1,500, Tech ×2.1, Equipment ×2.2, Slot Upgrade ×2.27, Refine ×2.04, Cards ×0.96",
+        "damage | 180,400 41.76 = 7.53m | Soul +400, Tech ×2.2, Equipment ×2.8, Slot Upgrade ×2.54, Refine ×2.29, Class Set ×1.05, Cards ×1.11",
+        "armor | 2,460 2.14 = 5,259 (57.7% Block) | Soul +60, Tech ×2, Cards ×1.07",
         "attack | 2.22/s 1.00 = 2.22/s (2.22/s) 3.40/s Cap | Soul +0.000/s",
         "range | 75 1.84 = 138 | Tech +50 range, Prestige +10 range, Cards +3 range",
-        "regen | 912/s 15.67 = 14.3k/s | Soul +12.0/s, Tech +90%, Equipment +120%, Slot Upgrade +264%, Refine +384%, Cards -5%",
+        "regen | 912/s 15.67 = 14.3k/s | Soul +12.0/s, Tech ×1.9, Equipment ×2.2, Slot Upgrade ×2.2, Refine ×1.79, Cards ×0.95",
         "speed | 200 1.81 = 362 | Tech +50%, Tech +15 speed, Prestige +6%, Cards +0.9%, Boots +25 speed",
-        "stat-gain | 1.40 1.84 = +158% (2.58×) | Tech 1.40×, Prestige 1.60×, Guild 1.15×",
+        "stat-gain | 1.40 1.84 = ×2.58 | Tech ×1.4, Prestige ×1.6, Guild ×1.15",
         "critical | 0% 47% = 47% | Tech +20%, Prestige +25%, Cards +2%",
         "critical-damage | 1.05× 2.19× = 3.24× (3.24×) 8× Cap | Tech +0.93×, Prestige +0.56×, Soul +0.09×",
         "double-strike | 0% 8% = 8% (Chance a hit lands twice) | Prestige +8%",

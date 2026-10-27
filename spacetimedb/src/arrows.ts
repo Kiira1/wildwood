@@ -64,14 +64,19 @@ function craftArrowsFor(ctx: Ctx, args: { arrowId: string; crafts: number }, dep
   addOres(ctx, ctx.sender, arrowId, kind.makes * crafts);
 }
 
+/** Nocks a kind, or none (plain arrows). A Build puts back the one it was saved with (builds.ts). */
+export function setNockedArrow(ctx: Ctx, identity: Identity, arrowId: ArrowId | null) {
+  const existing = ctx.db.playerNockedArrow.identity.find(identity);
+  if (!arrowId) { if (existing) ctx.db.playerNockedArrow.identity.delete(identity); return; }
+  const row = { identity, arrowId };
+  if (existing) ctx.db.playerNockedArrow.identity.update(row); else ctx.db.playerNockedArrow.insert(row);
+}
+
 /** Nocks a kind (it need not be held yet), or none: the bow shoots plain arrows. */
 function nockArrowFor(ctx: Ctx, args: { arrowId: string }, deps: CraftingDeps) {
   deps.requireControllingPlayer(ctx);
-  const existing = ctx.db.playerNockedArrow.identity.find(ctx.sender);
-  if (!args.arrowId) { if (existing) ctx.db.playerNockedArrow.identity.delete(ctx.sender); return; }
-  if (!isArrowId(args.arrowId)) throw new SenderError("That is not an arrow.");
-  const row = { identity: ctx.sender, arrowId: args.arrowId };
-  if (existing) ctx.db.playerNockedArrow.identity.update(row); else ctx.db.playerNockedArrow.insert(row);
+  if (args.arrowId && !isArrowId(args.arrowId)) throw new SenderError("That is not an arrow.");
+  setNockedArrow(ctx, ctx.sender, args.arrowId ? args.arrowId as ArrowId : null);
 }
 
 /** Arrows the bow fired, reported in batches: as many as are held are taken, never more. */
