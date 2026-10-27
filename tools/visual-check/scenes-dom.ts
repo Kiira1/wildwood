@@ -32,6 +32,11 @@ import { createOfflineProgressSummary } from "../../src/ui/offline-progress-summ
 import { questTrackerView } from "../../src/ui/quest-board-controller";
 import { CAMPAIGN_MAPS } from "../../shared/campaign-registry";
 import { CARDS } from "../../shared/cards";
+import { createMapGuideController } from "../../src/ui/map-guide-controller";
+import { createGameBootstrap } from "../../src/game/runtime/game-bootstrap";
+import { mapWorldLayout } from "../../src/game/map-layout";
+import { mapArtReady, sharedAssets } from "./game-world";
+import { TOWN_ARRIVAL } from "../../shared/town";
 
 let markup: Promise<Document> | null = null;
 
@@ -536,6 +541,31 @@ async function dpsBreakdown() {
   await settleCssImages();
 }
 
-export const DOM_SCENES: Record<string, () => Promise<void>> = { icons, hud, wordmark, shops, "gem-shop": gemShop, "server-boost": serverBoost, "exchange-window": exchangeWindow, grades, "quest-tracker": questTracker, "dps-breakdown": dpsBreakdown, builds, "offline-choice": offlineChoice,
+/** The World Map opened in the Town: the Town's own page, with the player at the arrival. */
+async function worldMapTown() {
+  const doc = await gameMarkup();
+  document.body.style.background = "#151515";
+  for (const node of doc.body.children) document.body.append(document.importNode(node, true));
+  await import("../../src/ui/game-shell");
+  const guide = byId("mapGuide");
+  await mapArtReady("town");
+  const state = createGameBootstrap();
+  const player = Object.assign(state.player, { x: TOWN_ARRIVAL.x, y: TOWN_ARRIVAL.y });
+  const town = state.mapConfig.town;
+  const trigger = document.createElement("button");
+  createMapGuideController({
+    trigger, overlay: guide, title: byId("mapGuideTitle"), canvas: byId<HTMLCanvasElement>("mapGuideCanvas"),
+    zoneLabels: byId("mapGuideZoneLabels"), dropItems: byId("mapGuideDropItems"), back: byId<HTMLButtonElement>("mapGuideBack"),
+  }, {
+    currentMapId: () => "town", mapName: mapId => state.mapConfig[mapId].name, paths: mapWorldLayout(player, "town").paths, spawnSites: [], player,
+    boss: () => null, mapUnlocked: () => true,
+    portals: () => [town.portal, town.secondaryPortal].flatMap(portal => portal ? [{ x: portal.x, y: portal.y, destination: portal.destination, unlocked: true }] : []),
+    villageGround: () => sharedAssets().assets.townVillageGround, beforeOpen: () => {}, clearPlayerInput: () => {},
+  });
+  trigger.click();
+  await settleCssImages();
+}
+
+export const DOM_SCENES: Record<string, () => Promise<void>> = { "world-map-town": worldMapTown, icons, hud, wordmark, shops, "gem-shop": gemShop, "server-boost": serverBoost, "exchange-window": exchangeWindow, grades, "quest-tracker": questTracker, "dps-breakdown": dpsBreakdown, builds, "offline-choice": offlineChoice,
   "chat-announcement": chatAnnouncement, "item-window": () => itemWindow(false), "card-window": cardWindow, "item-window-worn": () => itemWindow(true),
   "profile-own": () => profileWindow(true), "profile-other": () => profileWindow(false) };

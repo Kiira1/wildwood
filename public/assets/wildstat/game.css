@@ -3553,10 +3553,12 @@
   .map-guide-zone-label strong { display: block; overflow: hidden; font-size: 1em; text-overflow: ellipsis; white-space: nowrap; }
   .map-guide-zone-rewards { display: block; margin: 0; font-size: .9em; font-weight: 900; white-space: normal; }
   .map-guide-boss-label { color: #ffad9d; white-space: nowrap; }
+  .map-guide-zone-label.is-place { max-width: none; font-size: 13px; }
   .map-guide-boss-label.is-defeated { opacity: .55; }
   .map-guide-enemies { display: grid; gap: 8px; }
   .map-guide-enemies h3 { margin: 0; color: #fff; font-size: var(--font-readable-title); line-height: 1; }
   .map-guide-drops { display: grid; gap: 8px; }
+  .map-guide-content > section[hidden] { display: none; }
   .map-guide-drops > header { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; }
   .map-guide-drops h3 { margin: 0; color: #fff; font-size: var(--font-readable-title); line-height: 1; }
   .map-guide-drop-items { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
