@@ -1,4 +1,7 @@
 export const RELEASE_NOTES: Record<string, string[]> = {
+  "0.917.29": [
+    "Faster loading and smoother play, especially on phones",
+  ],
   "0.917.28": [
     "Stat bonuses show as multipliers (Damage ×1.23) instead of percentages; chances and move speed stay as %",
   ],
@@ -4017,6 +4020,7 @@ const RELEASE_DATES: Record<string, string> = {
 };
 
 export const RELEASE_DAYS: Record<string, string> = {
+  "0.917.29": "2026-10-26",
   "0.917.28": "2026-10-26",
   "0.917.27": "2026-10-26",
   "0.917.26": "2026-10-26",
