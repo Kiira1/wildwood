@@ -1,5 +1,6 @@
 export const RELEASE_NOTES: Record<string, string[]> = {
   "0.917.32": [
+    "Fixed the Stat Tracker's attack speed with a bow at the cap",
     "Added an optional DPS Breakdown view to Stat Tracker",
     "Switch views in the tracker; Reset only clears the selected view",
     "Stats and DPS now have separate timers",

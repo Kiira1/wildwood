@@ -16,6 +16,7 @@ export const DAMAGE_SOURCE_NAMES = {
 } as const;
 export type DamageSource = keyof typeof DAMAGE_SOURCE_NAMES;
 
+/** Amounts a second by source over a short window: damage dealt here, and healing (player-health.ts). */
 export function createDpsMeter<Source extends string = DamageSource>(now: () => number = () => performance.now()) {
   const boss = createBossDpsMeter<Source>(now);
   let showBoss = false;
