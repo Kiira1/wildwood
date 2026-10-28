@@ -21,7 +21,7 @@ import { enemyDefeatBudget, playerDefeatClock, playerMapDeparture, acceptEnemyDe
 import { grantVirtualPlayerConsent, revokeVirtualPlayerConsent } from "./virtual-player-consent";
 import { offlineProgressTables, beginOfflineWindow, grantOfflineProgress, collectOfflineProgress, setSimulatedTimeAway } from "./offline-progress";
 import { offlineGatherChoice } from "./offline-gathering";
-import { ensureRunTiming, playerRunTiming } from "./run-timing";
+import { ensureRunTiming, playerRunTiming, playerRunHistory } from "./run-timing";
 import { playerNockedArrow, registerArrows } from "./arrows";
 import { offlineActivity } from "../../shared/offline-gathering";
 import { playerOfflinePreference, writeOfflinePreference } from "./offline-preference";
@@ -1426,7 +1426,7 @@ const spacetimedb = schema({
   playerGemWallet,
   gemTransaction,
   dailyGemBonus,
-  playerAdReward, playerAdWatch, playerChatMute, playerClientHost, offlineGatherChoice, playerRunTiming, playerNockedArrow,
+  playerAdReward, playerAdWatch, playerChatMute, playerClientHost, offlineGatherChoice, playerRunTiming, playerRunHistory, playerNockedArrow,
   balanceApologyNotice,
   playerEquipmentLock, playerItemGift, playerBowSkill, playerSwordSkill, playerStaffSkill, playerWornStaffSkill, playerEquipmentCopy, pendingEquipmentOffer, playerIgnoredDrop, playerLootSetting, playerItemRefine, playerCopyRefine, playerOre, playerRefineResult, playerRefinePity, playerCard, playerGearSlots, playerCopySlots, playerCardDrop, playerCardAttackCap, playerBossCardRoll, playerBuild, playerBuildName, playerWeaponMastery, playerMasteryLevel, playerGold, playerCardMeter, playerCardShopPurchase, playerItemCollection, playerWornSkill, playerMining, playerMinedNode, playerMiningLevel, playerWoodcutting, playerChoppedTree, playerWoodcuttingLevel, playerCraftSkill, playerCraftLevel, playerTool, oldGearPayout, playerStarterWeapon, gemKillDaily, gemLedgerTrim,
   mailboxLetter, mailboxReceipt, playerJoinDate, mailboxEquipment, accountDeletionRequest,
@@ -3353,6 +3353,10 @@ export const myOfflineGatherChoice = spacetimedb.view(
 export const myRunTiming = spacetimedb.view(
   { name: "my_run_timing", public: true }, t.array(playerRunTiming.rowType),
   ctx => { const row = ctx.db.playerRunTiming.identity.find(ctx.sender); return row ? [row] : []; },
+);
+/** The caller's finished runs (run-timing.ts), for the run log and personal bests. */
+export const myRunHistory = spacetimedb.view(
+  { name: "my_run_history", public: true }, t.array(playerRunHistory.rowType), ctx => [...ctx.db.playerRunHistory.identity.filter(ctx.sender)],
 );
 
 export const myOfflinePreference = spacetimedb.view(

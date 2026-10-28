@@ -1,4 +1,8 @@
 export const RELEASE_NOTES: Record<string, string[]> = {
+  "0.917.34": [
+    "New Runs tab in Prestige: this run's boss splits against your best, and a log of every run from now on",
+    "New Run Timer under the minimap (turn it on in Settings) shows your run time and how far ahead or behind your best you are",
+  ],
   "0.917.33": [
     "Your nocked arrow and how many are left show beside your gold while you hold a bow; tap it to manage them",
     "Research can only be started at Tech Research in Town",
@@ -4043,6 +4047,7 @@ const RELEASE_DATES: Record<string, string> = {
 };
 
 export const RELEASE_DAYS: Record<string, string> = {
+  "0.917.34": "2026-10-27",
   "0.917.33": "2026-10-27",
   "0.917.32": "2026-10-27",
   "0.917.31": "2026-10-27",

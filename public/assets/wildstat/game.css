@@ -1304,6 +1304,7 @@
   .hud-progress-timer[hidden] { display: none; }
   .hud-progress-timer-tech { color: #77caff; }
   .hud-progress-timer-slot { color: #ffd367; }
+  .hud-progress-timer-run { color: #fff; font-variant-numeric: tabular-nums; }
   .hud-progress-timer.hud-server-boost { color: #fff; }
   /* Research Ready and Smith upgrades under the timers; away from the Town a tap goes there. */
   .hud-reminder { box-sizing: border-box; width: 100%; min-height: 0; margin: 0; padding: 4px 3px; border: var(--hud-border) solid var(--hud-frame); border-radius: var(--hud-radius-small); background: var(--hud-surface); box-shadow: var(--ui-shadow); outline: var(--hud-seam); outline-offset: -1px; color: #fff; font: 900 13px/1.2 var(--font-rounded); letter-spacing: .02em; text-align: center; text-shadow: 1px 2px 0 #000; white-space: normal; pointer-events: auto; cursor: pointer; }
@@ -3044,7 +3045,23 @@
   .prestige-summary dt { color: #8c94a1; font-size: 9px; letter-spacing: .06em; }
   .prestige-summary dd { margin: 2px 0 0; color: #fff; font-size: 13px; }
   /* Perks | Challenge, underlined like the inventory tabs. */
-  .prestige-tabs { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; border-bottom: 1px solid #2b3a52; }
+  .prestige-tabs { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; border-bottom: 1px solid #2b3a52; }
+  .prestige-tab { font-size: 13px; letter-spacing: .02em; }
+  /* Runs: the live run's splits, then past runs that open to theirs. */
+  .prestige-runs-live, .prestige-runs-past { display: grid; gap: 8px; }
+  .prestige-runs-heading { margin: 4px 0 0; color: #c2c7ce; font-size: 13px; letter-spacing: .02em; }
+  .prestige-splits { display: grid; gap: 2px; margin: 0; padding: 0; list-style: none; }
+  .prestige-splits li, .prestige-run summary { display: grid; grid-template-columns: minmax(0, 1fr) auto 64px; gap: 8px; align-items: center; padding: 6px 8px; border-radius: 6px; background: rgba(0,0,0,.28); color: #fff; font-size: 13px; }
+  .prestige-run summary { cursor: pointer; list-style: none; }
+  .prestige-run summary::-webkit-details-marker { display: none; }
+  .prestige-run[open] summary { background: rgba(255,255,255,.08); }
+  .prestige-run .prestige-splits { margin: 2px 0 6px 12px; }
+  .prestige-split-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .prestige-split-time { font-variant-numeric: tabular-nums; }
+  .prestige-split-delta { color: #8c94a1; text-align: right; font-variant-numeric: tabular-nums; }
+  .prestige-split-delta.is-ahead { color: #fff4d6; }
+  .prestige-splits .prestige-split-none { display: block; color: #8c94a1; }
+  .prestige-runs-note { margin: 0; color: #8c94a1; font-size: 13px; line-height: 1.35; }
   .prestige-tab { position: relative; min-width: 0; height: 38px; min-height: 38px; margin: 0; padding: 0 10px 5px; border: 0; border-radius: 0; background: transparent; box-shadow: none; color: #8c94a1; font: 900 12px/1 var(--font-rounded); letter-spacing: .06em; }
   .prestige-tab::after { position: absolute; bottom: -1px; left: 18%; right: 18%; height: 3px; border-radius: 2px; background: transparent; content: ""; }
   .prestige-tab.is-active { background: transparent; color: #fff4d6; box-shadow: none; }

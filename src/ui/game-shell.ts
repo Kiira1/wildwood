@@ -377,8 +377,9 @@ const afterUpdateGateShell = String.raw`
       <div id="prestigeLevel" class="prestige-level" aria-live="polite">PRESTIGE 0</div>
     </header>
     <div class="prestige-tabs" role="tablist" aria-label="Prestige view">
-      <button id="prestigePerksTabBtn" class="prestige-tab is-active" type="button" role="tab" aria-selected="true" aria-controls="prestigePerksTab">PERKS</button>
-      <button id="prestigeChallengeTabBtn" class="prestige-tab" type="button" role="tab" aria-selected="false" aria-controls="prestigeChallengeTab" tabindex="-1">CHALLENGE</button>
+      <button id="prestigePerksTabBtn" class="prestige-tab is-active" type="button" role="tab" aria-selected="true" aria-controls="prestigePerksTab">Perks</button>
+      <button id="prestigeChallengeTabBtn" class="prestige-tab" type="button" role="tab" aria-selected="false" aria-controls="prestigeChallengeTab" tabindex="-1">Challenge</button>
+      <button id="prestigeRunsTabBtn" class="prestige-tab" type="button" role="tab" aria-selected="false" aria-controls="prestigeRunsTab" tabindex="-1">Runs</button>
     </div>
     <div id="prestigePerksTab" class="prestige-tab-panel" role="tabpanel" aria-labelledby="prestigePerksTabBtn">
       <dl class="prestige-summary">
@@ -390,6 +391,7 @@ const afterUpdateGateShell = String.raw`
       <p id="prestigeCost" class="prestige-cost"></p>
     </div>
     <div id="prestigeChallengeTab" class="prestige-tab-panel" role="tabpanel" aria-labelledby="prestigeChallengeTabBtn" hidden></div>
+    <div id="prestigeRunsTab" class="prestige-tab-panel prestige-runs" role="tabpanel" aria-labelledby="prestigeRunsTabBtn" hidden></div>
     <div id="prestigeStatus" class="prestige-status" role="status" aria-live="polite"></div>
     <footer class="prestige-footer">
       <button id="prestigeConfirmBtn" class="prestige-confirm" type="button">Prestige</button>

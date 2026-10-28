@@ -691,6 +691,15 @@
       "regen:u64",
       "speed:u64"
     ],
+    "my_run_history": [
+      "id:u64",
+      "identity:identity",
+      "prestige:u32",
+      "playedMicros:u64",
+      "wholeRun:bool",
+      "bossClears:string",
+      "endedAt:timestamp"
+    ],
     "my_run_timing": [
       "identity:identity",
       "prestige:u32",
