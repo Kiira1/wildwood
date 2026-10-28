@@ -2,6 +2,7 @@ export const RELEASE_NOTES: Record<string, string[]> = {
   "0.917.33": [
     "Your nocked arrow and how many are left show beside your gold while you hold a bow; tap it to manage them",
     "Research can only be started at Tech Research in Town",
+    "Each failed refine try past the safe level raises that item's next chance a little; the Smith shows how much",
   ],
   "0.917.32": [
     "Fixed the Stat Tracker's attack speed with a bow at the cap",

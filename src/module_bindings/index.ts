@@ -348,6 +348,7 @@ import MyOnboardingRow from "./my_onboarding_table";
 import MyOresRow from "./my_ores_table";
 import MyPlayerBlocksRow from "./my_player_blocks_table";
 import MyProceduralBossRow from "./my_procedural_boss_table";
+import MyRefinePityRow from "./my_refine_pity_table";
 import MyRefineResultRow from "./my_refine_result_table";
 import MyResearchRanksRow from "./my_research_ranks_table";
 import MyRewardKillsRow from "./my_reward_kills_table";
@@ -1664,6 +1665,13 @@ const tablesSchema = __schema({
     constraints: [
     ],
   }, MyProceduralBossRow),
+  myRefinePity: __table({
+    name: 'my_refine_pity',
+    indexes: [
+    ],
+    constraints: [
+    ],
+  }, MyRefinePityRow),
   myRefineResult: __table({
     name: 'my_refine_result',
     indexes: [

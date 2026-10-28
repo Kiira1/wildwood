@@ -141,6 +141,7 @@ export const ERASURE_TARGETS: readonly ErasureTarget[] = [
   { table: "playerMiningLevel", columns: ["identity"], pk: "identity", mode: "key" },
   { table: "playerCopySlots", columns: ["identity"], pk: "copyId", mode: "index", index: "identity" },
   { table: "playerRefineResult", columns: ["identity"], pk: "identity", mode: "key" },
+  { table: "playerRefinePity", columns: ["identity"], pk: "key", mode: "index", index: "identity" },
   { table: "playerMining", columns: ["identity"], pk: "identity", mode: "key" },
   { table: "playerMinedNode", columns: ["identity"], pk: "key", mode: "index", index: "identity" },
   { table: "playerWoodcutting", columns: ["identity"], pk: "identity", mode: "key" },

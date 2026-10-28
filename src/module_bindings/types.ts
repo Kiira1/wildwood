@@ -1163,6 +1163,9 @@ export type MyPlayerBlocks = __Infer<typeof MyPlayerBlocks>;
 export const MyProceduralBoss = __t.object("MyProceduralBoss", {});
 export type MyProceduralBoss = __Infer<typeof MyProceduralBoss>;
 
+export const MyRefinePity = __t.object("MyRefinePity", {});
+export type MyRefinePity = __Infer<typeof MyRefinePity>;
+
 export const MyRefineResult = __t.object("MyRefineResult", {});
 export type MyRefineResult = __Infer<typeof MyRefineResult>;
 
@@ -2213,6 +2216,16 @@ export const PlayerQuestWeekTotal = __t.object("PlayerQuestWeekTotal", {
   lastDone: __t.u32(),
 });
 export type PlayerQuestWeekTotal = __Infer<typeof PlayerQuestWeekTotal>;
+
+export const PlayerRefinePity = __t.object("PlayerRefinePity", {
+  key: __t.string(),
+  identity: __t.identity(),
+  itemId: __t.string(),
+  copyId: __t.u64(),
+  level: __t.u8(),
+  fails: __t.u32(),
+});
+export type PlayerRefinePity = __Infer<typeof PlayerRefinePity>;
 
 export const PlayerRefineResult = __t.object("PlayerRefineResult", {
   identity: __t.identity(),

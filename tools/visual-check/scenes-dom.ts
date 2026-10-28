@@ -209,6 +209,7 @@ async function shops() {
   for (const view of ["craft", "craft", "reforge", "refine"] as const) {
     createSmithController({
       inTown: () => true, items: () => held, refineLevel: (_itemId, copyId) => copyId ? 2 : 7, slotTier: () => 3, ores: () => ores, refine: done,
+      refineFails: () => 3,
       showMessage: () => {},
       craft: {
         craftSkills: () => ({ fletching: BigInt(craftExperienceForLevel(24)), smithing: BigInt(craftExperienceForLevel(6)) }),

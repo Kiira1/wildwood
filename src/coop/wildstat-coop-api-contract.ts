@@ -18,6 +18,7 @@ type ExpectedApiKey =
   | "cosmeticRefine"
   | "ores"
   | "destroyOre"
+  | "refineFails"
   | "lastRefineResult"
   | "setOnRefineResult"
   | "refineItem"

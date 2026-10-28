@@ -659,6 +659,14 @@
       "maxHp:f64",
       "respawnAtMicros:u64"
     ],
+    "my_refine_pity": [
+      "key:string",
+      "identity:identity",
+      "itemId:string",
+      "copyId:u64",
+      "level:u8",
+      "fails:u32"
+    ],
     "my_refine_result": [
       "identity:identity",
       "itemId:string",
