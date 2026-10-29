@@ -30,8 +30,6 @@ export type AutoMineSource = {
   serverNowMs?: () => number;
   /** The player's research: Resource Respawn shortens how long rocks and trees take to grow back (shared/gather-respawn.ts). */
   research?: () => { resourceRespawn?: number };
-  /** Keeps the picks for time away, which is split over them (shared/offline-gathering.ts). */
-  setGatherPicks?: (kind: 'mine' | 'chop', ids: readonly string[]) => void;
 };
 
 /** Where feet stand to mine a rock, from its foot: in front of the stone, else to either side; each within reach. */
@@ -104,7 +102,6 @@ export function createAutoMine(options: AutoGatherOptions & {
 }) {
   const storage = options.storage ?? (() => { try { return window.localStorage; } catch { return undefined; } });
   let picked = new Set<MinePick>(readOres(storage));
-  options.source()?.setGatherPicks?.('mine', [...picked]);
   /** What a rock gives, for rocks found with no bag room this run: passed over until it is started again. */
   const full = new Set<string>();
   const bagKey = (node: MiningNode) => rockOreKinds(node).join('+');
@@ -150,7 +147,6 @@ export function createAutoMine(options: AutoGatherOptions & {
       if (on) next.add(ore); else next.delete(ore);
       picked = new Set(PICKABLE.filter(id => next.has(id)));
       try { storage()?.setItem(AUTO_MINE_ORES_KEY, JSON.stringify([...picked])); } catch { /* The picks still apply this session. */ }
-      options.source()?.setGatherPicks?.('mine', [...picked]);
       const target = gather.state().target;
       if (target && !givesPick(target, picked)) gather.forget();
     },

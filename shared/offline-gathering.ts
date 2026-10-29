@@ -4,8 +4,7 @@ import { gatherRespawnMs } from "./gather-respawn";
 
 /**
  * What time away is collected as: the player is shown all three on return and picks one. Fighting is
- * shared/offline-progress.ts; mining and chopping split the time evenly over the open veins or stands of the ores and
- * trees picked for Auto Mine and Auto Chop, or work the deepest one when none is picked.
+ * shared/offline-progress.ts; mining and chopping split the time evenly over every vein or stand the skill opens.
  */
 export type OfflineActivity = "fight" | "mine" | "chop";
 export const offlineActivity = (value: unknown): OfflineActivity | null =>
@@ -56,22 +55,17 @@ function simulateShares<T>(areas: readonly (readonly Spot<T>[])[], skill: number
   return { breaks, skill };
 }
 
-/** The open areas picked, shallowest first, or the deepest open one when none of the picks is open. */
-function pickedAreas(count: number, open: (index: number) => boolean, picked: (index: number) => boolean) {
+/** Every open area, shallowest first; the first is always open. */
+function openAreas(count: number, open: (index: number) => boolean) {
   const opened = Array.from({ length: count }, (_, index) => index).filter(open);
-  const chosen = opened.filter(picked);
-  return chosen.length ? chosen : [opened.at(-1) ?? 0];
+  return opened.length ? opened : [0];
 }
 
-/** The veins mined away: the open veins of the ores picked, else the deepest open; their ore rocks (crystal rocks are left to playing). */
-export function offlineMiningVeins(mining: number, ores: readonly string[] = []) {
-  return pickedAreas(MINING_VEINS.length, index => canMineRock({ kind: "small", vein: index }, mining), index => ores.includes(MINING_VEINS[index].ore));
-}
+/** The veins mined away: every vein this Mining opens; their ore rocks (crystal rocks are left to playing). */
+export const offlineMiningVeins = (mining: number) => openAreas(MINING_VEINS.length, index => canMineRock({ kind: "small", vein: index }, mining));
 
-export function simulateOfflineMining(input: {
-  mining: number; seconds: number; cardSpeed?: number; pickaxe?: number; respawnRank?: number; ores?: readonly string[];
-}) {
-  const veins = offlineMiningVeins(input.mining, input.ores);
+export function simulateOfflineMining(input: { mining: number; seconds: number; cardSpeed?: number; pickaxe?: number; respawnRank?: number }) {
+  const veins = offlineMiningVeins(input.mining);
   const areas = veins.map(vein => MINING_NODES.filter(node => node.vein === vein && node.kind !== "crystal").map((node): Spot<MiningNode> => ({
     at: node, gain: miningGain(node),
     seconds: skill => miningBreakSeconds(node, skill, input.cardSpeed ?? 0, input.pickaxe ?? 0),
@@ -82,15 +76,11 @@ export function simulateOfflineMining(input: {
   return { veins, ...simulateShares(areas, input.mining, input.seconds) };
 }
 
-/** The stands chopped away: the open stands of the trees picked, else the deepest open. */
-export function offlineWoodStands(woodcutting: number, trees: readonly string[] = []) {
-  return pickedAreas(WOOD_STANDS.length, index => canChopStand(WOOD_STANDS[index], woodcutting), index => trees.includes(WOOD_STANDS[index].kind));
-}
+/** The stands chopped away: every stand this Woodcutting opens. */
+export const offlineWoodStands = (woodcutting: number) => openAreas(WOOD_STANDS.length, index => canChopStand(WOOD_STANDS[index], woodcutting));
 
-export function simulateOfflineChopping(input: {
-  woodcutting: number; seconds: number; cardSpeed?: number; hatchet?: number; respawnRank?: number; trees?: readonly string[];
-}) {
-  const stands = offlineWoodStands(input.woodcutting, input.trees);
+export function simulateOfflineChopping(input: { woodcutting: number; seconds: number; cardSpeed?: number; hatchet?: number; respawnRank?: number }) {
+  const stands = offlineWoodStands(input.woodcutting);
   const areas = stands.map(stand => WOOD_TREE_NODES.filter(tree => tree.stand === stand).map((tree): Spot<WoodTree> => ({
     at: tree, gain: woodcuttingGain(tree), value: WOODCUTTING_LOGS,
     seconds: skill => woodcuttingChopSeconds(tree, skill, input.hatchet ?? 0, input.cardSpeed ?? 0),

@@ -40,7 +40,7 @@ export const offlineGatherChoice = table({ name: "offline_gather_choice", public
   chopOres: t.string(),
 });
 
-/** The ores and trees picked for Auto Mine and Auto Chop, as JSON lists: what time away is split over. */
+/** Auto Mine and Auto Chop picks that 0.917.34-35 clients still send; time away no longer reads them. Goes with the next client break. */
 export const playerGatherPicks = table({ name: "player_gather_picks", public: false }, {
   identity: t.identity().primaryKey(),
   mineOres: t.string(),
@@ -50,7 +50,6 @@ export const playerGatherPicks = table({ name: "player_gather_picks", public: fa
 type Ctx = any;
 const MINE_PICKS: readonly string[] = MINING_VEINS.map(vein => vein.ore);
 const CHOP_PICKS: readonly string[] = WOOD_STANDS.map(stand => stand.kind);
-const picksOf = (json: string | undefined) => { try { const list = JSON.parse(json ?? "[]"); return Array.isArray(list) ? list as string[] : []; } catch { return []; } };
 
 /** Keeps a device's Auto Mine or Auto Chop picks, only those time away can work. */
 function setGatherPicksFor(ctx: Ctx, args: { kind: string; ids: string[] }) {
@@ -74,15 +73,14 @@ function addCounts(into: Counts, from: Counts) {
   for (const [oreId, count] of Object.entries(from)) into[oreId as OreId] = (into[oreId as OreId] ?? 0) + (count ?? 0);
 }
 
-/** Rolls both for `seconds` away over the picked veins and stands, each break as playing rolls it (no Server Boost, no card drops), and stores them. */
+/** Rolls both for `seconds` away over every open vein and stand, each break as playing rolls it (no Server Boost, no card drops), and stores them. */
 export function storeOfflineGatherChoice(ctx: Ctx, identity: Identity, seconds: number, grantedAtMicros: bigint) {
   const cards = withCourtyardFind(ctx, identity, cardStatFactors(activeCardTotalsFor(ctx, identity))), respawnRank = researchRankFor(ctx, identity, "resourceRespawn");
   // The guild hall's Lanterns: the work goes on faster while away.
   const lanterns = guildHallBonusFor(ctx, identity, "lights");
-  const picks = ctx.db.playerGatherPicks.identity.find(identity);
   const mining = Number(ctx.db.playerMining.identity.find(identity)?.mining ?? 0);
   const pickaxe = toolLevelFor(ctx, identity, "pickaxe");
-  const mined = simulateOfflineMining({ mining, seconds, cardSpeed: cards.miningSpeed + lanterns, pickaxe, respawnRank, ores: picksOf(picks?.mineOres) });
+  const mined = simulateOfflineMining({ mining, seconds, cardSpeed: cards.miningSpeed + lanterns, pickaxe, respawnRank });
   const miningLuck = mined.breaks.some(node => node.kind === "mysterious") ? luckInPlay(ctx, identity).miningLuck : 0;
   const mineOres: Counts = {};
   for (const node of mined.breaks) {
@@ -91,7 +89,7 @@ export function storeOfflineGatherChoice(ctx: Ctx, identity: Identity, seconds: 
   }
   const woodcutting = Number(ctx.db.playerWoodcutting.identity.find(identity)?.woodcutting ?? 0);
   const hatchet = toolLevelFor(ctx, identity, "hatchet");
-  const chopped = simulateOfflineChopping({ woodcutting, seconds, cardSpeed: cards.woodcuttingSpeed + lanterns, hatchet, respawnRank, trees: picksOf(picks?.chopTrees) });
+  const chopped = simulateOfflineChopping({ woodcutting, seconds, cardSpeed: cards.woodcuttingSpeed + lanterns, hatchet, respawnRank });
   const chopOres: Counts = {};
   for (const tree of chopped.breaks) {
     addCounts(chopOres, woodcuttingYield(tree, hatchet > 0 ? toolBonusYield(hatchet, ctx.random()) : 0, cards.logFind,
