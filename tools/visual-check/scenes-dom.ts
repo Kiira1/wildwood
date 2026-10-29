@@ -248,6 +248,8 @@ async function shops() {
       },
     }).open(view);
   }
+  // One grade step on the gear: every line follows it, past Smithing's level for the sword.
+  document.querySelector<HTMLElement>('.smith-sheet [data-view="craft"] .craft-grade-step[aria-label="Lower Grade"]')?.click();
   const arrowSmith = document.querySelectorAll<HTMLElement>(".smith-sheet")[1];
   arrowSmith?.querySelector<HTMLElement>('.station-arrows [data-item-id="fire_arrow"]')?.click();
   try { localStorage.setItem("wildstat.gearSellerView.weapons", "sell"); localStorage.setItem("wildstat.gearSellerView.armor", "buy"); } catch { /* the default views */ }

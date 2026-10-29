@@ -4,7 +4,7 @@ import {
   craftMaterialsShort, craftProgress, gradeCraftLevel, gradeCraftMaterials, gradeCraftNeed, gradeCraftOffer, gradeCraftSkill, isCraftable, lineCraftSkill,
 } from "../../shared/grade-craft";
 import { isSkillWeapon, weaponSkillLines, type WeaponSkillRoll } from "../../shared/weapon-skills";
-import { ARMOR_CLASS_DETAILS, ARMOR_CLASS_NAMES, BOOT_STYLE_NAMES, GEAR_GRADE_NAMES, gradeIndex, type GearGrade } from "../../shared/gear-grades";
+import { ARMOR_CLASS_DETAILS, ARMOR_CLASS_NAMES, BOOT_STYLE_NAMES, GEAR_GRADES, GEAR_GRADE_NAMES, gradeIndex, type GearGrade } from "../../shared/gear-grades";
 import { armorClassOf, bootStyleOf, gradeEquipmentKindOf, gradeOf, type GradeItemId } from "../../shared/grade-equipment";
 import { GRADE_SHOP_LINES, gradeShopItemId, gradeShopLineKey, masteryLevels, type GradeShopLine, type MasteryLevels } from "../../shared/grade-shop";
 import { bagSlotsWithOres } from "../../shared/ore-bag";
@@ -158,7 +158,7 @@ const copyKey = (item: { itemId: string; copyId: bigint }) => `${item.itemId}:${
 /**
  * The Smith's crafting card: Smithing, Fletching and Enchanting side by side, each with its level and progress. His
  * Craft tab has a tile per line (craftTiles); the line picked shows its craft line (craftDetail), offering the best grade
- * that craft's level opens, with a stepper to pick any other open grade (gradeCraftOffer), its materials and a button:
+ * that craft's level opens, with a stepper whose grade every tile then shows (gradeCraftOffer), its materials and a button:
  * "Craft Common Sword ★2", always a new piece. Arrows have tiles of their own (arrowTiles), each a batch from a log and an ore
  * with a stepper for how many batches (craft_arrows). His Reforge tab has a tile per weapon copy held (reforgeTiles), and the
  * one picked shows one Reforge (reforgeDetail). The server decides (craft_grade_item, reforge_weapon).
@@ -174,14 +174,14 @@ export function createCraftSection(deps: CraftSectionDeps, options: { onChange?:
     + `</ul><p class="craft-note">Crafted gear starts at ${refineStars(CRAFTED_REFINE)} with luckier skills. Higher grades need a higher craft level.</p></div>`;
   /** The piece being crafted, or the copy being reforged. */
   let crafting: string | null = null, rendered = "";
-  /** The grade picked on each line; the best open one until the player steps. */
-  const picked = new Map<string, GearGrade>();
+  /** The grade picked for every line at once; each line's best open one until the player steps. */
+  let picked: GearGrade | null = null;
   /** Batches picked on each arrow; one until the player steps. */
   const batches = new Map<ArrowId, number>();
 
   function state() {
     const skills = deps.craftSkills();
-    return JSON.stringify([CRAFT_SKILLS.map(skill => String(skills[skill] ?? 0n)), deps.ores(), deps.masteryLevels(), deps.bagFull(), crafting, [...picked], [...batches],
+    return JSON.stringify([CRAFT_SKILLS.map(skill => String(skills[skill] ?? 0n)), deps.ores(), deps.masteryLevels(), deps.bagFull(), crafting, picked, [...batches],
       reforgeable().map(weapon => [copyKey(weapon), weapon.equipped, weapon.roll, deps.refineLevel(weapon.itemId, weapon.copyId)])]);
   }
 
@@ -205,32 +205,35 @@ export function createCraftSection(deps: CraftSectionDeps, options: { onChange?:
   // What a craft or Reforge takes from the bag: the recipe less what the craft's tool always saves.
   const costOf = (itemId: GradeItemId) => toolCraftCost(gradeCraftMaterials(itemId)!, deps.craftToolLevel?.(gradeCraftSkill(itemId)!) ?? 0);
 
-  /** A line's piece at the grade picked (or the best open), what it takes, and whether it can be made now. */
+  /** A line's piece at the grade picked (or its best open), whether its craft level opens it, what it takes, and whether it can be made now. */
   function craftOffer(line: GradeShopLine) {
-    const skill = lineCraftSkill(line), offer = gradeCraftOffer(line, skillLevel(skill)), choice = picked.get(gradeShopLineKey(line));
-    const grade = choice && offer.grades.includes(choice) ? choice : offer.grade, itemId = gradeShopItemId(line, grade);
+    const skill = lineCraftSkill(line), offer = gradeCraftOffer(line, skillLevel(skill));
+    const grade = picked ?? offer.grade, itemId = gradeShopItemId(line, grade), open = offer.grades.includes(grade);
     const materials = costOf(itemId), lacking = craftMaterialsShort(materials, deps.ores()).length > 0;
-    return { skill, offer, grade, itemId, materials, lacking, ready: !lacking && !deps.bagFull() };
+    return { skill, offer, grade, itemId, open, materials, lacking, ready: open && !lacking && !deps.bagFull() };
   }
+
+  /** Every grade some line's craft level opens: what the one stepper picks from. */
+  const openGrades = () => GEAR_GRADES.filter(grade => GRADE_SHOP_LINES.some(line => gradeCraftOffer(line, skillLevel(lineCraftSkill(line))).grades.includes(grade)));
 
   /**
    * A line's craft line, by the craft that makes it, at the grade picked (or the best open): a labelled grade stepper
    * with what the next grade needs, the materials held against needed, and a button naming what it makes, or why it waits.
    */
   function craftLine(line: GradeShopLine) {
-    const { skill, offer, grade, itemId, materials, lacking, ready } = craftOffer(line), ores = deps.ores();
+    const { skill, offer, grade, itemId, open, materials, lacking, ready } = craftOffer(line), ores = deps.ores();
     const piece = `${GEAR_GRADE_NAMES[grade]} ${KIND_NAMES[gradeEquipmentKindOf(itemId)!]}`;
-    const text = crafting === itemId ? "Crafting…" : lacking ? `Need More For ${piece}` : deps.bagFull() ? "Bag Full" : `Craft ${piece} ${refineStars(CRAFTED_REFINE)}`;
+    const text = crafting === itemId ? "Crafting…" : !open ? "Locked" : lacking ? `Need More For ${piece}` : deps.bagFull() ? "Bag Full" : `Craft ${piece} ${refineStars(CRAFTED_REFINE)}`;
     const button = offerButton(text, ready && crafting === null, () => { void craft(itemId); });
     button.classList.add("craft-action");
     const head = document.createElement("span");
     head.className = "craft-head";
-    head.append(gradeStepper(line, offer.grades, grade));
+    head.append(gradeStepper(grade));
     // The grade past the best open one, and the craft level it waits for.
-    if (offer.next) head.append(hint(`${GEAR_GRADE_NAMES[gradeOf(offer.next)!]} needs ${CRAFT_SKILL_NAMES[skill]} Lv ${gradeCraftLevel(offer.next)}`, "craft-next"));
+    if (open && offer.next) head.append(hint(`${GEAR_GRADE_NAMES[gradeOf(offer.next)!]} needs ${CRAFT_SKILL_NAMES[skill]} Lv ${gradeCraftLevel(offer.next)}`, "craft-next"));
     const element = offerLine([head, materialList(materials, ores)], button);
     element.classList.add("craft-offer", "craft-line");
-    return { itemId, next: offer.next, line: element };
+    return { itemId, open, line: element };
   }
 
   /** An arrow's batches picked: what they take (less the knife's saving), what they make, and whether they can be made now. */
@@ -330,7 +333,7 @@ export function createCraftSection(deps: CraftSectionDeps, options: { onChange?:
   function craftTiles(): StationTile[] {
     return GRADE_SHOP_LINES.map(line => {
       const offer = craftOffer(line);
-      return { key: gradeShopLineKey(line), itemId: offer.itemId, waits: !offer.ready };
+      return { key: gradeShopLineKey(line), itemId: offer.itemId, badge: offer.open ? undefined : "Locked", waits: !offer.ready };
     });
   }
 
@@ -340,15 +343,15 @@ export function createCraftSection(deps: CraftSectionDeps, options: { onChange?:
     if (isArrowId(arrowId)) return arrowDetail(arrowId);
     const line = GRADE_SHOP_LINES.find(each => gradeShopLineKey(each) === key);
     if (!line) return null;
-    const made = craftLine(line), { row, deal } = gradeItemRow(made.itemId);
+    const made = craftLine(line), { row, deal } = gradeItemRow(made.itemId, 0, made.open ? [] : [{ text: `Needs ${gradeCraftNeed(made.itemId)}`, met: false }]);
     deal.append(made.line);
     return row;
   }
 
-  function gradeStepper(line: GradeShopLine, grades: readonly GearGrade[], grade: GearGrade) {
-    return gradeStepperElement(grades, grade, {
+  function gradeStepper(grade: GearGrade) {
+    return gradeStepperElement(openGrades(), grade, {
       label: "Grade to craft", busy: crafting !== null,
-      onPick: to => { picked.set(gradeShopLineKey(line), to); changed(); },
+      onPick: to => { picked = to; changed(); },
     });
   }
 
@@ -410,7 +413,7 @@ export function createCraftSection(deps: CraftSectionDeps, options: { onChange?:
     /** What the rows show, for the window that lists them. */
     state,
     /** Each visit starts at each line's best grade, and one batch of arrows. */
-    reset() { picked.clear(); batches.clear(); rendered = ""; },
+    reset() { picked = null; batches.clear(); rendered = ""; },
   };
 }
 
