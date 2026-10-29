@@ -1,6 +1,6 @@
 export const RELEASE_NOTES: Record<string, string[]> = {
   "0.917.38": [
-    "The guild hall looks better inside and out, with a forest round the courtyard and every upgrade level reworked",
+    "The guild hall looks better inside and out: it stands in the middle of a forest, and every upgrade level is reworked",
   ],
   "0.917.37": [
     "The quest tracker now shows only kills the server has counted or has yet to receive, so it matches the Quest Board",
