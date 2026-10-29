@@ -87,3 +87,14 @@ watchdog kills Chrome if the script itself is killed. Still, after a session che
 left over; a forgotten headless Chrome once ran for days at full CPU:
 
     ps aux | grep remote-debugging-port | grep -v grep
+
+## Perf
+
+    npm run perf -- [--maps tutorial_forest,town] [--frames 150] [--phone] [--json <file>] [--shot <png>] [--no-build]
+
+Times the game's world drawing on real maps: the `perf` scene draws each map as the game does (its canvas runtime
+and WebGL world layer, real clocks) while the player walks a circle, at 100% and the farthest zoom-out, and again
+without tall props and without enemies to show what each costs. Chrome runs headless on the real GPU with vsync and
+the frame cap off. `work ms` is the game's own drawing a frame; `frame ms` the whole frame through to the GPU
+(median and slowest 5%). `--phone` frames a 390×844 screen. A Mac's GPU is far faster than a budget phone's, so
+compare rows with each other and runs before and after a change, not with a phone's frame rate.
