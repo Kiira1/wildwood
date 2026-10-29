@@ -1,4 +1,10 @@
 export const RELEASE_NOTES: Record<string, string[]> = {
+  "0.917.39": [
+    "Base movement speed is now 250 for everyone (was 200)",
+    "Bows reach 50 further",
+    "Smoother movement: no more occasional frames held twice as long, and your character no longer shifts a pixel as the camera follows",
+    "The FPS counter also shows how many milliseconds each frame's work takes",
+  ],
   "0.917.38": [
     "The guild hall looks better inside and out: centred on its map and minimap, a richer great hall, and every upgrade level reworked",
     "Offline mining now also mines the Arcane Crystal rocks your Mining has unlocked",
@@ -4072,6 +4078,7 @@ const RELEASE_DATES: Record<string, string> = {
 };
 
 export const RELEASE_DAYS: Record<string, string> = {
+  "0.917.39": "2026-10-29",
   "0.917.38": "2026-10-29",
   "0.917.37": "2026-10-29",
   "0.917.36": "2026-10-29",
