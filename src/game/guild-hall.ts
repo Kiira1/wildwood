@@ -33,12 +33,12 @@ export const GUILD_HALL_GROUND = Object.freeze({ ...scene.ground });
 /** Everything east of this is the dark around the great hall's room; west of it is the courtyard. */
 export const GUILD_HALL_INTERIOR_LEFT = scene.interiorLeft;
 /**
- * The part of the hall's world the camera keeps to, by where the player is: outdoors the courtyard's ground image
- * (the camera zooms out no further than it, camera.ts), or the great hall's side.
+ * The part of the hall's world the camera keeps to, by where the player is, and zooms out no further than (camera.ts):
+ * the outdoors, the courtyard in its middle and grass beyond its picture, or the great hall's side.
  */
 export function guildHallCameraRegion(x: number) {
   return x < GUILD_HALL_INTERIOR_LEFT
-    ? { left: GUILD_HALL_GROUND.x, top: GUILD_HALL_GROUND.y, right: GUILD_HALL_GROUND.x + GUILD_HALL_GROUND.w, bottom: GUILD_HALL_GROUND.y + GUILD_HALL_GROUND.h }
+    ? { left: 0, top: 0, right: GUILD_HALL_INTERIOR_LEFT, bottom: GUILD_HALL_WORLD.height }
     : { left: GUILD_HALL_INTERIOR_LEFT, top: 0, right: GUILD_HALL_WORLD.width, bottom: GUILD_HALL_WORLD.height };
 }
 
