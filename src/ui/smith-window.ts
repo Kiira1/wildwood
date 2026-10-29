@@ -7,7 +7,7 @@ import { itemInspectionButtonLabel } from "./item-inspection-controller";
 import { formatEquipmentStat } from "./equipment-stat-format";
 import { refineStars } from "./refine-badge";
 import { REFINE_ORE_ORDER } from "../../shared/ore-bag";
-import { itemTier } from "../../shared/item-tier";
+import { itemGradeRank } from "../../shared/item-tier";
 import { craftDepsFor, createCraftSection, materialList, type CraftCoop, type CraftSectionDeps } from "./craft-section";
 import { mountToolSection, toolDepsFor, type ToolSectionDeps } from "./tool-section";
 import { asDetail, renderStationGrid, stationPick, stationViewMarkup, type StationTile } from "./station-grid";
@@ -138,8 +138,8 @@ export function createSmithController(deps: {
 
   function choices() {
     return deps.items().filter(item => isRefinableItem(item.itemId) && (shown === "ALL" || itemDefinition(item.itemId)?.slot === shown))
-      // Worn first, then the bag by tier as the bag sorts it, highest first; a kept copy after its first copy.
-      .sort((a, b) => Number(b.equipped) - Number(a.equipped) || (itemTier(b.itemId) ?? 0) - (itemTier(a.itemId) ?? 0)
+      // Worn first, then the bag by grade as the bag sorts it, highest first; a kept copy after its first copy.
+      .sort((a, b) => Number(b.equipped) - Number(a.equipped) || (itemGradeRank(b.itemId) ?? -1) - (itemGradeRank(a.itemId) ?? -1)
         || nameOf(a.itemId).localeCompare(nameOf(b.itemId)) || (a.copyId < b.copyId ? -1 : 1));
   }
 

@@ -1,4 +1,7 @@
 export const RELEASE_NOTES: Record<string, string[]> = {
+  "0.917.35": [
+    "The bag and the Smith's Refine tab sort gear by grade, best first",
+  ],
   "0.917.34": [
     "New Runs tab in Prestige: this run's boss splits against your best, and a log of every run from now on",
     "New Run Timer under the minimap (turn it on in Settings) shows your run time and how far ahead or behind your best you are",
@@ -4055,6 +4058,7 @@ const RELEASE_DATES: Record<string, string> = {
 };
 
 export const RELEASE_DAYS: Record<string, string> = {
+  "0.917.35": "2026-10-29",
   "0.917.34": "2026-10-29",
   "0.917.33": "2026-10-27",
   "0.917.32": "2026-10-27",

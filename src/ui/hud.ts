@@ -1,5 +1,5 @@
 import { appendBagTileContents, appendOreTileContents, setTileGrade } from "./bag-item-tile";
-import { itemTier } from "../../shared/item-tier";
+import { itemGradeRank } from "../../shared/item-tier";
 import { appendItemTierLabel } from "./item-tier-label";
 import { appendRefineBadge, withRefineStars } from "./refine-badge";
 import { oreKindsHeld, type OreCounts } from "../../shared/ore-bag";
@@ -364,7 +364,7 @@ export function renderInventoryView(
     .filter(copy => inventory.itemIds.includes(copy.itemId)).map(copy => ({ itemId: copy.itemId, copyId: copy.id }));
   const bagStacks = cosmetics ? cosmeticInventoryStacks(inventory).map(stack => ({ ...stack, copyId: 0n })) : [
     ...bagInventoryStacks(inventory).map(stack => ({ ...stack, copyId: 0n })), ...keptCopies,
-  ].sort((a, b) => (itemTier(b.itemId) ?? 0) - (itemTier(a.itemId) ?? 0)
+  ].sort((a, b) => (itemGradeRank(b.itemId) ?? -1) - (itemGradeRank(a.itemId) ?? -1)
       || itemDisplayName(a.itemId).localeCompare(itemDisplayName(b.itemId))
       || (a.copyId < b.copyId ? -1 : a.copyId > b.copyId ? 1 : 0));
   const slotCapacity = cosmetics ? Math.max(50, bagStacks.length) : actions.slotCapacity;
