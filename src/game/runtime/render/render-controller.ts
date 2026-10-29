@@ -367,10 +367,15 @@ export function createRenderController(options: {
   function render() {
     vignetteWanted = false;
     const drawsBefore = options.canvasDraws?.() ?? -1;
-    // The camera drawn from sits on a whole device pixel: every object then rounds the same way against the ground,
-    // so none shifts a pixel against it as the camera glides. Its own smooth position comes back after the frame.
+    // The camera drawn from sits on a whole device pixel, so every object rounds the same way against the ground and
+    // none shifts a pixel against it. It is placed from the player's own rounded pixel, so the player stays as steady
+    // on screen as the smooth camera kept them. Its own smooth position comes back after the frame.
     const { dpr } = viewport(), cameraX = camera.x, cameraY = camera.y, scale = camera.zoom * dpr;
-    if (Number.isFinite(scale) && scale > 0) { camera.x = Math.round(cameraX * scale) / scale; camera.y = Math.round(cameraY * scale) / scale; }
+    if (Number.isFinite(scale) && scale > 0) {
+      const onPixel = (at: number, from: number) => (Math.round(at * scale) - Math.round((at - from) * scale)) / scale;
+      camera.x = onPixel(player.x, cameraX);
+      camera.y = onPixel(player.y, cameraY);
+    }
     try {
       renderFrame();
       showVignette(vignetteWanted);
