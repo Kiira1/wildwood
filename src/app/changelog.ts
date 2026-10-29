@@ -5,6 +5,8 @@ export const RELEASE_NOTES: Record<string, string[]> = {
     "Picking a grade at the Smith's Craft tab or a seller's Buy tab now shows every item at that grade",
     "Gear from the sellers costs much more at higher grades (Divine is 1,000,000 gold); crafting is the way to get top gear",
     "Selling gear to the sellers now pays a tenth of its price",
+    "Item grade frames look cleaner, with a soft glow by grade; Legendary and up glow, Divine and Eternal shine",
+    "Other players' gear in their profile now shows its grade frame",
   ],
   "0.917.33": [
     "Your nocked arrow and how many are left show beside your gold while you hold a bow; tap it to manage them",
