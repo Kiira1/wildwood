@@ -61,17 +61,17 @@ function openAreas(count: number, open: (index: number) => boolean) {
   return opened.length ? opened : [0];
 }
 
-/** The veins mined away: every vein this Mining opens; their ore rocks (crystal rocks are left to playing). */
+/** The veins mined away: every vein this Mining opens, with its ore rocks and the crystal rocks Mining opens there. */
 export const offlineMiningVeins = (mining: number) => openAreas(MINING_VEINS.length, index => canMineRock({ kind: "small", vein: index }, mining));
 
 export function simulateOfflineMining(input: { mining: number; seconds: number; cardSpeed?: number; pickaxe?: number; respawnRank?: number }) {
   const veins = offlineMiningVeins(input.mining);
-  const areas = veins.map(vein => MINING_NODES.filter(node => node.vein === vein && node.kind !== "crystal").map((node): Spot<MiningNode> => ({
+  const areas = veins.map(vein => MINING_NODES.filter(node => node.vein === vein && canMineRock(node, input.mining)).map((node): Spot<MiningNode> => ({
     at: node, gain: miningGain(node),
     seconds: skill => miningBreakSeconds(node, skill, input.cardSpeed ?? 0, input.pickaxe ?? 0),
     respawnSeconds: gatherRespawnMs(MINING_NODE_KINDS[node.kind].respawnSeconds, input.respawnRank ?? 0) / 1_000,
-    // A Mysterious rock's Starshard is worth walking to first.
-    value: miningRockOre(node) + (node.kind === "mysterious" ? 10 : 0),
+    // A Mysterious rock's Starshard is worth walking to first, and a crystal rock's Arcane Crystal next.
+    value: miningRockOre(node) + (node.kind === "mysterious" ? 10 : node.kind === "crystal" ? 5 : 0),
   })));
   return { veins, ...simulateShares(areas, input.mining, input.seconds) };
 }

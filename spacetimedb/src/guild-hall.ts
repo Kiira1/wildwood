@@ -2,7 +2,7 @@ import { table, t, SenderError } from "spacetimedb/server";
 import type { default as spacetimedbType } from "./index";
 import {
   GUILD_HALL_ARRIVAL, GUILD_HALL_PART_IDS, guildHallDoorDestination, guildHallDoorSides, guildHallGuildId, guildHallMapId, guildHallUpgradeCost,
-  guildHallBonus, isGuildHallMap, parseGuildHallLevels, type GuildHallPart,
+  guildHallBonus, guildHallReturnPoint, isGuildHallMap, parseGuildHallLevels, type GuildHallPart,
 } from "../../shared/guild-hall";
 import { withBonusShare } from "./guild-hall-bonus";
 import { HOME_EXTERIOR_MAP_ID } from "../../shared/home";
@@ -118,6 +118,16 @@ export function registerGuildHall(spacetimedb: typeof spacetimedbType, deps: Gui
     deps.transitionPlayerMap(ctx, moving, player.mapId, destination);
   });
   return { myGuildHall, upgradeGuildHall, useGuildHallDoor };
+}
+
+/**
+ * Where a member saved at (x, y) in a hall stands on coming back: there if it is still ground in the hall as its
+ * guild has it now, otherwise at the arrival (a position from before the courtyard moved, or a bigger room's).
+ */
+export function guildHallReturnPointFor(ctx: any, mapId: string, x: number, y: number) {
+  const guildId = guildHallGuildId(mapId);
+  const hall = guildId === null ? null : ctx.db.guildHall.guildId.find(guildId);
+  return guildHallReturnPoint(parseGuildHallLevels(hall?.levels).size, x, y);
 }
 
 /**

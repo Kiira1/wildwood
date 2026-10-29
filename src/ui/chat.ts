@@ -695,7 +695,8 @@ export function createChatController({ elements, getCoop, showMessage, onOpenRep
         messageBody.prepend(replyPrefix);
       }
       text.appendChild(messageBody);
-      const displayedPower = message.powerLevel;
+      // A Server Boost line leaves power out so its label fits beside the name on a phone.
+      const displayedPower = announcement === "server-boost" ? undefined : message.powerLevel;
       const name = document.createElement("span");
       name.className = "chat-name";
       appendPlayerIdentity(name, { identity: displayIdentity, name: displayName, power: displayedPower, gender: displayedGender, guest, nameColor }, { chat: true });

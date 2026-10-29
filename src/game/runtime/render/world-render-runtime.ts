@@ -43,7 +43,9 @@ import { isTownMap } from "../../../../shared/town";
 import { drawOxSprite } from "./ox-sprite";
 import { isGuildHallMap } from "../../../../shared/guild-hall";
 import { GUILD_HALL_GROUND } from "../../guild-hall";
-import { createGuildCrestDrawer, createGuildHallRoomsDrawer, drawSeated, GUILD_HALL_SEAT_FACING, seatedAt } from "../guild-hall/guild-hall-render";
+import {
+  createGuildCrestDrawer, createGuildHallRoomsDrawer, createGuildHallUnderDrawer, drawSeated, GUILD_HALL_SEAT_FACING, seatedAt,
+} from "../guild-hall/guild-hall-render";
 import type { TextSegment } from "../../canvas";
 
 type Viewport = { width: number; height: number; dpr: number };
@@ -417,6 +419,7 @@ export function createWorldRenderRuntime(options: WorldRenderRuntimeOptions) {
     hallGround = createSoulGroundRenderer({ ctx: options.ctx, camera: options.camera, ground: () => options.assets.guildHallGround, area: GUILD_HALL_GROUND,
       interiors: () => undefined, drawRooms: createGuildHallRoomsDrawer({ ctx: options.ctx, camera: options.camera, rooms: () => options.assets.guildHallRooms,
         devicePixelRatio: options.devicePixelRatio }),
+      drawUnder: createGuildHallUnderDrawer({ ctx: options.ctx, camera: options.camera }),
       decor: options.decor, drawProp: drawSoulProp, viewport: options.viewport, devicePixelRatio: options.devicePixelRatio, active: () => isGuildHallMap(options.currentMapId()) });
     // The Town's ground, rooms, flat props and shadows are baked into the static world's tiles: only its water moves.
     // The WebGL world draws the river with its tiles when it can; the canvas draws it otherwise.

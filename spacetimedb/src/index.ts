@@ -95,7 +95,7 @@ import { allowedAvatarFrame, isAvatarFrame } from "../../shared/avatar-frames";
 import { createGemPurchaseService } from "./gem-purchase-service";
 import { HOME_EXTERIOR_MAP_ID } from "../../shared/home";
 import { registerTown, TOWN_ARRIVAL, TOWN_MAP_ID } from "./town";
-import { guildHallMember, memberEnteredWorld, guildHallMemberLeft, guildHallTables, isGuildHallMap, registerGuildHall } from "./guild-hall";
+import { guildHallMember, guildHallReturnPointFor, memberEnteredWorld, guildHallMemberLeft, guildHallTables, isGuildHallMap, registerGuildHall } from "./guild-hall";
 import { isSoulMap, noteEnemyDefeats, registerSoulDimension, soulDimensionOpenFor, soulDimensionTables, wideMotionMap, worldBoundsFor } from "./soul-dimension";
 import { insertSnapshotRow, updateSnapshotRow } from "./snapshot-row-writes";
 import { createPlayerMotionFrameSampler } from "../../shared/player-motion-sample";
@@ -353,7 +353,8 @@ const playerMotionIdentity = table(
     gender: t.u8().default(PLAYER_GENDER_UNSET),
     // Stable map-wide presentation. These fields change only when the player's
     // visible stats or equipment change; movement never republishes them.
-    speed: t.f32().default(PLAYER_SPEED),
+    // The column's default as published; movement itself comes from PLAYER_SPEED.
+    speed: t.f32().default(200),
     powerLevel: t.f64().default(95),
     feetItem: t.string().default(""),
     headItem: t.string().default(""),
@@ -1964,8 +1965,8 @@ function enterWorldPresence(ctx: any, tabId: string, forceTakeover = false, supp
       && (!isGuildHallMap(normalizedMapId) || guildHallMember(ctx, ctx.sender, normalizedMapId)) ? normalizedMapId // Home is retired: its players arrive in the Town.
       : isSoulMap(normalizedMapId) || isGuildHallMap(normalizedMapId) || normalizedMapId === HOME_EXTERIOR_MAP_ID ? TOWN_MAP_ID : TUTORIAL_FOREST_MAP_ID;
     const fallbackPosition = entryMapId === TOWN_MAP_ID ? TOWN_ARRIVAL : MAP_ARRIVALS[entryMapId as keyof typeof MAP_ARRIVALS] ?? PLAYER_SPAWN;
-    const entryPosition = entryMapId === normalizedMapId
-      ? {
+    const entryPosition = entryMapId === normalizedMapId && isGuildHallMap(entryMapId) ? guildHallReturnPointFor(ctx, entryMapId, existing.x, existing.y)
+      : entryMapId === normalizedMapId ? {
         x: Math.max(PLAYER_RADIUS, Math.min(worldBoundsFor(entryMapId).width - PLAYER_RADIUS, existing.x)),
         y: Math.max(PLAYER_RADIUS, Math.min(worldBoundsFor(entryMapId).height - PLAYER_RADIUS, existing.y)),
       }

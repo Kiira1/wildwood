@@ -1,4 +1,23 @@
 export const RELEASE_NOTES: Record<string, string[]> = {
+  "0.917.40": [
+    "A nocked arrow stack that runs out stays in your bag at 0, so the next arrow no longer seems to take its place",
+    "Server Boost messages in chat leave out power, so names fit on phones",
+    "Fixed a rare black flash of the screen when the game's graphics layer hits a problem",
+  ],
+  "0.917.39": [
+    "Base movement speed is now 250 for everyone (was 200)",
+    "Bows reach 50 further",
+    "Smoother movement: no more occasional frames held twice as long, and your character no longer shifts a pixel as the camera follows",
+    "The FPS counter also shows how many milliseconds each frame's work takes",
+  ],
+  "0.917.38": [
+    "The guild hall looks better inside and out: centred on its map and minimap, a richer great hall, and every upgrade level reworked",
+    "Offline mining now also mines the Arcane Crystal rocks your Mining has unlocked",
+    "Trees, lamps and other objects no longer shift a pixel against the ground as the camera moves",
+  ],
+  "0.917.37": [
+    "The quest tracker now shows only kills the server has counted or has yet to receive, so it matches the Quest Board",
+  ],
   "0.917.36": [
     "Guild Hall upgrades now give every member a small bonus: gold, Weapon Mastery, offline time, boss gold, offline gathering speed and extra ore or logs",
     "Bigger halls also add more of the guild's quest points to the hall fund",
@@ -4064,6 +4083,10 @@ const RELEASE_DATES: Record<string, string> = {
 };
 
 export const RELEASE_DAYS: Record<string, string> = {
+  "0.917.40": "2026-10-29",
+  "0.917.39": "2026-10-29",
+  "0.917.38": "2026-10-29",
+  "0.917.37": "2026-10-29",
   "0.917.36": "2026-10-29",
   "0.917.35": "2026-10-29",
   "0.917.34": "2026-10-29",

@@ -485,7 +485,7 @@ import { MAX_PLAYER_STAT, PLAYER_SPAWN } from "../shared/rules";
   });
   const { questTracker, quests, travel, soulDimension, guildHall } = createWorldPlaces({
     coop: coopAccess, world: bootstrap, currentMapId: () => currentMapId, spawnFromSite, mapController, playerInput, playerCombat,
-    research, regenerationPerSecond, autoFarm, logPickup, showMessage, spawnBurst,
+    research, regenerationPerSecond, autoFarm, logPickup, showMessage, spawnBurst, camera,
     later: {
       invalidateDepthOrder: () => worldRenderRuntime.invalidateDepthOrder(), fadeToWorld: (action, ms) => session.fadeToWorld(action, ms),
       showQuestProgress: (enemy, count, target) => runtimeHud.showQuestProgress(enemy, count, target),

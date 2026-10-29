@@ -35,30 +35,35 @@ it("tells the courtyard board how many papers are still pinned up, and the week'
   expect(formatQuestReset(30_000)).toBe("1m");
 });
 
-it("counts a quest enemy at once, never backwards, catching up to the server and stopping at the target", async () => {
+it("counts a quest kill at once from the server's count and the kills it has not taken, and never what it refused", async () => {
   vi.stubGlobal("document", parseHTML("<html><body></body></html>").document);
   const { createQuestBoardRuntime } = await import("./quest-board-controller");
   const shownCounts: [string, number, number][] = [];
   let current: any = { ...state, quests: [{ mapId: "beginner_desert", enemy: "Dune Raider", target: 3, progress: 0 }] };
-  const runtime = createQuestBoardRuntime({ source: () => ({ weeklyQuests: () => current }), atHome: () => false, pause: () => {},
-    mapName: id => id, showProgress: (enemy, count, target) => shownCounts.push([enemy, count, target]) });
-  runtime.noteKill("beginner_desert", "Dune Raider");
-  runtime.noteKill("beginner_desert", "Venom Guard");   // not a quest: no pop-up
-  runtime.noteKill("tutorial_forest", "Dune Raider");   // wrong map: no pop-up
+  // The kill report queue: a kill is queued before its pop-up, and leaves when the server takes the report.
+  let queue: { mapId: string; enemy: string }[] = [];
+  const runtime = createQuestBoardRuntime({
+    source: () => ({ weeklyQuests: () => current, questBoardSeen: () => true,
+      pendingQuestKills: (mapId: string) => queue.filter(kill => kill.mapId === mapId).map(kill => ({ enemy: kill.enemy, count: 1 })) }),
+    atHome: () => false, pause: () => {}, mapName: id => id, showProgress: (enemy, count, target) => shownCounts.push([enemy, count, target]) });
+  const kill = (mapId: string, enemy: string) => { queue.push({ mapId, enemy }); runtime.noteKill(mapId, enemy); };
+  kill("beginner_desert", "Dune Raider");
+  kill("beginner_desert", "Venom Guard");   // not a quest: no pop-up
+  kill("tutorial_forest", "Dune Raider");   // wrong map: no pop-up
   expect(shownCounts).toEqual([["Dune Raider", 1, 3]]);
-  // The server's report is ahead of what was shown: count on from it.
-  current = { ...current, quests: [{ ...current.quests[0], progress: 2 }] };
-  runtime.noteKill("beginner_desert", "Dune Raider");
-  runtime.noteKill("beginner_desert", "Dune Raider");   // finished: nothing more
-  expect(shownCounts.slice(1)).toEqual([["Dune Raider", 3, 3]]);
-  // A new week starts the counts over.
-  current = { ...current, day: current.day + 7, quests: [{ ...current.quests[0], progress: 0 }] };
-  runtime.noteKill("beginner_desert", "Dune Raider");
-  expect(shownCounts.at(-1)).toEqual(["Dune Raider", 1, 3]);
+  kill("beginner_desert", "Dune Raider");
+  expect(runtime.trackerView("beginner_desert")!.items[0].count).toBe(2);
+  // The server took the report but refused one kill: the tracker follows it, not the pop-ups.
+  queue = []; current = { ...current, quests: [{ ...current.quests[0], progress: 1 }] };
+  expect(runtime.trackerView("beginner_desert")!.items[0].count).toBe(1);
+  kill("beginner_desert", "Dune Raider");
+  kill("beginner_desert", "Dune Raider");
+  kill("beginner_desert", "Dune Raider");   // finished: nothing more
+  expect(shownCounts.slice(2)).toEqual([["Dune Raider", 2, 3], ["Dune Raider", 3, 3]]);
   vi.unstubAllGlobals();
 });
 
-it("tracks the quests in play away from home, this map's first, counted as far as the pop-ups showed", async () => {
+it("tracks the quests in play away from home, this map's first", async () => {
   const { questTrackerView } = await import("./quest-board-controller");
   const week = { ...state, quests: [
     { mapId: "beginner_desert", enemy: "Venom Guard", target: 73, progress: 73 },
@@ -66,11 +71,11 @@ it("tracks the quests in play away from home, this map's first, counted as far a
     { mapId: "tutorial_forest", enemy: "Spitter", target: 50, progress: 0, from: "Odin" },
     { mapId: "tutorial_forest", enemy: "Brood", target: 40, progress: 0 },
   ] };
-  const view = questTrackerView(week, "tutorial_forest", id => id === "tutorial_forest" ? "Forest" : "Desert", key => key === "tutorial_forest:Spitter:2" ? 4 : undefined)!;
+  const view = questTrackerView(week, "tutorial_forest", id => id === "tutorial_forest" ? "Forest" : "Desert")!;
   // The week counts the quest collected from the pool as well as the player's own three, so it can pass their own.
   expect(view).toMatchObject({ done: 1, total: 4 });
   expect(view.items.map(item => [item.enemy, item.onMap, item.count, item.where, item.from])).toEqual([
-    ["Spitter", true, 4, "Forest", "Odin"], ["Brood", true, 0, "Forest", ""], ["Dune Raider", false, 12, "Desert", ""],
+    ["Spitter", true, 0, "Forest", "Odin"], ["Brood", true, 0, "Forest", ""], ["Dune Raider", false, 12, "Desert", ""],
   ]);
   // Each names the stat its kills pay.
   expect(view.items.map(item => item.stat)).toEqual(["damage", "regen", "damage"]);

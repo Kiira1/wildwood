@@ -282,7 +282,8 @@ export function createAssetPreprocessor(onWorldAssetReady: () => void) {
   const soulShoreAsset = decodedSheet(SOUL_SHORE_SOURCE);
   const forestRoadAsset = createLazyImageAsset(FOREST_ROAD_SOURCE);
   const soulInteriorsAsset = decodedSheet(SOUL_INTERIORS_SOURCE);
-  const guildHallAssets = [GUILD_HALL_PROPS_SOURCE, GUILD_HALL_GROUND_SOURCE, GUILD_HALL_ROOMS_SOURCE, ...GUILD_EMBLEM_SHEET_SOURCES].map(source => createLazyImageAsset(source));
+  const guildHallAssets = [GUILD_HALL_PROPS_SOURCE, GUILD_HALL_GROUND_SOURCE, GUILD_HALL_ROOMS_SOURCE, ...GUILD_EMBLEM_SHEET_SOURCES]
+    .map(source => createLazyImageAsset(source));
   const assetGroups = {
     forestDecor: [treeAsset],
     orchardDecor: lavaAssets.slice(6),

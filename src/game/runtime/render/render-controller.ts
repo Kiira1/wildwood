@@ -351,7 +351,14 @@ export function createRenderController(options: {
         if (!sprites.abort(error)) throw error;
         drawWorld();
       }
-      if (recorded && !sprites.commit()) drawWorld();
+      if (recorded && !sprites.commit()) {
+        // The layer may just have turned itself off and hidden the ground it drew: the canvas draws the ground first.
+        ctx.save();
+        ctx.scale(camera.zoom, camera.zoom);
+        drawStaticWorld(projectileBatch.complete ? projectileBatch.frames : [], particleBatch.complete ? particleBatch.frames : []);
+        ctx.restore();
+        drawWorld();
+      }
     } else drawWorld();
     drawVignette();
     if (cutscene) {
@@ -367,6 +374,15 @@ export function createRenderController(options: {
   function render() {
     vignetteWanted = false;
     const drawsBefore = options.canvasDraws?.() ?? -1;
+    // The camera drawn from sits on a whole device pixel, so every object rounds the same way against the ground and
+    // none shifts a pixel against it. It is placed from the player's own rounded pixel, so the player stays as steady
+    // on screen as the smooth camera kept them. Its own smooth position comes back after the frame.
+    const { dpr } = viewport(), cameraX = camera.x, cameraY = camera.y, scale = camera.zoom * dpr;
+    if (Number.isFinite(scale) && scale > 0) {
+      const onPixel = (at: number, from: number) => (Math.round(at * scale) - Math.round((at - from) * scale)) / scale;
+      camera.x = onPixel(player.x, cameraX);
+      camera.y = onPixel(player.y, cameraY);
+    }
     try {
       renderFrame();
       showVignette(vignetteWanted);
@@ -378,10 +394,13 @@ export function createRenderController(options: {
       // Assigning the backing width resets the existing context without changing layout.
       ctx.canvas.width = ctx.canvas.width;
       canvasHasPixels = true;
-      const { dpr } = viewport();
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
       ctx.imageSmoothingEnabled = false;
       throw error;
+    }
+    finally {
+      // A duel's camera is placed by its scene; anywhere else the glide carries on from where it was.
+      if (!isDueling() && !isReplayActive() && !duelResultHeld()) { camera.x = cameraX; camera.y = cameraY; }
     }
   }
   return { render, drawBootPickup };
