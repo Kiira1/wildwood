@@ -349,9 +349,10 @@ export function createAppShellController(dependencies: AppShellDependencies) {
     refreshFullscreen,
     refreshSettings,
     refreshStatus,
-    renderFps: (fps: number) => {
+    /** FPS, and the game's own work a frame: the cost a change adds, which FPS hides once it reaches the screen's rate. */
+    renderFps: (fps: number, workMs?: number) => {
       if (!fpsVisible) return;
-      setText(gameFpsStatus, `FPS: ${fps}`);
+      setText(gameFpsStatus, workMs === undefined ? `FPS: ${fps}` : `FPS: ${fps} · ${workMs.toFixed(1)} ms`);
     },
     ensureMusicPlaying,
   };
