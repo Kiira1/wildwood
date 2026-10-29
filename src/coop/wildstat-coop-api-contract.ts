@@ -268,7 +268,7 @@ type ExpectedApiKey =
   | "setMultiplayerEnabled"
   | "setPresenceShown"
   | "offlineProgressEnabled"
-  | "setOfflineProgressEnabled"
+  | "setOfflineProgressEnabled" | "setGatherPicks"
   | "accountAudio"
   | "bowSkills"
   | "swordSkills"

@@ -4,7 +4,8 @@ import { gatherRespawnMs } from "./gather-respawn";
 
 /**
  * What time away is collected as: the player is shown all three on return and picks one. Fighting is
- * shared/offline-progress.ts; mining and chopping work the deepest vein or stand the player could work when they left.
+ * shared/offline-progress.ts; mining and chopping split the time evenly over the open veins or stands of the ores and
+ * trees picked for Auto Mine and Auto Chop, or work the deepest one when none is picked.
  */
 export type OfflineActivity = "fight" | "mine" | "chop";
 export const offlineActivity = (value: unknown): OfflineActivity | null =>
@@ -44,36 +45,56 @@ function simulate<T>(spots: readonly Spot<T>[], skill: number, seconds: number) 
   return { breaks, skill };
 }
 
-/** The deepest vein this Mining opens, and its ore rocks (crystal rocks are left to playing). */
-export function offlineMiningVein(mining: number) {
-  const vein = MINING_VEINS.reduce((deepest, _, index) => canMineRock({ kind: "small", vein: index }, mining) ? index : deepest, 0);
-  return { vein, rocks: MINING_NODES.filter(node => node.vein === vein && node.kind !== "crystal") };
+/** Each area's turn in order, an even share of the time, skill carried from one to the next. */
+function simulateShares<T>(areas: readonly (readonly Spot<T>[])[], skill: number, seconds: number) {
+  const breaks: T[] = [];
+  for (const spots of areas) {
+    const share = simulate(spots, skill, seconds / areas.length);
+    breaks.push(...share.breaks);
+    skill = share.skill;
+  }
+  return { breaks, skill };
 }
 
-export function simulateOfflineMining(input: { mining: number; seconds: number; cardSpeed?: number; pickaxe?: number; respawnRank?: number }) {
-  const { vein, rocks } = offlineMiningVein(input.mining);
-  const spots = rocks.map((node): Spot<MiningNode> => ({
+/** The open areas picked, shallowest first, or the deepest open one when none of the picks is open. */
+function pickedAreas(count: number, open: (index: number) => boolean, picked: (index: number) => boolean) {
+  const opened = Array.from({ length: count }, (_, index) => index).filter(open);
+  const chosen = opened.filter(picked);
+  return chosen.length ? chosen : [opened.at(-1) ?? 0];
+}
+
+/** The veins mined away: the open veins of the ores picked, else the deepest open; their ore rocks (crystal rocks are left to playing). */
+export function offlineMiningVeins(mining: number, ores: readonly string[] = []) {
+  return pickedAreas(MINING_VEINS.length, index => canMineRock({ kind: "small", vein: index }, mining), index => ores.includes(MINING_VEINS[index].ore));
+}
+
+export function simulateOfflineMining(input: {
+  mining: number; seconds: number; cardSpeed?: number; pickaxe?: number; respawnRank?: number; ores?: readonly string[];
+}) {
+  const veins = offlineMiningVeins(input.mining, input.ores);
+  const areas = veins.map(vein => MINING_NODES.filter(node => node.vein === vein && node.kind !== "crystal").map((node): Spot<MiningNode> => ({
     at: node, gain: miningGain(node),
     seconds: skill => miningBreakSeconds(node, skill, input.cardSpeed ?? 0, input.pickaxe ?? 0),
     respawnSeconds: gatherRespawnMs(MINING_NODE_KINDS[node.kind].respawnSeconds, input.respawnRank ?? 0) / 1_000,
     // A Mysterious rock's Starshard is worth walking to first.
     value: miningRockOre(node) + (node.kind === "mysterious" ? 10 : 0),
-  }));
-  return { vein, ...simulate(spots, input.mining, input.seconds) };
+  })));
+  return { veins, ...simulateShares(areas, input.mining, input.seconds) };
 }
 
-/** The deepest stand this Woodcutting opens, and its trees. */
-export function offlineWoodStand(woodcutting: number) {
-  const stand = WOOD_STANDS.reduce((deepest, entry, index) => canChopStand(entry, woodcutting) ? index : deepest, 0);
-  return { stand, trees: WOOD_TREE_NODES.filter(tree => tree.stand === stand) };
+/** The stands chopped away: the open stands of the trees picked, else the deepest open. */
+export function offlineWoodStands(woodcutting: number, trees: readonly string[] = []) {
+  return pickedAreas(WOOD_STANDS.length, index => canChopStand(WOOD_STANDS[index], woodcutting), index => trees.includes(WOOD_STANDS[index].kind));
 }
 
-export function simulateOfflineChopping(input: { woodcutting: number; seconds: number; cardSpeed?: number; hatchet?: number; respawnRank?: number }) {
-  const { stand, trees } = offlineWoodStand(input.woodcutting);
-  const spots = trees.map((tree): Spot<WoodTree> => ({
+export function simulateOfflineChopping(input: {
+  woodcutting: number; seconds: number; cardSpeed?: number; hatchet?: number; respawnRank?: number; trees?: readonly string[];
+}) {
+  const stands = offlineWoodStands(input.woodcutting, input.trees);
+  const areas = stands.map(stand => WOOD_TREE_NODES.filter(tree => tree.stand === stand).map((tree): Spot<WoodTree> => ({
     at: tree, gain: woodcuttingGain(tree), value: WOODCUTTING_LOGS,
     seconds: skill => woodcuttingChopSeconds(tree, skill, input.hatchet ?? 0, input.cardSpeed ?? 0),
     respawnSeconds: gatherRespawnMs(WOODCUTTING_RESPAWN_SECONDS, input.respawnRank ?? 0) / 1_000,
-  }));
-  return { stand, ...simulate(spots, input.woodcutting, input.seconds) };
+  })));
+  return { stands, ...simulateShares(areas, input.woodcutting, input.seconds) };
 }

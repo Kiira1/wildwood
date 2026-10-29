@@ -21,6 +21,8 @@ export type AutoChopSource = {
   serverNowMs?: () => number;
   /** The player's research: Resource Respawn shortens how long rocks and trees take to grow back (shared/gather-respawn.ts). */
   research?: () => { resourceRespawn?: number };
+  /** Keeps the picks for time away, which is split over them (shared/offline-gathering.ts). */
+  setGatherPicks?: (kind: 'mine' | 'chop', ids: readonly string[]) => void;
 };
 
 /** Whether the player is in Timberwood, as far out as the woodcutting runtime works: where Auto Chop's button shows. */
@@ -86,6 +88,7 @@ export function createAutoChop(options: AutoGatherOptions & {
 }) {
   const storage = options.storage ?? (() => { try { return window.localStorage; } catch { return undefined; } });
   let picked = new Set<WoodTreeKind>(readKinds(storage));
+  options.source()?.setGatherPicks?.('chop', [...picked]);
   /** Kinds whose logs found no bag room this run: passed over until it is started again. */
   const full = new Set<WoodTreeKind>();
   const serverNow = () => options.source()?.serverNowMs?.() ?? Date.now();
@@ -131,6 +134,7 @@ export function createAutoChop(options: AutoGatherOptions & {
       if (on) next.add(kind); else next.delete(kind);
       picked = new Set(WOOD_TREE_KINDS.filter(id => next.has(id)));
       try { storage()?.setItem(AUTO_CHOP_TREES_KEY, JSON.stringify([...picked])); } catch { /* The picks still apply this session. */ }
+      options.source()?.setGatherPicks?.('chop', [...picked]);
       const target = gather.state().target;
       if (target && !picked.has(target.kind)) gather.forget();
     },

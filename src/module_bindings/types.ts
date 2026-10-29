@@ -1739,6 +1739,13 @@ export const PlayerFreeRespec = __t.object("PlayerFreeRespec", {
 });
 export type PlayerFreeRespec = __Infer<typeof PlayerFreeRespec>;
 
+export const PlayerGatherPicks = __t.object("PlayerGatherPicks", {
+  identity: __t.identity(),
+  mineOres: __t.string(),
+  chopTrees: __t.string(),
+});
+export type PlayerGatherPicks = __Infer<typeof PlayerGatherPicks>;
+
 export const PlayerGearSlots = __t.object("PlayerGearSlots", {
   key: __t.string(),
   identity: __t.identity(),

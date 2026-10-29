@@ -188,6 +188,7 @@ import SetDeveloperNameTagReducer from "./set_developer_name_tag_reducer";
 import SetDeveloperPresenceReducer from "./set_developer_presence_reducer";
 import SetDisplayNameReducer from "./set_display_name_reducer";
 import SetEquipmentLockedReducer from "./set_equipment_locked_reducer";
+import SetGatherPicksReducer from "./set_gather_picks_reducer";
 import SetGenderReducer from "./set_gender_reducer";
 import SetGuildEmblemReducer from "./set_guild_emblem_reducer";
 import SetGuildVicePresidentReducer from "./set_guild_vice_president_reducer";
@@ -1978,6 +1979,7 @@ const reducersSchema = __reducers(
   __reducerSchema("set_developer_presence", SetDeveloperPresenceReducer),
   __reducerSchema("set_display_name", SetDisplayNameReducer),
   __reducerSchema("set_equipment_locked", SetEquipmentLockedReducer),
+  __reducerSchema("set_gather_picks", SetGatherPicksReducer),
   __reducerSchema("set_gender", SetGenderReducer),
   __reducerSchema("set_guild_emblem", SetGuildEmblemReducer),
   __reducerSchema("set_guild_vice_president", SetGuildVicePresidentReducer),

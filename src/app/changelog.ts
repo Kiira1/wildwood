@@ -8,6 +8,7 @@ export const RELEASE_NOTES: Record<string, string[]> = {
     "Item grade frames look cleaner, with a soft glow by grade; Legendary and up glow, Divine and Eternal shine",
     "Gear tiles show their grade name at the top",
     "Tap gear you can't craft or buy yet to see what it needs",
+    "Offline mining and chopping now split your time across the ores and trees you've switched on in Auto Mine and Auto Chop",
     "Other players' gear in their profile now shows its grade frame",
   ],
   "0.917.33": [

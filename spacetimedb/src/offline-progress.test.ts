@@ -88,6 +88,21 @@ it("pays the mining instead of the fight when mining is picked", () => {
   expect(fixture.db.offlineGatherChoice.identity.find(fixture.ctx.sender)).toBeNull();
 });
 
+it("splits time away over the picked open veins and stands, and ignores picks still shut", () => {
+  const fixture = away(OFFLINE_WINDOW_SECONDS);
+  fixture.seed("playerMining", { identity: fixture.ctx.sender, mining: 60, pickaxeAt: fixture.ctx.timestamp, lastBreakAt: fixture.ctx.timestamp,
+    lastNodeId: 0, lastStarshard: false, rocksBroken: 0 });
+  fixture.run(server.setGatherPicks, { kind: "mine", ids: ["copper_ore", "iron_ore", "adamant_ore"] });
+  fixture.run(server.setGatherPicks, { kind: "chop", ids: ["pine"] });
+  enter(fixture);
+  const choice = fixture.db.offlineGatherChoice.identity.find(fixture.ctx.sender);
+  const mined = JSON.parse(choice.mineOres), chopped = JSON.parse(choice.chopOres);
+  expect(mined.copper_ore).toBeGreaterThan(0);
+  expect(mined.iron_ore).toBeGreaterThan(0);
+  expect(mined.adamant_ore).toBeUndefined();
+  expect(Object.keys(chopped)).toEqual(["pine_log"]);
+});
+
 it("caps a long absence at the window", () => {
   const fixture = away(OFFLINE_WINDOW_SECONDS * 20);
   enter(fixture);

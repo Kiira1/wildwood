@@ -1,9 +1,12 @@
 import { SenderError, table, t } from "spacetimedb/server";
 import type { Identity } from "spacetimedb";
+import type spacetimedbType from "./index";
 import type { OreId } from "../../shared/refine";
 import { miningYield } from "../../shared/mining";
 import { woodcuttingYield } from "../../shared/woodcutting";
 import { simulateOfflineChopping, simulateOfflineMining } from "../../shared/offline-gathering";
+import { MINING_VEINS } from "../../shared/mining";
+import { WOOD_STANDS } from "../../shared/woodcutting";
 import { bagFullForOres, roomForOres } from "../../shared/ore-bag";
 import { toolBonusYield } from "../../shared/tools";
 import { cardStatFactors } from "../../shared/card-effects";
@@ -36,7 +39,33 @@ export const offlineGatherChoice = table({ name: "offline_gather_choice", public
   chopOres: t.string(),
 });
 
+/** The ores and trees picked for Auto Mine and Auto Chop, as JSON lists: what time away is split over. */
+export const playerGatherPicks = table({ name: "player_gather_picks", public: false }, {
+  identity: t.identity().primaryKey(),
+  mineOres: t.string(),
+  chopTrees: t.string(),
+});
+
 type Ctx = any;
+const MINE_PICKS: readonly string[] = MINING_VEINS.map(vein => vein.ore);
+const CHOP_PICKS: readonly string[] = WOOD_STANDS.map(stand => stand.kind);
+const picksOf = (json: string | undefined) => { try { const list = JSON.parse(json ?? "[]"); return Array.isArray(list) ? list as string[] : []; } catch { return []; } };
+
+/** Keeps a device's Auto Mine or Auto Chop picks, only those time away can work. */
+function setGatherPicksFor(ctx: Ctx, args: { kind: string; ids: string[] }) {
+  if (args.kind !== "mine" && args.kind !== "chop") throw new SenderError("Invalid picks.");
+  const allowed = args.kind === "mine" ? MINE_PICKS : CHOP_PICKS;
+  const ids = JSON.stringify(allowed.filter(id => args.ids.includes(id)));
+  const row = ctx.db.playerGatherPicks.identity.find(ctx.sender) ?? { identity: ctx.sender, mineOres: "[]", chopTrees: "[]" };
+  const next = args.kind === "mine" ? { ...row, mineOres: ids } : { ...row, chopTrees: ids };
+  if (next.mineOres === row.mineOres && next.chopTrees === row.chopTrees && ctx.db.playerGatherPicks.identity.find(ctx.sender)) return;
+  if (ctx.db.playerGatherPicks.identity.find(ctx.sender)) ctx.db.playerGatherPicks.identity.update(next);
+  else ctx.db.playerGatherPicks.insert(next);
+}
+
+/** The set_gather_picks reducer. */
+export const registerGatherPicks = (spacetimedb: typeof spacetimedbType) =>
+  spacetimedb.reducer({ kind: t.string(), ids: t.array(t.string()) }, (ctx: any, args: { kind: string; ids: string[] }) => setGatherPicksFor(ctx, args));
 const U32_MAX = 4_294_967_295;
 type Counts = Partial<Record<OreId, number>>;
 
@@ -44,12 +73,13 @@ function addCounts(into: Counts, from: Counts) {
   for (const [oreId, count] of Object.entries(from)) into[oreId as OreId] = (into[oreId as OreId] ?? 0) + (count ?? 0);
 }
 
-/** Rolls both for `seconds` away, each break as playing rolls it (no Server Boost, no card drops), and stores them. */
+/** Rolls both for `seconds` away over the picked veins and stands, each break as playing rolls it (no Server Boost, no card drops), and stores them. */
 export function storeOfflineGatherChoice(ctx: Ctx, identity: Identity, seconds: number, grantedAtMicros: bigint) {
   const cards = cardStatFactors(activeCardTotalsFor(ctx, identity)), respawnRank = researchRankFor(ctx, identity, "resourceRespawn");
+  const picks = ctx.db.playerGatherPicks.identity.find(identity);
   const mining = Number(ctx.db.playerMining.identity.find(identity)?.mining ?? 0);
   const pickaxe = toolLevelFor(ctx, identity, "pickaxe");
-  const mined = simulateOfflineMining({ mining, seconds, cardSpeed: cards.miningSpeed, pickaxe, respawnRank });
+  const mined = simulateOfflineMining({ mining, seconds, cardSpeed: cards.miningSpeed, pickaxe, respawnRank, ores: picksOf(picks?.mineOres) });
   const miningLuck = mined.breaks.some(node => node.kind === "mysterious") ? luckInPlay(ctx, identity).miningLuck : 0;
   const mineOres: Counts = {};
   for (const node of mined.breaks) {
@@ -58,7 +88,7 @@ export function storeOfflineGatherChoice(ctx: Ctx, identity: Identity, seconds: 
   }
   const woodcutting = Number(ctx.db.playerWoodcutting.identity.find(identity)?.woodcutting ?? 0);
   const hatchet = toolLevelFor(ctx, identity, "hatchet");
-  const chopped = simulateOfflineChopping({ woodcutting, seconds, cardSpeed: cards.woodcuttingSpeed, hatchet, respawnRank });
+  const chopped = simulateOfflineChopping({ woodcutting, seconds, cardSpeed: cards.woodcuttingSpeed, hatchet, respawnRank, trees: picksOf(picks?.chopTrees) });
   const chopOres: Counts = {};
   for (const tree of chopped.breaks) {
     addCounts(chopOres, woodcuttingYield(tree, hatchet > 0 ? toolBonusYield(hatchet, ctx.random()) : 0, cards.logFind,

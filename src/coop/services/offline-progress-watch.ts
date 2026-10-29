@@ -83,6 +83,8 @@ export function watchOfflineProgressPreference(connection: DbConnection, present
   connection.subscriptionBuilder().onApplied(read).subscribe([tables.myOfflinePreference]);
 }
 
+type GatherPickKind = "mine" | "chop";
+
 /**
  * The opt-out as the coop API serves it: mirrored so settings can render
  * before a row arrives, and shown immediately when changed. A change the
@@ -92,8 +94,13 @@ export function watchOfflineProgressPreference(connection: DbConnection, present
  */
 export function createOfflineProgressPreference(connection: () => DbConnection | null, notify: () => void) {
   let enabled = true;
+  /** This device's Auto Mine and Auto Chop picks, sent on each connect: time away is split over them. */
+  const gatherPicks: Partial<Record<GatherPickKind, readonly string[]>> = {};
+  const sendPicks = (current: DbConnection, kind: GatherPickKind) =>
+    void Promise.resolve(current.reducers.setGatherPicks({ kind, ids: [...gatherPicks[kind]!] })).catch(() => {});
   return {
     watch(current: DbConnection, isCurrent: () => boolean) {
+      for (const kind of Object.keys(gatherPicks) as GatherPickKind[]) sendPicks(current, kind);
       watchOfflineProgressPreference(current, next => {
         if (!isCurrent()) return;
         enabled = next;
@@ -102,6 +109,11 @@ export function createOfflineProgressPreference(connection: () => DbConnection |
     },
     api: {
       offlineProgressEnabled: () => enabled,
+      setGatherPicks(kind: GatherPickKind, ids: readonly string[]) {
+        gatherPicks[kind] = [...ids];
+        const current = connection();
+        if (current?.isActive) sendPicks(current, kind);
+      },
       async setOfflineProgressEnabled(next: boolean) {
         const current = connection();
         if (!current?.isActive) return false;

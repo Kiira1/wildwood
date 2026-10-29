@@ -20,7 +20,7 @@ import { playerMultiplayerPreference, writeMultiplayerPreference } from "./multi
 import { enemyDefeatBudget, playerDefeatClock, playerMapDeparture, acceptEnemyDefeats, permittedDefeatMaps, pruneIdleDefeatBudgets, throttleKillReports, type DefeatClocks, type EnemyDefeatBatch } from "./enemy-defeats";
 import { grantVirtualPlayerConsent, revokeVirtualPlayerConsent } from "./virtual-player-consent";
 import { offlineProgressTables, beginOfflineWindow, grantOfflineProgress, collectOfflineProgress, setSimulatedTimeAway } from "./offline-progress";
-import { offlineGatherChoice } from "./offline-gathering";
+import { offlineGatherChoice, playerGatherPicks, registerGatherPicks } from "./offline-gathering";
 import { ensureRunTiming, playerRunTiming, playerRunHistory } from "./run-timing";
 import { playerNockedArrow, registerArrows } from "./arrows";
 import { offlineActivity } from "../../shared/offline-gathering";
@@ -1426,7 +1426,7 @@ const spacetimedb = schema({
   playerGemWallet,
   gemTransaction,
   dailyGemBonus,
-  playerAdReward, playerAdWatch, playerChatMute, playerClientHost, offlineGatherChoice, playerRunTiming, playerRunHistory, playerNockedArrow,
+  playerAdReward, playerAdWatch, playerChatMute, playerClientHost, offlineGatherChoice, playerGatherPicks, playerRunTiming, playerRunHistory, playerNockedArrow,
   balanceApologyNotice,
   playerEquipmentLock, playerItemGift, playerBowSkill, playerSwordSkill, playerStaffSkill, playerWornStaffSkill, playerEquipmentCopy, pendingEquipmentOffer, playerIgnoredDrop, playerLootSetting, playerItemRefine, playerCopyRefine, playerOre, playerRefineResult, playerRefinePity, playerCard, playerGearSlots, playerCopySlots, playerCardDrop, playerCardAttackCap, playerBossCardRoll, playerBuild, playerBuildName, playerWeaponMastery, playerMasteryLevel, playerGold, playerCardMeter, playerCardShopPurchase, playerItemCollection, playerWornSkill, playerMining, playerMinedNode, playerMiningLevel, playerWoodcutting, playerChoppedTree, playerWoodcuttingLevel, playerCraftSkill, playerCraftLevel, playerTool, oldGearPayout, playerStarterWeapon, gemKillDaily, gemLedgerTrim,
   mailboxLetter, mailboxReceipt, playerJoinDate, mailboxEquipment, accountDeletionRequest,
@@ -3856,6 +3856,7 @@ export const { claimStarterWeapon, myStarterWeapon } = registerStarterChest(spac
 const craftingDeps = { requireControllingPlayer, activeDuelFor, inventoryForProgress, restoreItemToProgress, writeProgressAndPresentation };
 export const { craftGradeItem, reforgeWeapon, craftGradeGear, myCraftSkills } = registerCrafting(spacetimedb, craftingDeps);
 export const { craftArrows, nockArrow, spendArrows, myNockedArrow } = registerArrows(spacetimedb, craftingDeps);
+export const setGatherPicks = registerGatherPicks(spacetimedb);
 export const { upgradeTool, myTools } = registerTools(spacetimedb, { requireControllingPlayer, activeDuelFor });
 export const myGuildJoinRequests = registerGuildJoinRequestView(spacetimedb);
 export const { myGuildHall, upgradeGuildHall, useGuildHallDoor } = registerGuildHall(spacetimedb, { requireGuildPlayer, requireControllingPlayer, playerWithMotion, transitionPlayerMap, persistWorldLocation });
