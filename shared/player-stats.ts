@@ -19,6 +19,7 @@ import { CHALLENGE_ABSOLUTE_MIN_INTERVAL } from "./prestige-challenge";
 import { prestigePerkValue, type PrestigePerkRanks } from "./prestige-perks";
 import { createEmptyResearchRanks, researchStatRewardMultiplier, utilityMovementSpeedBonus, type ResearchRanks } from "./research";
 import { DEFAULT_ATTACK_RANGE, movementSpeedMultiplier } from "./rules";
+import { weaponSchool } from "./weapon-mastery";
 import { cleanSoulStats, soulAttackSpeedBonus, type SoulStats } from "./soul-dimension";
 import { weaponAttackInterval } from "./staff-skills";
 import { attackCapInterval, type AttackCapArg } from "./stat-rating";
@@ -63,9 +64,13 @@ const weaponOf = (loadout: PlayerStatLoadout) => loadout.rightHand || loadout.le
 export const blackBootsSpeed = (feet: string, dueling = false) => feet === BLACK_BOOTS && !dueling ? BLACK_BOOTS_SPEED_BONUS : 0;
 
 /** A sword reaches its own range plus what the run added past the default; a bow or staff shoots the range itself. */
+/** What a bow adds to the ranged reach: archers outrange staves. */
+export const BOW_RANGE_BONUS = 50;
+
 export function weaponAttackRange(itemId: string | undefined, rangedRange: number) {
   const weapon = itemDefinition(itemId)?.weapon;
-  return weapon?.mode === "MELEE" ? (weapon.range ?? 75) + Math.max(0, rangedRange - DEFAULT_ATTACK_RANGE) : rangedRange;
+  if (weapon?.mode === "MELEE") return (weapon.range ?? 75) + Math.max(0, rangedRange - DEFAULT_ATTACK_RANGE);
+  return weaponSchool(itemId) === "archery" ? rangedRange + BOW_RANGE_BONUS : rangedRange;
 }
 
 /** What armor classes and boots multiply move speed by (Tailwind aside). */

@@ -353,7 +353,8 @@ const playerMotionIdentity = table(
     gender: t.u8().default(PLAYER_GENDER_UNSET),
     // Stable map-wide presentation. These fields change only when the player's
     // visible stats or equipment change; movement never republishes them.
-    speed: t.f32().default(PLAYER_SPEED),
+    // The column's default as published; movement itself comes from PLAYER_SPEED.
+    speed: t.f32().default(200),
     powerLevel: t.f64().default(95),
     feetItem: t.string().default(""),
     headItem: t.string().default(""),
