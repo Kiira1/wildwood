@@ -525,6 +525,16 @@
   .settings-panel > .settings-content { flex: 1 1 auto; min-height: 0; overflow-y: auto; overscroll-behavior: contain; scrollbar-width: none; padding: 2px 12px 12px; }
   .settings-panel > .settings-content::-webkit-scrollbar { display: none; }
   .settings-tab-panel[hidden] { display: none; }
+  /* Search: one box under the tabs; while it has words, every tab's matching rows show at once under the tab's name. */
+  .settings-search { padding: 0 12px 8px; }
+  .settings-search input { box-sizing: border-box; width: 100%; height: 38px; padding: 0 12px; border: 1px solid rgba(255,255,255,.18); border-radius: 8px; background: #111214; color: #f4f4f2; font: 800 14px/1 var(--font-rounded); }
+  .settings-search input::placeholder { color: #8c919a; }
+  .settings-search input:focus { outline: 2px solid rgba(255,255,255,.35); outline-offset: 1px; }
+  .settings-tabs.is-searching { opacity: .45; }
+  .settings-content.is-searching > .settings-tab-panel[hidden] { display: block; }
+  .settings-content.is-searching > .settings-tab-panel::before { content: attr(data-search-label); display: block; margin: 12px 0 2px; color: #9a9a9a; font: 900 13px/1 var(--font-rounded); }
+  .settings-content.is-searching :is(.is-search-hidden, .is-search-empty) { display: none !important; }
+  .settings-search-empty { margin: 16px 0; color: #9a9a9a; font: 800 14px/1.3 var(--font-rounded); text-align: center; }
   .settings-disclosure { margin-top: 12px; border-top: 1px solid rgba(255,255,255,.12); }
   .settings-disclosure > summary { min-height: 44px; padding: 10px 0; cursor: pointer; color: inherit; font: 900 13px/1.3 var(--font-rounded); }
   .settings-disclosure > summary:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; border-radius: 4px; }

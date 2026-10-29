@@ -3,6 +3,7 @@ export const RELEASE_NOTES: Record<string, string[]> = {
     "Guild Hall upgrades now give every member a small bonus: gold, Weapon Mastery, offline time, boss gold, offline gathering speed and extra ore or logs",
     "Bigger halls also add more of the guild's quest points to the hall fund",
     "Offline mining and chopping now split your time evenly across every ore and wood your skill has unlocked",
+    "New search box in Settings finds any setting across every tab",
   ],
   "0.917.35": [
     "The bag and the Smith's Refine tab sort gear by grade, best first",

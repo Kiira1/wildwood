@@ -1,6 +1,7 @@
 import { createCommunityLinks } from './community-links';
 import { controlsTabUseful, createControlsSettings } from './controls-settings';
 import { onGamepadChange } from './gamepad-controls';
+import { installSettingsSearch } from './settings-search';
 
 type SettingsSection = { title?: string; expandable?: boolean; description?: string; selectors: readonly string[] };
 
@@ -156,6 +157,7 @@ export function installSettingsTabs(doc: Document) {
   // Only the body scrolls, keeping navigation and Back visible on short screens.
   settings.insertBefore(content, settings.querySelector(".window-back-footer"));
   bindSettingsTabs(tabs, panels);
+  installSettingsSearch(doc, content, tablist);
   // Touch-only phones have nothing to rebind until a controller connects.
   const controlsTab = doc.getElementById("settings-controls-tab");
   const showControls = () => {

@@ -199,6 +199,21 @@ async function prestigeRuns() {
   await settleCssImages();
 }
 
+/** Settings with "time" typed in its search: matching rows from every tab, under each tab's name. */
+async function settingsSearch() {
+  const doc = await gameMarkup();
+  document.body.style.background = GROUND;
+  for (const node of doc.body.children) document.body.append(document.importNode(node, true));
+  await import("../../src/ui/game-shell");
+  byId("start").remove();
+  const panel = byId("settingsPanel");
+  panel.hidden = false;
+  const input = panel.querySelector<HTMLInputElement>(".settings-search input")!;
+  input.value = "time";
+  input.dispatchEvent(new Event("input"));
+  await settleCssImages();
+}
+
 /** The Guild Hall window as a President sees it, part-way through the upgrades, with each one's bonus. */
 async function guildHallWindow() {
   await gameMarkup();
@@ -621,6 +636,6 @@ async function worldMapTown() {
   await settleCssImages();
 }
 
-export const DOM_SCENES: Record<string, () => Promise<void>> = { "world-map-town": worldMapTown, icons, hud, "hud-arrow": hudArrow, "prestige-runs": prestigeRuns, "guild-hall": guildHallWindow, wordmark, shops, "gem-shop": gemShop, "server-boost": serverBoost, "exchange-window": exchangeWindow, grades, "quest-tracker": questTracker, "dps-breakdown": dpsBreakdown, builds, "offline-choice": offlineChoice,
+export const DOM_SCENES: Record<string, () => Promise<void>> = { "world-map-town": worldMapTown, icons, hud, "hud-arrow": hudArrow, "prestige-runs": prestigeRuns, "guild-hall": guildHallWindow, "settings-search": settingsSearch, wordmark, shops, "gem-shop": gemShop, "server-boost": serverBoost, "exchange-window": exchangeWindow, grades, "quest-tracker": questTracker, "dps-breakdown": dpsBreakdown, builds, "offline-choice": offlineChoice,
   "chat-announcement": chatAnnouncement, "item-window": () => itemWindow(false), "card-window": cardWindow, "item-window-worn": () => itemWindow(true),
   "profile-own": () => profileWindow(true), "profile-other": () => profileWindow(false) };
