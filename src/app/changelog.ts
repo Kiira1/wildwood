@@ -1,4 +1,9 @@
 export const RELEASE_NOTES: Record<string, string[]> = {
+  "0.917.40": [
+    "A nocked arrow stack that runs out stays in your bag at 0, so the next arrow no longer seems to take its place",
+    "Server Boost messages in chat leave out power, so names fit on phones",
+    "Fixed a rare black flash of the screen when the game's graphics layer hits a problem",
+  ],
   "0.917.39": [
     "Base movement speed is now 250 for everyone (was 200)",
     "Bows reach 50 further",
@@ -4078,6 +4083,7 @@ const RELEASE_DATES: Record<string, string> = {
 };
 
 export const RELEASE_DAYS: Record<string, string> = {
+  "0.917.40": "2026-10-29",
   "0.917.39": "2026-10-29",
   "0.917.38": "2026-10-29",
   "0.917.37": "2026-10-29",
