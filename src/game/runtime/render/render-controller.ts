@@ -351,7 +351,14 @@ export function createRenderController(options: {
         if (!sprites.abort(error)) throw error;
         drawWorld();
       }
-      if (recorded && !sprites.commit()) drawWorld();
+      if (recorded && !sprites.commit()) {
+        // The layer may just have turned itself off and hidden the ground it drew: the canvas draws the ground first.
+        ctx.save();
+        ctx.scale(camera.zoom, camera.zoom);
+        drawStaticWorld(projectileBatch.complete ? projectileBatch.frames : [], particleBatch.complete ? particleBatch.frames : []);
+        ctx.restore();
+        drawWorld();
+      }
     } else drawWorld();
     drawVignette();
     if (cutscene) {
