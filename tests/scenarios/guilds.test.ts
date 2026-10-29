@@ -778,8 +778,10 @@ describe("The Guild Hall", () => {
         expect(shown.filter(seat => seat.side === "north")).toHaveLength(seats / 2);
       }
     }
-    // The courtyard never sees the dark round the rooms.
-    expect(GUILD_HALL_INTERIOR_LEFT - (GUILD_HALL_GROUND.x + GUILD_HALL_GROUND.w)).toBeGreaterThanOrEqual(1_200);
+    // The outdoors' ground covers the world up to the dark round the rooms: no zoom shows bare ground between.
+    expect([GUILD_HALL_GROUND.x, GUILD_HALL_GROUND.y]).toEqual([0, 0]);
+    expect(GUILD_HALL_GROUND.x + GUILD_HALL_GROUND.w).toBeGreaterThanOrEqual(GUILD_HALL_INTERIOR_LEFT);
+    expect(GUILD_HALL_GROUND.y + GUILD_HALL_GROUND.h).toBeGreaterThanOrEqual(GUILD_HALL_WORLD.height);
     const bare = guildHallDecor(EMPTY_GUILD_HALL_LEVELS), grand = guildHallDecor(most);
     expect(grand.length).toBeGreaterThan(bare.length);
     for (const item of grand) if (item.type === "soulProp" && !item.crest) expect(guildHallFrame(item.frame), item.frame).not.toBeNull();
