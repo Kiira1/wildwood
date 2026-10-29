@@ -103,6 +103,20 @@ it("splits time away over the picked open veins and stands, and ignores picks st
   expect(Object.keys(chopped)).toEqual(["pine_log"]);
 });
 
+it("gives a guild member the hall's Hearth on top of the offline window, and the Lanterns' speed to gathering", () => {
+  const seconds = OFFLINE_WINDOW_SECONDS + 3_600;
+  const plain = away(seconds);
+  enter(plain);
+  const member = away(seconds);
+  member.seed("guildMember", { identity: member.ctx.sender, guildId: 7n, name: "Me", joinedAt: 0n, eligibleAt: 0n, champion: false, fighter: "", power: 0, vicePresident: false });
+  member.seed("guildHall", { guildId: 7n, fund: 0, spent: 0, levels: JSON.stringify({ hearth: 2, lights: 2 }) });
+  enter(member);
+  expect(plain.db.offlineProgress.identity.find(plain.ctx.sender).seconds).toBe(OFFLINE_WINDOW_SECONDS);
+  expect(member.db.offlineProgress.identity.find(member.ctx.sender).seconds).toBe(OFFLINE_WINDOW_SECONDS + 3_600);
+  expect(member.db.offlineGatherChoice.identity.find(member.ctx.sender).rocks)
+    .toBeGreaterThan(plain.db.offlineGatherChoice.identity.find(plain.ctx.sender).rocks);
+});
+
 it("caps a long absence at the window", () => {
   const fixture = away(OFFLINE_WINDOW_SECONDS * 20);
   enter(fixture);

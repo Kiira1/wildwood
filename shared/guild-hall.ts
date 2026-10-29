@@ -3,10 +3,10 @@ import geometry from "./guild-hall-geometry.json";
 /**
  * Guild halls: every guild's own hall, a map of its own that only its members
  * enter (`guild_hall_<guildId>`), with a courtyard outside and a great hall
- * inside. Upgrades change how it looks and how big it is, never anyone's
- * stats. They are paid from the hall fund, which the guild's weekly quest
- * points fill as they are earned: every point still counts for the week's
- * bonus as well.
+ * inside. Upgrades change how it looks and how big it is, and each gives every
+ * member a small bonus (GUILD_HALL_BONUSES), never a fighting stat. They are
+ * paid from the hall fund, which the guild's weekly quest points fill as they
+ * are earned: every point still counts for the week's bonus as well.
  */
 export const GUILD_HALL_MAP_PREFIX = "guild_hall_";
 export const guildHallMapId = (guildId: bigint | string | number) => `${GUILD_HALL_MAP_PREFIX}${String(guildId)}`;
@@ -39,6 +39,30 @@ export const GUILD_HALL_PARTS: readonly { id: GuildHallPart; name: string; level
 ];
 export const GUILD_HALL_PART_IDS = GUILD_HALL_PARTS.map(part => part.id);
 export const EMPTY_GUILD_HALL_LEVELS: Readonly<GuildHallLevels> = Object.freeze(Object.fromEntries(GUILD_HALL_PART_IDS.map(id => [id, 0])) as GuildHallLevels);
+
+const percent = (value: number) => `${Math.round(value * 100)}%`;
+/**
+ * What each upgrade gives every member, by level (level 0 gives nothing). Small, and never a fighting stat, so the
+ * server's kill bounds stand; the server applies them (spacetimedb/src/guild-hall-bonus.ts).
+ */
+export const GUILD_HALL_BONUSES: Readonly<Record<GuildHallPart, { values: readonly number[]; text: (value: number) => string }>> = {
+  // Feasts at the table: gold drops a little more often.
+  table: { values: [0, .05, .1, .15], text: value => `+${percent(value)} Gold Drop Chance` },
+  // A bigger hall draws more: quest points add a share again to the fund.
+  size: { values: [0, .1, .2], text: value => `+${percent(value)} Quest Points To The Hall Fund` },
+  // Members train under the crest.
+  banners: { values: [0, .05, .1], text: value => `+${percent(value)} Weapon Mastery` },
+  // A warm place to rest: a longer offline window, in seconds.
+  hearth: { values: [0, 1_800, 3_600], text: value => value >= 3_600 ? `+${value / 3_600} Hour Offline Time` : `+${value / 60} Min Offline Time` },
+  // Every boss's head wants a place on the wall: gold on its first clear in a run.
+  trophies: { values: [0, 2, 4], text: value => `+${value} Gold Per First Boss Clear` },
+  // Work goes on by lantern light while away.
+  lights: { values: [0, .1, .2], text: value => `+${percent(value)} Offline Mining And Chopping Speed` },
+  // The garden's soil: a chance of one more ore or log from each rock or tree.
+  courtyard: { values: [0, .03, .06], text: value => `+${percent(value)} Chance Of An Extra Ore Or Log` },
+};
+/** An upgrade's bonus at the hall's levels. */
+export const guildHallBonus = (levels: GuildHallLevels, part: GuildHallPart) => GUILD_HALL_BONUSES[part].values[levels[part]] ?? 0;
 
 /** Seats at the great table, by its level. */
 export const GUILD_HALL_TABLE_SEATS = [6, 10, 14, 20] as const;

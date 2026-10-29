@@ -5,6 +5,7 @@ import {
   isWeaponSchool, masteryInPlay, masteryLevel, masteryPointsForReport, weaponSchool, type MasteryInPlay, type WeaponSchool,
 } from "../../shared/weapon-mastery";
 import { challengeActive } from "./prestige-challenge";
+import { guildHallBonusFor, withBonusShare } from "./guild-hall-bonus";
 import { TAILWIND_SPEED_BONUS, hasTechnique } from "../../shared/mastery-techniques";
 import { canonicalSavedHand } from "./loadout";
 import { armorMoveSpeedAllowance } from "../../shared/armor-class-perks";
@@ -99,7 +100,8 @@ export function awardWeaponMastery(ctx: Ctx, identity: Identity, weapon: string 
   if (inChallenge()) return;
   const points = masteryPointsForReport(kills, firstBossClear);
   if (!points) return;
-  addPoints(ctx, identity, weaponSchool(weapon), points);
+  // The guild hall's Crest Banners add their share.
+  addPoints(ctx, identity, weaponSchool(weapon), withBonusShare(points, guildHallBonusFor(ctx, identity, "banners"), () => ctx.random()));
 }
 
 /** Reset Save clears every school. Prestige keeps them. */

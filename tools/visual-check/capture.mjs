@@ -37,6 +37,7 @@ const VIEWPORTS = {
   "gem-shop": [{ width: 390, height: 844, full: true }],
   "server-boost": [{ width: 390, height: 844, full: true }],
   grades: [{ width: 460, height: 320, full: true }],
+  "guild-hall": [{ width: 390, height: 844, full: false }],
   "quest-tracker": [{ width: 390, height: 844, full: false }],
   "dps-breakdown": [{ width: 390, height: 844, full: false }, { width: 1280, height: 800, full: false }],
   builds: [{ width: 390, height: 700, full: true }],

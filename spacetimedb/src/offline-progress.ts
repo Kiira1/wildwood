@@ -20,6 +20,7 @@ import { readCritRating, readPlayerProgress } from "./wide-stats";
 import { researchInPlay } from "./bonus-toggles";
 import { awardOfflineGold } from "./gold";
 import { clearOfflineGatherChoice, collectOfflineGathering, storeOfflineGatherChoice } from "./offline-gathering";
+import { guildHallBonusFor } from "./guild-hall-bonus";
 import type { OfflineActivity } from "../../shared/offline-gathering";
 
 export const offlineProgressTables = {
@@ -112,6 +113,8 @@ export type OfflineGrantDependencies = {
   endless: { completed: number; unlocked: boolean };
   balanceFor?: (mapId: string) => MapBalanceSnapshot | undefined;
   offlineWindowRank?: number;
+  /** The whole window in seconds, when more than the rank gives (the guild hall's Hearth). */
+  offlineWindowSeconds?: number;
   enemyRespawnRank?: number;
   /** What Respawn cards add to how often enemies come back. */
   cardRespawn?: number;
@@ -134,7 +137,8 @@ export function resolveOfflineGrant(
   awaySinceMicros: bigint,
   dependencies: OfflineGrantDependencies,
 ): OfflineGrant | null {
-  const seconds = offlineSecondsEarned(nowMicros, awaySinceMicros, offlineWindowSecondsWithResearch(dependencies.offlineWindowRank ?? 0));
+  const seconds = offlineSecondsEarned(nowMicros, awaySinceMicros,
+    dependencies.offlineWindowSeconds ?? offlineWindowSecondsWithResearch(dependencies.offlineWindowRank ?? 0));
   if (!seconds) return null;
   const maps = offlineFarmableMaps(dependencies.progress as any, dependencies.endless);
   if (!maps.length) return null;
@@ -200,6 +204,10 @@ export type OfflineGrantPorts = {
 
 const NO_GAINS = { damage: 0, health: 0, armor: 0, regen: 0, attackSpeed: 0 };
 
+/** How long time away can run: the Offline Time research's window and the guild hall's Hearth on top. */
+const offlineWindowFor = (ctx: any, identity: any) =>
+  offlineWindowSecondsWithResearch(ctx.db.playerResearch.identity.find(identity)?.offlineWindow ?? 0) + guildHallBonusFor(ctx, identity, "hearth");
+
 /**
  * The fight an absence from `awaySinceMicros` to `nowMicros` earns. Offline farming is weapon farming, so a Reflect
  * Only run earns none, and an Aggro run is about surviving its camps, which offline time skips.
@@ -207,7 +215,7 @@ const NO_GAINS = { damage: 0, health: 0, armor: 0, regen: 0, attackSpeed: 0 };
 function resolveFight(ctx: any, progress: any, ports: OfflineGrantPorts, nowMicros: bigint, awaySinceMicros: bigint) {
   if (ctx.db.playerPrestigeChallenge?.identity.find(ctx.sender)?.active || ctx.db.playerAggroChallenge?.identity.find(ctx.sender)?.active) return null;
   return resolveOfflineGrant(nowMicros, awaySinceMicros, {
-    offlineWindowRank: ctx.db.playerResearch.identity.find(ctx.sender)?.offlineWindow ?? 0,
+    offlineWindowSeconds: offlineWindowFor(ctx, ctx.sender),
     // Respawn research farms faster only while Research is in play (bonus-toggles.ts); the window is a timer and stays.
     enemyRespawnRank: researchInPlay(ctx, ctx.sender)?.enemyRespawn ?? 0,
     cardRespawn: cardStatFactors(activeCardTotalsFor(ctx, ctx.sender)).respawn,
@@ -257,7 +265,7 @@ export function grantOfflineProgress(ctx: any, progress: any, ports: OfflineGran
   // Switched off in settings: close the window without paying it, so turning
   // the setting back on pays for the time since, not for the months before.
   const nowMicros = ctx.timestamp.microsSinceUnixEpoch;
-  const windowSeconds = offlineWindowSecondsWithResearch(ctx.db.playerResearch.identity.find(ctx.sender)?.offlineWindow ?? 0);
+  const windowSeconds = offlineWindowFor(ctx, ctx.sender);
   const earned = offlineProgressEnabled(ctx, ctx.sender) ? offlineSecondsEarned(nowMicros, row.awaySinceMicros, windowSeconds) : 0;
   if (!earned) {
     storeOfflineGrant(ctx, ctx.sender, null, NO_GAINS);
@@ -312,7 +320,7 @@ export function collectOfflineProgress(ctx: any, activity: OfflineActivity, port
  * window at now — which would erase the very backdate being tested.
  */
 export function setSimulatedTimeAway(ctx: any, seconds: number, ports: OfflineGrantPorts) {
-  const bounded = Math.min(offlineWindowSecondsWithResearch(ctx.db.playerResearch.identity.find(ctx.sender)?.offlineWindow ?? 0), Math.max(0, seconds));
+  const bounded = Math.min(offlineWindowFor(ctx, ctx.sender), Math.max(0, seconds));
   // Zero is the "never disconnected" sentinel, so a clock too close to the
   // epoch to subtract from must still land on a real instant.
   const backdated = ctx.timestamp.microsSinceUnixEpoch - BigInt(bounded) * MICROS_PER_SECOND;

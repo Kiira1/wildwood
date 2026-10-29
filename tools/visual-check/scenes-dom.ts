@@ -199,6 +199,19 @@ async function prestigeRuns() {
   await settleCssImages();
 }
 
+/** The Guild Hall window as a President sees it, part-way through the upgrades, with each one's bonus. */
+async function guildHallWindow() {
+  await gameMarkup();
+  document.body.style.background = GROUND;
+  const { createGuildHallWindow } = await import("../../src/ui/guild-hall-window");
+  const levels = { table: 2, size: 1, banners: 0, hearth: 2, trophies: 1, lights: 0, courtyard: 1 };
+  createGuildHallWindow({
+    state: () => ({ guild: { name: "Wild Ones", emblem: 3, canUpgrade: true }, fund: 420, levels, inHall: false }),
+    upgrade: async () => true, enter: async () => true, pause: () => {},
+  }).open();
+  await settleCssImages();
+}
+
 /** The start screen's wordmark and choice panel, as a new visitor first sees them. */
 async function wordmark() {
   await importById("start");
@@ -608,6 +621,6 @@ async function worldMapTown() {
   await settleCssImages();
 }
 
-export const DOM_SCENES: Record<string, () => Promise<void>> = { "world-map-town": worldMapTown, icons, hud, "hud-arrow": hudArrow, "prestige-runs": prestigeRuns, wordmark, shops, "gem-shop": gemShop, "server-boost": serverBoost, "exchange-window": exchangeWindow, grades, "quest-tracker": questTracker, "dps-breakdown": dpsBreakdown, builds, "offline-choice": offlineChoice,
+export const DOM_SCENES: Record<string, () => Promise<void>> = { "world-map-town": worldMapTown, icons, hud, "hud-arrow": hudArrow, "prestige-runs": prestigeRuns, "guild-hall": guildHallWindow, wordmark, shops, "gem-shop": gemShop, "server-boost": serverBoost, "exchange-window": exchangeWindow, grades, "quest-tracker": questTracker, "dps-breakdown": dpsBreakdown, builds, "offline-choice": offlineChoice,
   "chat-announcement": chatAnnouncement, "item-window": () => itemWindow(false), "card-window": cardWindow, "item-window-worn": () => itemWindow(true),
   "profile-own": () => profileWindow(true), "profile-other": () => profileWindow(false) };

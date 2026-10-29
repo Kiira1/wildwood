@@ -2,8 +2,9 @@ import { table, t, SenderError } from "spacetimedb/server";
 import type { default as spacetimedbType } from "./index";
 import {
   GUILD_HALL_ARRIVAL, GUILD_HALL_PART_IDS, guildHallDoorDestination, guildHallDoorSides, guildHallGuildId, guildHallMapId, guildHallUpgradeCost,
-  isGuildHallMap, parseGuildHallLevels, type GuildHallPart,
+  guildHallBonus, isGuildHallMap, parseGuildHallLevels, type GuildHallPart,
 } from "../../shared/guild-hall";
+import { withBonusShare } from "./guild-hall-bonus";
 import { HOME_EXTERIOR_MAP_ID } from "../../shared/home";
 import { questDay, questWeek } from "../../shared/weekly-quests";
 import { isTownMap, TOWN_ARRIVAL, TOWN_MAP_ID } from "../../shared/town";
@@ -48,13 +49,14 @@ function ensureGuildHall(ctx: any, guildId: bigint) {
   if (existing) return existing;
   return ctx.db.guildHall.insert({ guildId, fund: recordedPoints(ctx, guildId), spent: 0, levels: "{}" });
 }
-/** Quest points the guild just earned go into its hall's fund too. */
+/** Quest points the guild just earned go into its hall's fund too, with the Hall Size's share on top. */
 export function creditGuildHall(ctx: any, guildId: bigint, points: number) {
   if (!(points > 0)) return;
   const existing = ctx.db.guildHall.guildId.find(guildId);
   // A new row is seeded from the points on record, which already hold these.
   if (!existing) { ensureGuildHall(ctx, guildId); return; }
-  ctx.db.guildHall.guildId.update({ ...existing, fund: existing.fund + Math.floor(points) });
+  const share = guildHallBonus(parseGuildHallLevels(existing.levels), "size");
+  ctx.db.guildHall.guildId.update({ ...existing, fund: existing.fund + withBonusShare(Math.floor(points), share, () => ctx.random()) });
 }
 
 type GuildHallDeps = {

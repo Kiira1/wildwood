@@ -21,6 +21,7 @@ import { equippedFields } from "./gather-batch";
 import { readPlayerProgress } from "./wide-stats";
 import { writeMiningLevel } from "./mining";
 import { writeWoodcuttingLevel } from "./woodcutting";
+import { guildHallBonusFor, withCourtyardFind } from "./guild-hall-bonus";
 
 /**
  * The mining and chopping a player could collect for their time away, rolled on world entry beside the fight
@@ -75,11 +76,13 @@ function addCounts(into: Counts, from: Counts) {
 
 /** Rolls both for `seconds` away over the picked veins and stands, each break as playing rolls it (no Server Boost, no card drops), and stores them. */
 export function storeOfflineGatherChoice(ctx: Ctx, identity: Identity, seconds: number, grantedAtMicros: bigint) {
-  const cards = cardStatFactors(activeCardTotalsFor(ctx, identity)), respawnRank = researchRankFor(ctx, identity, "resourceRespawn");
+  const cards = withCourtyardFind(ctx, identity, cardStatFactors(activeCardTotalsFor(ctx, identity))), respawnRank = researchRankFor(ctx, identity, "resourceRespawn");
+  // The guild hall's Lanterns: the work goes on faster while away.
+  const lanterns = guildHallBonusFor(ctx, identity, "lights");
   const picks = ctx.db.playerGatherPicks.identity.find(identity);
   const mining = Number(ctx.db.playerMining.identity.find(identity)?.mining ?? 0);
   const pickaxe = toolLevelFor(ctx, identity, "pickaxe");
-  const mined = simulateOfflineMining({ mining, seconds, cardSpeed: cards.miningSpeed, pickaxe, respawnRank, ores: picksOf(picks?.mineOres) });
+  const mined = simulateOfflineMining({ mining, seconds, cardSpeed: cards.miningSpeed + lanterns, pickaxe, respawnRank, ores: picksOf(picks?.mineOres) });
   const miningLuck = mined.breaks.some(node => node.kind === "mysterious") ? luckInPlay(ctx, identity).miningLuck : 0;
   const mineOres: Counts = {};
   for (const node of mined.breaks) {
@@ -88,7 +91,7 @@ export function storeOfflineGatherChoice(ctx: Ctx, identity: Identity, seconds: 
   }
   const woodcutting = Number(ctx.db.playerWoodcutting.identity.find(identity)?.woodcutting ?? 0);
   const hatchet = toolLevelFor(ctx, identity, "hatchet");
-  const chopped = simulateOfflineChopping({ woodcutting, seconds, cardSpeed: cards.woodcuttingSpeed, hatchet, respawnRank, trees: picksOf(picks?.chopTrees) });
+  const chopped = simulateOfflineChopping({ woodcutting, seconds, cardSpeed: cards.woodcuttingSpeed + lanterns, hatchet, respawnRank, trees: picksOf(picks?.chopTrees) });
   const chopOres: Counts = {};
   for (const tree of chopped.breaks) {
     addCounts(chopOres, woodcuttingYield(tree, hatchet > 0 ? toolBonusYield(hatchet, ctx.random()) : 0, cards.logFind,
