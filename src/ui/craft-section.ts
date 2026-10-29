@@ -333,7 +333,7 @@ export function createCraftSection(deps: CraftSectionDeps, options: { onChange?:
   function craftTiles(): StationTile[] {
     return GRADE_SHOP_LINES.map(line => {
       const offer = craftOffer(line);
-      return { key: gradeShopLineKey(line), itemId: offer.itemId, badge: offer.open ? undefined : "Locked", waits: !offer.ready };
+      return { key: gradeShopLineKey(line), itemId: offer.itemId, waits: !offer.ready, why: offer.open ? undefined : `Needs ${gradeCraftNeed(offer.itemId)}` };
     });
   }
 

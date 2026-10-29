@@ -253,7 +253,12 @@ export function createSmithController(deps: {
       renderStationGrid(viewPart("refine", ".station-grid"), refineTiles, selected, pick => { selected = pick; lastResult = null; render(); });
     } else if (view === "craft" && crafts) {
       viewPart("craft", ".station-detail").replaceChildren(...detailOf(picked.craft ? crafts.craftDetail(picked.craft) : null));
-      renderStationGrid(viewPart("craft", ".station-grid"), craftTiles, picked.craft ?? null, pick => { picked.craft = pick; render(); });
+      renderStationGrid(viewPart("craft", ".station-grid"), craftTiles, picked.craft ?? null, pick => {
+        picked.craft = pick;
+        render();
+        const why = craftTiles.find(tile => tile.key === pick)?.why;
+        if (why) deps.showMessage(why, "#ff9b91");
+      });
       renderStationGrid(viewPart("craft", ".station-arrows"), arrowTiles, picked.craft ?? null, pick => { picked.craft = pick; render(); });
       viewPart("craft", ".station-subhead").hidden = !arrowTiles.length;
     } else if (view === "reforge" && crafts) {

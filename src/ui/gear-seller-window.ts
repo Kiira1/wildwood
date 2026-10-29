@@ -23,8 +23,11 @@ type Result = { ok: boolean; error?: string } | undefined;
 export type SellerItem = { itemId: string; copyId: bigint; equipped: boolean; roll?: WeaponSkillRoll | null };
 type SellerView = "buy" | "sell";
 type LineStatus = "open" | "owned" | "better" | "locked";
-/** The word a Buy tile shows in place of its stats when it cannot be bought. */
+/** The word a Buy button shows when the piece cannot be bought. */
 const STATUS_WORDS: Readonly<Record<LineStatus, string | undefined>> = { open: undefined, owned: "Owned", better: "Have Better", locked: "Locked" };
+/** Why a Buy tile cannot be bought, said when it is tapped. */
+const statusWhy = (status: LineStatus, itemId: GradeItemId) => status === "locked" ? `Needs ${gradeShopNeed(itemId)}`
+  : status === "owned" ? "You Already Have This" : status === "better" ? "You Have A Better One" : undefined;
 
 const nameOf = (itemId: string) => itemInspectionButtonLabel(itemDisplayName(itemId));
 const key = (item: { itemId: string; copyId: bigint }) => `${item.itemId}:${item.copyId}`;
@@ -196,10 +199,15 @@ export function createGearSellerController(seller: GearSeller, deps: GearSellerD
     const worn = deps.worn(), held = heldGear(), levels = deps.masteryLevels();
     const tiles: StationTile[] = lines.map(line => {
       const { itemId, status, ready } = lineOffer(line, held, levels);
-      return { key: gradeShopLineKey(line), itemId, tier: deps.slotTier(itemId), badge: STATUS_WORDS[status], waits: !ready };
+      return { key: gradeShopLineKey(line), itemId, tier: deps.slotTier(itemId), waits: !ready, why: statusWhy(status, itemId) };
     });
     selected.buy = stationPick(tiles, selected.buy);
-    renderStationGrid(viewPart("buy", ".station-grid"), tiles, selected.buy, pick => { selected.buy = pick; render(); });
+    renderStationGrid(viewPart("buy", ".station-grid"), tiles, selected.buy, pick => {
+      selected.buy = pick;
+      render();
+      const why = tiles.find(tile => tile.key === pick)?.why;
+      if (why) deps.showMessage(why, "#ff9b91");
+    });
     const line = lines.find(each => gradeShopLineKey(each) === selected.buy);
     viewPart("buy", ".station-detail").replaceChildren(...(line ? [asDetail(buyDetail(line, worn, held, levels))] : []));
   }

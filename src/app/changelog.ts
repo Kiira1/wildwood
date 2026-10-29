@@ -6,6 +6,8 @@ export const RELEASE_NOTES: Record<string, string[]> = {
     "Gear from the sellers costs much more at higher grades (Divine is 1,000,000 gold); crafting is the way to get top gear",
     "Selling gear to the sellers now pays a tenth of its price",
     "Item grade frames look cleaner, with a soft glow by grade; Legendary and up glow, Divine and Eternal shine",
+    "Gear tiles show their grade name at the top",
+    "Tap gear you can't craft or buy yet to see what it needs",
     "Other players' gear in their profile now shows its grade frame",
   ],
   "0.917.33": [
