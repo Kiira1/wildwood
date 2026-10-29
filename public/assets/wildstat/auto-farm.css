@@ -767,7 +767,7 @@
 .station-sheet .station-grid { grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 6px; }
 .station-sheet .station-grid:empty { display: none; }
 .station-sheet .station-grid > .inventory-item { color: #fff; }
-.station-sheet .station-grid > .inventory-item.is-selected { border-color: #fff; background: #262626; box-shadow: inset 0 0 0 1px #fff; }
+.station-sheet .station-grid > .inventory-item.is-selected:not([data-grade]) { border-color: #fff; background: #262626; box-shadow: inset 0 0 0 1px #fff; }
 .station-sheet .station-grid > .inventory-item.is-waiting > :not(.station-tile-badge) { opacity: .4; }
 .station-sheet .station-tile-badge { position: absolute; right: 0; bottom: 3px; left: 0; color: #fff; font: 900 13px/1 var(--font-rounded); text-align: center; -webkit-text-stroke: 0; text-shadow: 0 1px 1px #000, 0 0 3px #000; pointer-events: none; }
 .station-sheet .station-detail-row { padding: 10px 12px; }

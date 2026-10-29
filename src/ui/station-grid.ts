@@ -16,6 +16,8 @@ export type StationTile = {
   badge?: string;
   /** Its button cannot act right now: the tile is dimmed. */
   waits?: boolean;
+  /** Why it cannot be had at all yet, said in a message when it is tapped. */
+  why?: string;
   /** A material stack (crafted arrows): itemId is its ore id, drawn as the bag draws it with this many held. */
   oreCount?: number;
 };

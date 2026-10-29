@@ -10,6 +10,8 @@ import { isGradeItemId, gradeOf } from "../../shared/grade-equipment";
 import { PLAYER_GENDER_MALE } from "../../shared/player-gender";
 import { craftExperienceForLevel } from "../../shared/crafting";
 import { createSmithController } from "../../src/ui/smith-window";
+import { createPrestigeRunsTab } from "../../src/ui/prestige-runs-tab";
+import { installPrestigeTabs } from "../../src/ui/prestige-challenge-panel";
 import { createGearSellerController, type GearSellerDeps } from "../../src/ui/gear-seller-window";
 import { renderProfileGuild } from "../../src/ui/profile-guild";
 import { createProfileActionsMenu } from "../../src/ui/profile-actions-menu";
@@ -17,6 +19,7 @@ import { createGemShopController } from "../../src/ui/gem-shop-controller";
 import { markChatAnnouncement } from "../../src/ui/chat-announcement-line";
 import { createDiamondLookDrawer } from "../../src/game/runtime/diamond-look-preview";
 import { installServerBoostHud } from "../../src/ui/server-boost-hud";
+import { createHudArrowChip } from "../../src/ui/hud-arrow-chip";
 import { createExchangeController } from "../../src/ui/exchange-window";
 import { appendBagTileContents } from "../../src/ui/bag-item-tile";
 import { createItemInspectionController } from "../../src/ui/item-inspection-controller";
@@ -160,6 +163,70 @@ async function hud() {
   await settleCssImages();
 }
 
+/** The HUD corner as the game builds it: gems, gold and the nocked arrow chip with a bow in hand. */
+async function hudArrow() {
+  const doc = await gameMarkup();
+  document.body.style.background = GROUND;
+  for (const node of doc.body.children) document.body.append(document.importNode(node, true));
+  await import("../../src/ui/game-shell");
+  byId("start").remove();
+  byId("hudGemBalance").textContent = "1,250";
+  byId("hudGoldBalance").textContent = "8,420";
+  createHudArrowChip({ weapon: () => "rare_bow", nocked: () => "fire_arrow", held: () => 1_240, open: () => {} })();
+  await settleCssImages();
+}
+
+/** The Prestige window's Runs tab: a run under way with splits against the bests, and past runs, one opened. */
+async function prestigeRuns() {
+  const doc = await gameMarkup();
+  document.body.style.background = GROUND;
+  for (const node of doc.body.children) document.body.append(document.importNode(node, true));
+  await import("../../src/ui/game-shell");
+  byId("start").remove();
+  byId("prestigeLevel").textContent = "PRESTIGE 6";
+  byId("prestigeOverlay").hidden = false;
+  installPrestigeTabs(document).select("prestigeRunsTabBtn");
+  const min = 60_000, splits = (...minutes: number[]) => ["tutorial_forest", "beginner_desert", "intermediate_snowlands", "advanced_lava_wastes", "infernal_depths", "endless_1"]
+    .slice(0, minutes.length).map((mapId, index) => ({ mapId, playedMs: minutes[index] * min }));
+  const history = [
+    { prestige: 3, playedMs: 600 * min, wholeRun: false, bossClears: splits(), endedAtMs: 1 },
+    { prestige: 4, playedMs: 402 * min + 17_000, wholeRun: true, bossClears: splits(9, 31, 74, 160, 251, 402), endedAtMs: 2 },
+    { prestige: 5, playedMs: 371 * min + 5_000, wholeRun: true, bossClears: splits(8, 29, 70, 151, 240, 371), endedAtMs: 3 },
+  ];
+  createPrestigeRunsTab({ container: byId("prestigeRunsTab"), history: () => history,
+    timing: () => ({ prestige: 6, wholeRun: true, runPlayedMs: 164 * min + 42_000, bossClears: splits(7.5, 30.2, 66, 158) }) }).render();
+  byId("prestigeRunsTab").querySelector("details")?.setAttribute("open", "");
+  await settleCssImages();
+}
+
+/** Settings with "time" typed in its search: matching rows from every tab, under each tab's name. */
+async function settingsSearch() {
+  const doc = await gameMarkup();
+  document.body.style.background = GROUND;
+  for (const node of doc.body.children) document.body.append(document.importNode(node, true));
+  await import("../../src/ui/game-shell");
+  byId("start").remove();
+  const panel = byId("settingsPanel");
+  panel.hidden = false;
+  const input = panel.querySelector<HTMLInputElement>(".settings-search input")!;
+  input.value = "time";
+  input.dispatchEvent(new Event("input"));
+  await settleCssImages();
+}
+
+/** The Guild Hall window as a President sees it, part-way through the upgrades, with each one's bonus. */
+async function guildHallWindow() {
+  await gameMarkup();
+  document.body.style.background = GROUND;
+  const { createGuildHallWindow } = await import("../../src/ui/guild-hall-window");
+  const levels = { table: 2, size: 1, banners: 0, hearth: 2, trophies: 1, lights: 0, courtyard: 1 };
+  createGuildHallWindow({
+    state: () => ({ guild: { name: "Wild Ones", emblem: 3, canUpgrade: true }, fund: 420, levels, inHall: false }),
+    upgrade: async () => true, enter: async () => true, pause: () => {},
+  }).open();
+  await settleCssImages();
+}
+
 /** The start screen's wordmark and choice panel, as a new visitor first sees them. */
 async function wordmark() {
   await importById("start");
@@ -195,6 +262,7 @@ async function shops() {
   for (const view of ["craft", "craft", "reforge", "refine"] as const) {
     createSmithController({
       inTown: () => true, items: () => held, refineLevel: (_itemId, copyId) => copyId ? 2 : 7, slotTier: () => 3, ores: () => ores, refine: done,
+      refineFails: () => 3,
       showMessage: () => {},
       craft: {
         craftSkills: () => ({ fletching: BigInt(craftExperienceForLevel(24)), smithing: BigInt(craftExperienceForLevel(6)) }),
@@ -208,6 +276,8 @@ async function shops() {
       },
     }).open(view);
   }
+  // One grade step on the gear: every line follows it, past Smithing's level for the sword.
+  document.querySelector<HTMLElement>('.smith-sheet [data-view="craft"] .craft-grade-step[aria-label="Lower Grade"]')?.click();
   const arrowSmith = document.querySelectorAll<HTMLElement>(".smith-sheet")[1];
   arrowSmith?.querySelector<HTMLElement>('.station-arrows [data-item-id="fire_arrow"]')?.click();
   try { localStorage.setItem("wildstat.gearSellerView.weapons", "sell"); localStorage.setItem("wildstat.gearSellerView.armor", "buy"); } catch { /* the default views */ }
@@ -566,6 +636,6 @@ async function worldMapTown() {
   await settleCssImages();
 }
 
-export const DOM_SCENES: Record<string, () => Promise<void>> = { "world-map-town": worldMapTown, icons, hud, wordmark, shops, "gem-shop": gemShop, "server-boost": serverBoost, "exchange-window": exchangeWindow, grades, "quest-tracker": questTracker, "dps-breakdown": dpsBreakdown, builds, "offline-choice": offlineChoice,
+export const DOM_SCENES: Record<string, () => Promise<void>> = { "world-map-town": worldMapTown, icons, hud, "hud-arrow": hudArrow, "prestige-runs": prestigeRuns, "guild-hall": guildHallWindow, "settings-search": settingsSearch, wordmark, shops, "gem-shop": gemShop, "server-boost": serverBoost, "exchange-window": exchangeWindow, grades, "quest-tracker": questTracker, "dps-breakdown": dpsBreakdown, builds, "offline-choice": offlineChoice,
   "chat-announcement": chatAnnouncement, "item-window": () => itemWindow(false), "card-window": cardWindow, "item-window-worn": () => itemWindow(true),
   "profile-own": () => profileWindow(true), "profile-other": () => profileWindow(false) };

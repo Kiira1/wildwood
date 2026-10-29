@@ -257,7 +257,8 @@ export function createInventoryController(dependencies: InventoryDependencies) {
   function inspectOre(oreId: OreId) {
     if (lockMode.active() || deleteMode.active()) return;
     const count = dependencies.ores?.()[oreId] ?? 0;
-    if (!(count > 0)) return;
+    // A nocked arrow kind run out still opens, so it can be unnocked.
+    if (!(count > 0) && dependencies.nockedArrow?.() !== oreId) return;
     clearInventorySelection(dependencies.inventory);
     dependencies.itemInspection.openOre?.({ oreId, count, actions: [...nockActions(oreId), ...dependencies.destroyOre ? [{
       label: "Destroy ore",
@@ -645,5 +646,6 @@ export function createInventoryController(dependencies: InventoryDependencies) {
       clearInventorySelection(dependencies.inventory);
     },
     mode: () => mode,
+    inspectOre,
   };
 }

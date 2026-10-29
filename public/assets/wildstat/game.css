@@ -525,6 +525,16 @@
   .settings-panel > .settings-content { flex: 1 1 auto; min-height: 0; overflow-y: auto; overscroll-behavior: contain; scrollbar-width: none; padding: 2px 12px 12px; }
   .settings-panel > .settings-content::-webkit-scrollbar { display: none; }
   .settings-tab-panel[hidden] { display: none; }
+  /* Search: one box under the tabs; while it has words, every tab's matching rows show at once under the tab's name. */
+  .settings-search { padding: 0 12px 8px; }
+  .settings-search input { box-sizing: border-box; width: 100%; height: 38px; padding: 0 12px; border: 1px solid rgba(255,255,255,.18); border-radius: 8px; background: #111214; color: #f4f4f2; font: 800 14px/1 var(--font-rounded); }
+  .settings-search input::placeholder { color: #8c919a; }
+  .settings-search input:focus { outline: 2px solid rgba(255,255,255,.35); outline-offset: 1px; }
+  .settings-tabs.is-searching { opacity: .45; }
+  .settings-content.is-searching > .settings-tab-panel[hidden] { display: block; }
+  .settings-content.is-searching > .settings-tab-panel::before { content: attr(data-search-label); display: block; margin: 12px 0 2px; color: #9a9a9a; font: 900 13px/1 var(--font-rounded); }
+  .settings-content.is-searching :is(.is-search-hidden, .is-search-empty) { display: none !important; }
+  .settings-search-empty { margin: 16px 0; color: #9a9a9a; font: 800 14px/1.3 var(--font-rounded); text-align: center; }
   .settings-disclosure { margin-top: 12px; border-top: 1px solid rgba(255,255,255,.12); }
   .settings-disclosure > summary { min-height: 44px; padding: 10px 0; cursor: pointer; color: inherit; font: 900 13px/1.3 var(--font-rounded); }
   .settings-disclosure > summary:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; border-radius: 4px; }
@@ -786,6 +796,7 @@
      the slot's own name is not; on a loose item it sits centred over the art. */
   .item-tier-label { position: absolute; top: 5px; left: 5px; right: auto; z-index: 1; color: #fff; font: 800 9px/11px var(--font-rounded); text-align: left; -webkit-text-stroke: 2px #080b08; paint-order: stroke fill; text-shadow: none; pointer-events: none; }
   .item-tier-label.is-above { left: 50%; right: auto; top: 2px; transform: translateX(-50%); text-align: center; }
+  .item-tier-label.is-grade { color: color-mix(in srgb, var(--grade, #fff) 55%, #fff); white-space: nowrap; }
   .profile-equipment-slot > .item-tier-label { top: 3px; left: 2px; font-size: 7px; line-height: 9px; }
   .item-inspection-metadata > .item-tier-label { position: static; font-size: 13px; line-height: 16px; }
   .inventory-upgrade-level { position: absolute; top: 5px; right: 5px; z-index: 2; min-width: 0; padding: 0; border: 0; border-radius: 0; background: transparent; box-shadow: none; color: #fff; font: 800 9px/11px var(--font-rounded); text-align: center; -webkit-text-stroke: 2px #080b08; paint-order: stroke fill; text-shadow: none; pointer-events: none; }
@@ -1304,6 +1315,7 @@
   .hud-progress-timer[hidden] { display: none; }
   .hud-progress-timer-tech { color: #77caff; }
   .hud-progress-timer-slot { color: #ffd367; }
+  .hud-progress-timer-run { color: #fff; font-variant-numeric: tabular-nums; }
   .hud-progress-timer.hud-server-boost { color: #fff; }
   /* Research Ready and Smith upgrades under the timers; away from the Town a tap goes there. */
   .hud-reminder { box-sizing: border-box; width: 100%; min-height: 0; margin: 0; padding: 4px 3px; border: var(--hud-border) solid var(--hud-frame); border-radius: var(--hud-radius-small); background: var(--hud-surface); box-shadow: var(--ui-shadow); outline: var(--hud-seam); outline-offset: -1px; color: #fff; font: 900 13px/1.2 var(--font-rounded); letter-spacing: .02em; text-align: center; text-shadow: 1px 2px 0 #000; white-space: normal; pointer-events: auto; cursor: pointer; }
@@ -1752,6 +1764,9 @@
   .hud-gem-balance { color: #fff; font-size: 11px; font-weight: 900; text-shadow: 0 1px #071c29; }
   .hud-secondary-controls { position: fixed; top: calc(var(--hud-safe-top) + var(--player-hud-visual-height) + 6px); left: var(--hud-safe-left); z-index: 5; display: flex; align-items: center; gap: 3px; pointer-events: auto; }
   .hud-secondary-controls .hud-gem-wallet { position: static; }
+  .hud-arrow-chip { margin: 0; color: #fff; cursor: pointer; pointer-events: auto; touch-action: manipulation; }
+  .hud-arrow-chip[hidden] { display: none; }
+  .hud-arrow-chip.is-empty { opacity: .55; }
   .player-visibility-toggle { display: grid; place-items: center; width: 40px; height: 32px; margin: 0; padding: 6px 9px; border: 0; border-radius: 6px; background: transparent; box-shadow: none; color: #fff; cursor: pointer; touch-action: manipulation; }
   .player-visibility-toggle svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; filter: drop-shadow(0 1px 1px #000); }
   .player-visibility-toggle:disabled { opacity: .65; cursor: default; }
@@ -3041,7 +3056,23 @@
   .prestige-summary dt { color: #8c94a1; font-size: 9px; letter-spacing: .06em; }
   .prestige-summary dd { margin: 2px 0 0; color: #fff; font-size: 13px; }
   /* Perks | Challenge, underlined like the inventory tabs. */
-  .prestige-tabs { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; border-bottom: 1px solid #2b3a52; }
+  .prestige-tabs { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; border-bottom: 1px solid #2b3a52; }
+  .prestige-tab { font-size: 13px; letter-spacing: .02em; }
+  /* Runs: the live run's splits, then past runs that open to theirs. */
+  .prestige-runs-live, .prestige-runs-past { display: grid; gap: 8px; }
+  .prestige-runs-heading { margin: 4px 0 0; color: #c2c7ce; font-size: 13px; letter-spacing: .02em; }
+  .prestige-splits { display: grid; gap: 2px; margin: 0; padding: 0; list-style: none; }
+  .prestige-splits li, .prestige-run summary { display: grid; grid-template-columns: minmax(0, 1fr) auto 64px; gap: 8px; align-items: center; padding: 6px 8px; border-radius: 6px; background: rgba(0,0,0,.28); color: #fff; font-size: 13px; }
+  .prestige-run summary { cursor: pointer; list-style: none; }
+  .prestige-run summary::-webkit-details-marker { display: none; }
+  .prestige-run[open] summary { background: rgba(255,255,255,.08); }
+  .prestige-run .prestige-splits { margin: 2px 0 6px 12px; }
+  .prestige-split-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .prestige-split-time { font-variant-numeric: tabular-nums; }
+  .prestige-split-delta { color: #8c94a1; text-align: right; font-variant-numeric: tabular-nums; }
+  .prestige-split-delta.is-ahead { color: #fff4d6; }
+  .prestige-splits .prestige-split-none { display: block; color: #8c94a1; }
+  .prestige-runs-note { margin: 0; color: #8c94a1; font-size: 13px; line-height: 1.35; }
   .prestige-tab { position: relative; min-width: 0; height: 38px; min-height: 38px; margin: 0; padding: 0 10px 5px; border: 0; border-radius: 0; background: transparent; box-shadow: none; color: #8c94a1; font: 900 12px/1 var(--font-rounded); letter-spacing: .06em; }
   .prestige-tab::after { position: absolute; bottom: -1px; left: 18%; right: 18%; height: 3px; border-radius: 2px; background: transparent; content: ""; }
   .prestige-tab.is-active { background: transparent; color: #fff4d6; box-shadow: none; }
@@ -5190,13 +5221,37 @@ html.text-outline-shadow .death-countdown { text-shadow: var(--text-outline-ring
   .exchange-foot .window-back-button { min-width: 160px; }
 
   /*
-   * Gear tiles bordered by grade, Crude (0) to Eternal (14), on the rarity ladder players know: grey, green, blue,
-   * purple, orange, red, then sky, gold and pearl. The tile keeps its dark background so names stay readable.
+   * Gear tiles by grade, Crude (0) to Eternal (14), on the rarity ladder players know: grey, green, blue,
+   * purple, orange, red, then sky, gold and pearl. A deepened frame, a glow rising from the bottom and a lit top edge;
+   * the middle stays dark so names stay readable. Legendary on glows outside, Divine and Eternal also catch a shine.
    */
   :is(.inventory-item, .equipment-slot)[data-grade] {
-    border-color: var(--grade);
-    box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--grade) 45%, transparent);
+    border-color: color-mix(in srgb, var(--grade) 78%, #000);
+    background:
+      radial-gradient(110% 70% at 50% 108%, color-mix(in srgb, var(--grade) 34%, transparent), transparent 72%),
+      linear-gradient(180deg, color-mix(in srgb, var(--grade) 9%, #1d1d20), #111113);
+    box-shadow: inset 0 1px 0 color-mix(in srgb, var(--grade) 30%, rgba(255,255,255,.12)), inset 0 -2px 0 rgba(0,0,0,.35);
   }
+  :is(.inventory-item, .equipment-slot):is([data-grade="9"], [data-grade="10"], [data-grade="11"], [data-grade="12"], [data-grade="13"], [data-grade="14"]) {
+    box-shadow: inset 0 1px 0 color-mix(in srgb, var(--grade) 40%, rgba(255,255,255,.15)), inset 0 -2px 0 rgba(0,0,0,.35),
+      0 0 7px color-mix(in srgb, var(--grade) 45%, transparent);
+  }
+  :is(.inventory-item, .equipment-slot):is([data-grade="13"], [data-grade="14"])::after {
+    content: "";
+    position: absolute;
+    inset: -40% auto -40% -60%;
+    width: 40%;
+    background: linear-gradient(100deg, transparent, rgba(255,255,255,.22), transparent);
+    transform: translateX(0) rotate(12deg);
+    animation: grade-shine 4.5s ease-in-out infinite;
+    pointer-events: none;
+  }
+  @keyframes grade-shine { 0%, 62% { transform: translateX(0) rotate(12deg); } 100% { transform: translateX(520%) rotate(12deg); } }
+  @media (prefers-reduced-motion: reduce) {
+    :is(.inventory-item, .equipment-slot):is([data-grade="13"], [data-grade="14"])::after { animation: none; opacity: 0; }
+  }
+  /* Picked: a white ring outside the grade's frame, so the grade still shows. */
+  .inventory-item.is-selected[data-grade] { outline: 2px solid rgba(255,255,255,.85); outline-offset: 1px; }
   :is(.inventory-item, .equipment-slot)[data-grade="0"] { --grade: #666666; } /* Crude: dark grey */
   :is(.inventory-item, .equipment-slot)[data-grade="1"] { --grade: #c9c9c9; } /* Common: light grey */
   :is(.inventory-item, .equipment-slot)[data-grade="2"] { --grade: #a8794c; } /* Sturdy: bronze */

@@ -10,6 +10,7 @@ import { createBuildActions } from "./build-actions";
 import { cardsPort } from "./cards-tab";
 import type { createGameElements } from "./game-elements";
 import { createInventoryController } from "./inventory-controller";
+import { createHudArrowChip } from "./hud-arrow-chip";
 import { createItemInspectionController } from "./item-inspection-controller";
 
 export type InventoryRuntimeDeps = {
@@ -101,6 +102,15 @@ export function createInventoryRuntime(deps: InventoryRuntimeDeps) {
       return true;
     },
   });
+
+  // The nocked arrow chip: a few reads, written only on change, so a light poll beats wiring every notify.
+  const refreshArrowChip = createHudArrowChip({
+    weapon: () => inventory.equippedRightHand || inventory.equippedLeftHand,
+    nocked: () => client?.nockedArrow?.() ?? null,
+    held: arrowId => client?.ores?.()[arrowId] ?? 0,
+    open: inventoryController.inspectOre,
+  });
+  if (typeof window !== "undefined") window.setInterval(() => { if (!document.hidden) refreshArrowChip(); }, 500);
 
   return { itemInspection, inventoryController };
 }

@@ -1,4 +1,30 @@
 export const RELEASE_NOTES: Record<string, string[]> = {
+  "0.917.36": [
+    "Guild Hall upgrades now give every member a small bonus: gold, Weapon Mastery, offline time, boss gold, offline gathering speed and extra ore or logs",
+    "Bigger halls also add more of the guild's quest points to the hall fund",
+    "Offline mining and chopping now split your time evenly across every ore and wood your skill has unlocked",
+    "New search box in Settings finds any setting across every tab",
+  ],
+  "0.917.35": [
+    "The bag and the Smith's Refine tab sort gear by grade, best first",
+  ],
+  "0.917.34": [
+    "New Runs tab in Prestige: this run's boss splits against your best, and a log of every run from now on",
+    "New Run Timer under the minimap (turn it on in Settings) shows your run time and how far ahead or behind your best you are",
+    "Picking a grade at the Smith's Craft tab or a seller's Buy tab now shows every item at that grade",
+    "Gear from the sellers costs much more at higher grades (Divine is 1,000,000 gold); crafting is the way to get top gear",
+    "Selling gear to the sellers now pays a tenth of its price",
+    "Item grade frames look cleaner, with a soft glow by grade; Legendary and up glow, Divine and Eternal shine",
+    "Gear tiles show their grade name at the top",
+    "Tap gear you can't craft or buy yet to see what it needs",
+    "Offline mining and chopping now split your time across the ores and trees you've switched on in Auto Mine and Auto Chop",
+    "Other players' gear in their profile now shows its grade frame",
+  ],
+  "0.917.33": [
+    "Your nocked arrow and how many are left show beside your gold while you hold a bow; tap it to manage them",
+    "Research can only be started at Tech Research in Town",
+    "Each failed refine try past the safe level raises that item's next chance a little; the Smith shows how much",
+  ],
   "0.917.32": [
     "Fixed the Stat Tracker's attack speed with a bow at the cap",
     "Added an optional DPS Breakdown view to Stat Tracker",
@@ -4038,6 +4064,10 @@ const RELEASE_DATES: Record<string, string> = {
 };
 
 export const RELEASE_DAYS: Record<string, string> = {
+  "0.917.36": "2026-10-29",
+  "0.917.35": "2026-10-29",
+  "0.917.34": "2026-10-29",
+  "0.917.33": "2026-10-27",
   "0.917.32": "2026-10-27",
   "0.917.31": "2026-10-27",
   "0.917.30": "2026-10-26",

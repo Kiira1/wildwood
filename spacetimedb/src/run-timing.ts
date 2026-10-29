@@ -19,6 +19,20 @@ export const playerRunTiming = table({ name: "player_run_timing", public: false 
   bossClears: t.string(),
 });
 
+/** Each finished run, saved when the player prestiges out of it: the Prestige window's run log and bests. */
+export const playerRunHistory = table({ name: "player_run_history", public: false }, {
+  id: t.u64().primaryKey().autoInc(),
+  identity: t.identity().index("btree"),
+  /** The prestige level the run was at. */
+  prestige: t.u32(),
+  /** The run's whole active play, start to prestige. */
+  playedMicros: t.u64(),
+  wholeRun: t.bool(),
+  /** As player_run_timing.bossClears. */
+  bossClears: t.string(),
+  endedAt: t.timestamp(),
+});
+
 type Ctx = any;
 
 /** The account's active play up to now: what is banked, and the session it has open. */
@@ -48,8 +62,14 @@ export function ensureRunTiming(ctx: Ctx, identity: Identity) {
   return row;
 }
 
-/** A prestige starts the next run's clock, with no bosses down. */
+/** A prestige saves the run it ends to the log and starts the next run's clock, with no bosses down. */
 export function startRunTiming(ctx: Ctx, identity: Identity, prestige: number) {
+  const ended = ctx.db.playerRunTiming.identity.find(identity);
+  if (ended) {
+    const played = livePlayedMicros(ctx, identity) - BigInt(ended.startPlayedMicros);
+    ctx.db.playerRunHistory.insert({ id: 0n, identity, prestige: ended.prestige, playedMicros: played > 0n ? played : 0n,
+      wholeRun: ended.wholeRun, bossClears: ended.bossClears, endedAt: ctx.timestamp });
+  }
   write(ctx, { identity, prestige, startPlayedMicros: livePlayedMicros(ctx, identity), wholeRun: true, bossClears: "[]" });
 }
 
