@@ -94,6 +94,13 @@ function targetPosition(
   };
 }
 
+/** The zoom that keeps the whole view inside the region the camera keeps to, so nothing past it is ever drawn. */
+function zoomForRegion(camera: Camera, player: CameraPlayer, viewport: Viewport, zoom: number) {
+  const region = camera.keepTo?.(player.x, player.y);
+  if (!region) return zoom;
+  return Math.max(zoom, viewport.width / (region.right - region.left), viewport.height / (region.bottom - region.top));
+}
+
 export function updateCamera(
   camera: Camera,
   player: CameraPlayer,
@@ -102,7 +109,7 @@ export function updateCamera(
   dt: number,
 ) {
   const zoomFollow = 1 - Math.pow(.0008, dt);
-  camera.zoom += (targetCameraZoom(player.attackRange, viewport) - camera.zoom) * zoomFollow;
+  camera.zoom += (zoomForRegion(camera, player, viewport, targetCameraZoom(player.attackRange, viewport)) - camera.zoom) * zoomFollow;
   const target = targetPosition(camera, player, viewport, duelCenter);
   const follow = 1 - Math.pow(.00006, dt);
   camera.x += (target.x - camera.x) * follow;
@@ -110,7 +117,7 @@ export function updateCamera(
 }
 
 export function snapCameraToPlayer(camera: Camera, player: CameraPlayer, viewport: Viewport) {
-  camera.zoom = targetCameraZoom(player.attackRange, viewport);
+  camera.zoom = zoomForRegion(camera, player, viewport, targetCameraZoom(player.attackRange, viewport));
   const target = targetPosition(camera, player, viewport, null);
   camera.x = target.x;
   camera.y = target.y;

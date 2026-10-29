@@ -113,7 +113,6 @@ export type WorldRenderRuntimeOptions = {
     guildHallProps?: HTMLImageElement;
     guildHallGround?: HTMLImageElement;
     guildHallRooms?: HTMLImageElement;
-    guildHallForest?: HTMLImageElement;
     guildEmblemSheets?: HTMLImageElement[];
     bossArt: BossArtAssets;
     duelPlatformArt: HTMLImageElement;
@@ -420,8 +419,7 @@ export function createWorldRenderRuntime(options: WorldRenderRuntimeOptions) {
     hallGround = createSoulGroundRenderer({ ctx: options.ctx, camera: options.camera, ground: () => options.assets.guildHallGround, area: GUILD_HALL_GROUND,
       interiors: () => undefined, drawRooms: createGuildHallRoomsDrawer({ ctx: options.ctx, camera: options.camera, rooms: () => options.assets.guildHallRooms,
         devicePixelRatio: options.devicePixelRatio }),
-      drawUnder: createGuildHallUnderDrawer({ ctx: options.ctx, camera: options.camera, forest: () => options.assets.guildHallForest,
-        devicePixelRatio: options.devicePixelRatio }),
+      drawUnder: createGuildHallUnderDrawer({ ctx: options.ctx, camera: options.camera }),
       decor: options.decor, drawProp: drawSoulProp, viewport: options.viewport, devicePixelRatio: options.devicePixelRatio, active: () => isGuildHallMap(options.currentMapId()) });
     // The Town's ground, rooms, flat props and shadows are baked into the static world's tiles: only its water moves.
     // The WebGL world draws the river with its tiles when it can; the canvas draws it otherwise.

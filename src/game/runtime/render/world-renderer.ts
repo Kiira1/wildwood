@@ -39,6 +39,7 @@ import { createTintedImageCanvas } from "./image-tint";
 import { decorPaletteColor, mapVisualTheme } from "../../map-design";
 import { mapWorldLayout } from "../../map-layout";
 import { isGuildHallMap } from "../../../../shared/guild-hall";
+import { guildHallCameraRegion } from "../../guild-hall";
 import { portalTravelScene } from "./portal-glimpse";
 import { createShrunkImages, deviceScale } from "./shrunk-image";
 import { createPresizedTiles } from "./presized-tiles";
@@ -1206,6 +1207,11 @@ export function createWorldRenderer(options: WorldRendererOptions) {
    * or once the player is out past it, whichever cell of the 3×3 grid they are in: the Copper Hills east, Timberwood west, the market south, countryside elsewhere.
    */
   function townMinimapFrame() {
+    // A guild hall's minimap shows only the player's side of its door, the hall in the middle.
+    if (isGuildHallMap(options.getMapId())) {
+      const area = guildHallCameraRegion(options.player.x), span = Math.max(area.right - area.left, area.bottom - area.top);
+      return { x: (area.left + area.right - span) / 2, y: (area.top + area.bottom - span) / 2, span, rooms: false, hills: false, grove: false };
+    }
     if (!isTownMap(options.getMapId())) return null;
     if (inTownInteriors(options.player.x, options.player.y, TOWN_INTERIOR_MARGIN)) {
       return { x: options.player.x - TOWN_ROOMS_MINIMAP_SPAN / 2, y: options.player.y - TOWN_ROOMS_MINIMAP_SPAN / 2, span: TOWN_ROOMS_MINIMAP_SPAN, rooms: true, hills: false, grove: false };
@@ -1281,7 +1287,7 @@ export function createWorldRenderer(options: WorldRendererOptions) {
     const sx = innerSize / (frame?.span ?? WORLD.w); const sy = innerSize / (frame?.span ?? WORLD.h);
     const colors = mapColors();
     draw.fillStyle = colors.ground; draw.fillRect(innerX, innerY, innerSize, innerSize);
-    if (frame && !frame.rooms) {
+    if (frame && !frame.rooms && isTownMap(options.getMapId())) {
       drawTownVillageOnMinimap(draw, ox, oy, sx, sy);
       // The road to the Trade Chrysanthemum and its square, in the roads' colour.
       draw.fillStyle = colors.path;

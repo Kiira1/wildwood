@@ -1,13 +1,13 @@
 import { GUILD_HALL_FEET_OFFSET } from "../../../../shared/guild-hall";
 import { guildEmblemCell } from "../../../ui/guild-emblems";
 import {
-  GUILD_HALL_FOREST_TILE, GUILD_HALL_GROUND, guildHallRoomPicture, guildHallSeatAt, guildHallShown, type GuildHallSeat,
+  guildHallRoomPicture, guildHallSeatAt, guildHallShown, type GuildHallSeat,
 } from "../../guild-hall";
 import type { Camera } from "../render/camera";
 import { snapWorldRenderCoordinate } from "../render/render-space";
 
-/** The wood's floor, the tile's own colour: drawn alone until the tile has loaded. */
-const GUILD_HALL_FOREST_FLOOR = "#4a6b35";
+/** The courtyard ground's outer grass, drawn under it so its edge never shows a seam. */
+const GUILD_HALL_GRASS = "#4a6b35";
 /** Sitting: the body drops this far onto the stool, and nothing of it below this far under its position is drawn. */
 const SIT_DROP = 6, SIT_CLIP = 16;
 /** Sitting faces the table: north seats look down at it, south seats up (an angle, y down). */
@@ -34,34 +34,12 @@ export function drawSeated(ctx: CanvasRenderingContext2D, x: number, y: number, 
   ctx.restore();
 }
 
-/**
- * Under the ground image: indoors, the dark over the whole view; outdoors, the wood's tile repeated over the
- * view, however wide the screen, so no dark ever shows outside. Plain image draws, which the WebGL sprite pass
- * records like any other (a canvas pattern would send the frame back to the 2D canvas).
- */
-export function createGuildHallUnderDrawer(options: {
-  ctx: CanvasRenderingContext2D;
-  camera: Camera;
-  forest: () => HTMLImageElement | undefined;
-  devicePixelRatio: () => number;
-}) {
+/** Under the ground image: the courtyard's grass outdoors, the dark indoors, over the view in one fill. */
+export function createGuildHallUnderDrawer(options: { ctx: CanvasRenderingContext2D; camera: Camera }) {
   return (viewRight: number, viewBottom: number) => {
     const { ctx, camera } = options;
-    const image = options.forest();
-    if (guildHallShown.indoors || !image?.complete || image.naturalWidth <= 0) {
-      ctx.fillStyle = guildHallShown.indoors ? "#000" : GUILD_HALL_FOREST_FLOOR;
-      ctx.fillRect(0, 0, viewRight - camera.x, viewBottom - camera.y);
-      return;
-    }
-    const { w, h } = GUILD_HALL_FOREST_TILE, ground = GUILD_HALL_GROUND;
-    const snap = (value: number) => snapWorldRenderCoordinate(value, camera.zoom, options.devicePixelRatio());
-    // Tiles from the world's origin; one wholly under the opaque courtyard ground is skipped. A unit's overlap hides seams.
-    for (let y = Math.floor(camera.y / h) * h; y < viewBottom; y += h) {
-      for (let x = Math.floor(camera.x / w) * w; x < viewRight; x += w) {
-        if (x >= ground.x && y >= ground.y && x + w <= ground.x + ground.w && y + h <= ground.y + ground.h) continue;
-        ctx.drawImage(image, snap(x - camera.x), snap(y - camera.y), w + 1, h + 1);
-      }
-    }
+    ctx.fillStyle = guildHallShown.indoors ? "#000" : GUILD_HALL_GRASS;
+    ctx.fillRect(0, 0, viewRight - camera.x, viewBottom - camera.y);
   };
 }
 

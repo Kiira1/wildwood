@@ -8,10 +8,10 @@
  * carpets, the hearth, the trophy shelf and wall, candelabras. The guild's own
  * crest goes on the banners (and the great hearth) at runtime.
  *
- * The courtyard is a clearing in a wood, in the middle of the outdoors: the
- * ring of trees round it are props a player walks among, the wood just behind
- * them is baked into the ground image, and beyond that the runtime repeats a
- * seamless tile of the same wood (hall-forest.webp) as far as any screen sees.
+ * The courtyard is a clearing in the middle of the outdoors, one ring of trees
+ * round it as props a player walks among, on a ground image with a margin of
+ * grass beyond them. Outdoors the camera keeps to that image and zooms out no
+ * further than it, so nothing past it is ever drawn.
  *
  * Every piece that an upgrade adds says so (`when`: [part, min, max]), and the
  * runtime shows only what the guild has. The courtyard is laid out about the
@@ -20,7 +20,7 @@
  *
  *   node scripts/art/bake-guild-hall.mjs <extractedPackageDir> [--preview <outDir> <levels json>]
  *
- * Writes public/assets/wildstat/guild-hall/{hall-props,hall-ground,hall-forest,hall-rooms}.webp,
+ * Writes public/assets/wildstat/guild-hall/{hall-props,hall-ground,hall-rooms}.webp,
  * src/game/guild-hall-scene.json and shared/guild-hall-geometry.json.
  */
 import { mkdirSync, writeFileSync } from "node:fs";
@@ -55,10 +55,8 @@ const WORLD_H = 4_000;
 const CLEARING = { left: 185, top: 385, right: 1_425, bottom: 2_030 };
 /** Where the courtyard's layout stands in the world: the clearing in the middle of the outdoors, the same wood all round. */
 const OUT = { x: INTERIOR_LEFT / 2 - HALL_X, y: Math.round((WORLD_H / 2 - (CLEARING.top + CLEARING.bottom) / 2) / 10) * 10 };
-/** The ground image: the clearing and the wood just round it. The forest tile fills everything beyond. */
+/** The ground image: the clearing and a margin of grass round its ring of trees. Outdoors the camera keeps to it. */
 const NEAR = { left: CLEARING.left - 360, top: CLEARING.top - 360, right: CLEARING.right + 360, bottom: CLEARING.bottom + 360 };
-/** The repeating wood's tile, in world units. */
-const FOREST_TILE = { w: 1_440, h: 1_120 };
 const WALL_H = 190, CAP = 24, GAP = 96;
 const ROOMS = [[960, 560], [1_300, 640], [1_700, 720]].map(([w, h]) => ({ x: ROOM_CENTER - w / 2, y: Math.round(WORLD_H / 2 - (h - WALL_H) / 2), w, h }));
 const TABLE_SEATS = [6, 10, 14, 20];
@@ -309,15 +307,9 @@ const onYard = (x, y, margin = 0) => (x > 470 - margin && x < 1130 + margin && y
   || (x > 728 - margin && x < 872 + margin && y > 1150 && y < 1910)
   || ((x - HALL_X) ** 2 / (140 + margin) ** 2 + (y - (PATH.bottom - 40)) ** 2 / (82 + margin) ** 2 < 1);
 const inClearing = (x, y, margin = 0) => x > CLEARING.left - margin && x < CLEARING.right + margin && y > CLEARING.top - margin && y < CLEARING.bottom + margin;
-/** The pack's round trees the wood is made of, and the undergrowth along its edge. */
-const woodKinds = [];
-for (const name of ["Tree_08_Green", "Tree_10_Green", "Tree_07_Green", "Tree_15_Green", "Tree_06_Green", "Tree_09_Green", "Tree_04_Green", "Tree_19_Green"])
-  woodKinds.push(await compose(name, { scale: .6 }));
+/** The undergrowth along the clearing's edge. */
 const undergrowth = [];
 for (const name of ["Bush_01_Green", "Bush_03_Green", "Bush_05_Green"]) undergrowth.push(await compose(name, { scale: .6 }));
-/** The repeating wood's tone: the ground's own wood darkens towards it. */
-const WOOD_TONE = .84;
-const toneOf = async (image, k) => k === 1 ? image : { ...image, buffer: await sharp(image.buffer).ensureAlpha().linear([k, k, k * 1.02, 1], [0, 0, 0, 0]).png().toBuffer() };
 /** Overlays at their pivots in a W by H picture whose top left is (originX, originY), cropped to it. */
 async function place(list, W, H, originX, originY) {
   const out = [];
@@ -340,46 +332,6 @@ async function shadowLayer(list, W, H, originX, originY) {
 }
 const groundDir = join(root, "public/assets/wildstat/guild-hall");
 mkdirSync(groundDir, { recursive: true });
-
-// The repeating wood: rows of trees on a tile that wraps both ways, the tiling anchored at the world's origin. Drawn
-// in order of their feet across the tiling, so the tile's edges meet seamlessly; the ground image draws the same
-// trees where it lies, so it meets the tiling seamlessly too.
-const forestKinds = [];
-for (const kind of woodKinds) forestKinds.push({ body: await toneOf(kind.body, WOOD_TONE), shadow: kind.shadow });
-const forestTrees = [];
-{
-  const { w: W, h: H } = FOREST_TILE;
-  let state = 53;
-  const next = () => { state = (state * 1_103_515_245 + 12_345) >>> 0; return state / 4_294_967_296; };
-  const rows = Math.round(H / 56), perRow = Math.round(W / 106);
-  for (let row = 0; row < rows; row++) for (let i = 0; i < perRow; i++) {
-    const kind = forestKinds[Math.floor(next() * forestKinds.length)];
-    forestTrees.push({ kind, x: (i + (row % 2) * .5 + (next() - .5) * .35) * W / perRow, y: (row + (next() - .5) * .3) * H / rows });
-  }
-}
-/** Every tree of the tiled wood that reaches into a world rectangle, in drawing order. */
-function forestIn(left, top, right, bottom) {
-  const found = [];
-  for (const tree of forestTrees) {
-    const { body } = tree.kind;
-    for (let x = tree.x + Math.floor((left - tree.x - body.w) / FOREST_TILE.w) * FOREST_TILE.w; x - body.pivotX < right; x += FOREST_TILE.w) {
-      if (x - body.pivotX + body.w <= left) continue;
-      for (let y = tree.y + Math.floor((top - tree.y - body.h) / FOREST_TILE.h) * FOREST_TILE.h; y - body.pivotY < bottom; y += FOREST_TILE.h)
-        if (y - body.pivotY + body.h > top) found.push({ kind: tree.kind, x, y });
-    }
-  }
-  return found.sort((a, b) => a.y - b.y || a.x - b.x);
-}
-{
-  const { w: W, h: H } = FOREST_TILE;
-  const trees = forestIn(0, 0, W, H);
-  const floor = await sharp({ create: { width: W, height: H, channels: 4, background: GRASS_DARK } }).png().toBuffer();
-  const tile = await sharp(floor).composite([
-    { input: await shadowLayer(trees.map(tree => ({ image: tree.kind.shadow, x: tree.x, y: tree.y })), W, H, 0, 0), left: 0, top: 0 },
-    ...await place(trees.map(tree => ({ image: tree.kind.body, x: tree.x, y: tree.y })), W, H, 0, 0),
-  ]).png().toBuffer();
-  await sharp(tile).resize(Math.round(W * groundScale), Math.round(H * groundScale)).webp({ quality: 78, effort: 6 }).toFile(join(groundDir, "hall-forest.webp"));
-}
 
 {
   const W = NEAR.right - NEAR.left, H = NEAR.bottom - NEAR.top;
@@ -462,7 +414,7 @@ function forestIn(left, top, right, bottom) {
     shadows.push({ image: stone.shadow, x, y }); lay(stone.body, x, y);
   }
 
-  // The wood round the clearing: the tiled wood's own trees, less those that would stand over the clearing.
+  // Only bushes stand on the ground image; the one ring of trees round the clearing are props.
   const standing = [];
   const inside = (x, y, image) => X(x) - image.pivotX >= 0 && X(x) - image.pivotX + image.w <= W && Y(y) - image.pivotY >= 0 && Y(y) - image.pivotY + image.h <= H;
   /** A tree there is never drawn over someone in the clearing: behind the north edge, or wholly beside or below it. */
@@ -470,12 +422,8 @@ function forestIn(left, top, right, bottom) {
     const half = Math.max(image.pivotX, image.w - image.pivotX) * .85, height = image.pivotY;
     return y <= CLEARING.top || x - half >= CLEARING.right || x + half <= CLEARING.left || y - height >= CLEARING.bottom;
   };
-  for (const tree of forestIn(NEAR.left + OUT.x, NEAR.top + OUT.y, NEAR.right + OUT.x, NEAR.bottom + OUT.y)) {
-    const x = tree.x - OUT.x, y = tree.y - OUT.y;
-    if (clear(x, y, tree.kind.body)) standing.push({ image: tree.kind.body, shadow: tree.kind.shadow, x, y });
-  }
   // Undergrowth along the wood's edge, behind the ring of trees.
-  for (let i = 0; i < 90; i++) {
+  for (let i = 0; i < 40; i++) {
     const side = Math.floor(next() * 4), along = next();
     const x = side === 0 ? CLEARING.left - 60 - next() * 60 : side === 1 ? CLEARING.right + 70 + next() * 60 : CLEARING.left + along * (CLEARING.right - CLEARING.left);
     const y = side === 2 ? CLEARING.top - 10 - next() * 40 : side === 3 ? CLEARING.bottom + 60 + next() * 50 : CLEARING.top + along * (CLEARING.bottom - CLEARING.top);
@@ -485,7 +433,6 @@ function forestIn(left, top, right, bottom) {
     if (next() < .4) lay(mushrooms[Math.floor(next() * mushrooms.length)], x + (next() - .5) * 60, y + 10);
   }
   for (const item of standing) shadows.push({ image: item.shadow, x: item.x, y: item.y });
-  // Stable, so the wood's trees keep the tiling's own order.
   standing.sort((a, b) => a.y - b.y);
 
   const full = await sharp(base).composite([...await place(lying, W, H, NEAR.left, NEAR.top), { input: await shadowLayer(shadows, W, H, NEAR.left, NEAR.top), left: 0, top: 0 },
@@ -868,7 +815,6 @@ await sharp({ create: { width: 2048, height: roomsH, channels: 4, background: { 
 const scene = {
   frames: Object.fromEntries(frameList.sort((a, b) => a.id - b.id).map(f => [f.id, [f.x, f.y, f.w, f.h, Math.round(f.pivotX), Math.round(f.pivotY)]])),
   ground: { x: NEAR.left + OUT.x, y: NEAR.top + OUT.y, w: NEAR.right - NEAR.left, h: NEAR.bottom - NEAR.top },
-  forest: { w: FOREST_TILE.w, h: FOREST_TILE.h },
   interiorLeft: INTERIOR_LEFT,
   props, crests, seats, boards, solids,
   rooms: roomSheets.map(room => ({ size: room.size, sheet: [room.x, room.y, room.w, room.h], at: room.at })),
@@ -884,7 +830,6 @@ if (previewAt >= 0) {
   const sheet = await sharp(join(groundDir, "hall-props.webp")).png().toBuffer();
   const emblems = await sharp(join(root, "public/assets/wildstat/guild-emblems-v4.webp")).extract({ left: 9, top: 10, width: 300, height: 300 }).png().toBuffer();
   const ground = await sharp(join(groundDir, "hall-ground.webp")).resize(scene.ground.w, scene.ground.h).png().toBuffer();
-  const tile = await sharp(join(groundDir, "hall-forest.webp")).resize(FOREST_TILE.w, FOREST_TILE.h).png().toBuffer();
   const rooms = await sharp(join(groundDir, "hall-rooms.webp")).png().toBuffer();
   const room = scene.rooms[levels.size ?? 0];
   const pin = (buffer, w, h, x, y) => ({ image: { buffer, w, h, pivotX: 0, pivotY: 0 }, x, y });
@@ -894,8 +839,6 @@ if (previewAt >= 0) {
     // Only the player's side of the door is drawn: the runtime keeps the other side's decor out.
     const side = item => (item.x >= INTERIOR_LEFT) === indoorsView;
     if (!indoorsView) {
-      for (let ty = Math.floor(region.top / FOREST_TILE.h) * FOREST_TILE.h; ty < region.top + region.h; ty += FOREST_TILE.h)
-        for (let tx = Math.floor(region.left / FOREST_TILE.w) * FOREST_TILE.w; tx < region.left + region.w; tx += FOREST_TILE.w) under.push(pin(tile, FOREST_TILE.w, FOREST_TILE.h, tx, ty));
       under.push(pin(ground, scene.ground.w, scene.ground.h, scene.ground.x, scene.ground.y));
     } else {
       const [sx, sy, w, h] = room.sheet;
@@ -921,9 +864,13 @@ if (previewAt >= 0) {
   }
   /** The camera's view, w by h world units, of a player at (x, y): kept to their side of the door, centred when wider. */
   function view(x, y, w, h) {
-    const indoorsHere = x >= INTERIOR_LEFT;
+    const indoorsHere = x >= INTERIOR_LEFT, g = scene.ground;
+    const area = indoorsHere ? { left: INTERIOR_LEFT, top: 0, right: 6_400, bottom: WORLD_H } : { left: g.x, top: g.y, right: g.x + g.w, bottom: g.y + g.h };
+    // The zoom stops where the view would pass the area.
+    const fit = Math.min(1, (area.right - area.left) / w, (area.bottom - area.top) / h);
+    w = Math.round(w * fit); h = Math.round(h * fit);
     const along = (p, size, lo, hi) => size >= hi - lo ? lo + (hi - lo - size) / 2 : Math.max(lo, Math.min(hi - size, p - size / 2));
-    return { left: Math.round(along(x, w, indoorsHere ? INTERIOR_LEFT : 0, indoorsHere ? 6_400 : INTERIOR_LEFT)), top: Math.round(along(y, h, 0, WORLD_H)), w, h };
+    return { left: Math.round(along(x, w, area.left, area.right)), top: Math.round(along(y, h, area.top, area.bottom)), w, h };
   }
   mkdirSync(outDir, { recursive: true });
   await render({ left: OUT.x, top: OUT.y + 200, w: 1_600, h: 2_000 }, join(outDir, "outside.png"));

@@ -5,7 +5,7 @@ import type { WorldDecor } from "./world";
 
 /**
  * A guild hall's art, baked by scripts/art/bake-guild-hall.mjs: the courtyard's
- * ground, the tile of wood repeated round it, the great hall's room pictures
+ * ground, the great hall's room pictures
  * (one per size), every prop with the upgrade levels it shows at, the crest
  * points the guild's badge is drawn on, the table's seats, the upgrade board
  * and what nobody walks through.
@@ -13,7 +13,6 @@ import type { WorldDecor } from "./world";
 export const GUILD_HALL_PROPS_SOURCE = "assets/wildstat/guild-hall/hall-props.webp";
 export const GUILD_HALL_GROUND_SOURCE = "assets/wildstat/guild-hall/hall-ground.webp";
 export const GUILD_HALL_ROOMS_SOURCE = "assets/wildstat/guild-hall/hall-rooms.webp";
-export const GUILD_HALL_FOREST_SOURCE = "assets/wildstat/guild-hall/hall-forest.webp";
 
 type Condition = readonly (readonly [string, number, number])[];
 /** Whether something baked with these conditions shows in a hall at these levels. */
@@ -31,14 +30,15 @@ export const guildHallFrame = (name: string) => frames.get(name) ?? null;
 
 /** The courtyard's ground image's rectangle in world units. */
 export const GUILD_HALL_GROUND = Object.freeze({ ...scene.ground });
-/** Everything east of this is the dark around the great hall's room; west of it is the wood and the courtyard. */
+/** Everything east of this is the dark around the great hall's room; west of it is the courtyard. */
 export const GUILD_HALL_INTERIOR_LEFT = scene.interiorLeft;
-/** The repeating wood's tile in world units, tiled from the world's origin. */
-export const GUILD_HALL_FOREST_TILE = Object.freeze({ ...scene.forest });
-/** The part of the hall's world the camera keeps to: outdoors, or the great hall's side, by where the player is. */
+/**
+ * The part of the hall's world the camera keeps to, by where the player is: outdoors the courtyard's ground image
+ * (the camera zooms out no further than it, camera.ts), or the great hall's side.
+ */
 export function guildHallCameraRegion(x: number) {
   return x < GUILD_HALL_INTERIOR_LEFT
-    ? { left: 0, top: 0, right: GUILD_HALL_INTERIOR_LEFT, bottom: GUILD_HALL_WORLD.height }
+    ? { left: GUILD_HALL_GROUND.x, top: GUILD_HALL_GROUND.y, right: GUILD_HALL_GROUND.x + GUILD_HALL_GROUND.w, bottom: GUILD_HALL_GROUND.y + GUILD_HALL_GROUND.h }
     : { left: GUILD_HALL_INTERIOR_LEFT, top: 0, right: GUILD_HALL_WORLD.width, bottom: GUILD_HALL_WORLD.height };
 }
 
