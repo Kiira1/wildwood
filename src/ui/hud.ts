@@ -2,7 +2,7 @@ import { appendBagTileContents, appendOreTileContents, setTileGrade } from "./ba
 import { itemGradeRank } from "../../shared/item-tier";
 import { appendItemTierLabel } from "./item-tier-label";
 import { appendRefineBadge, withRefineStars } from "./refine-badge";
-import { oreKindsHeld, type OreCounts } from "../../shared/ore-bag";
+import { ORE_ORDER, oreKindsHeld, type OreCounts } from "../../shared/ore-bag";
 import { REFINE_ORES, type OreId } from "../../shared/refine";
 import { cosmeticInventoryStacks, bagInventoryStacks, isStarterLook, ITEM_DEFINITIONS, type EquipmentSlot } from "../game/inventory";
 import { itemArtMarkup } from "../game/item-presentation";
@@ -322,6 +322,7 @@ function oreTile(oreId: OreId, count: number, onInspect?: (oreId: OreId) => void
   button.dataset.oreId = oreId;
   button.setAttribute("aria-label", `${name}, ${count}${nocked ? ", Nocked" : ""}. Tap to inspect.`);
   appendOreTileContents(button, oreId, count);
+  if (count <= 0) button.classList.add("is-spent");
   if (nocked) {
     button.classList.add("is-nocked");
     const label = button.querySelector(".item-tier-label");
@@ -368,8 +369,11 @@ export function renderInventoryView(
       || itemDisplayName(a.itemId).localeCompare(itemDisplayName(b.itemId))
       || (a.copyId < b.copyId ? -1 : a.copyId > b.copyId ? 1 : 0));
   const slotCapacity = cosmetics ? Math.max(50, bagStacks.length) : actions.slotCapacity;
-  const oreStacks = cosmetics ? [] : oreKindsHeld(actions.ores ?? {});
-  elements.count.textContent = `${bagStacks.length + oreStacks.length} / ${slotCapacity} ${cosmetics ? "Cosmetics" : "Items"}`;
+  const heldOres = cosmetics ? [] : oreKindsHeld(actions.ores ?? {});
+  // A nocked arrow kind that ran out keeps its tile at 0, so the next kind does not slide into its place.
+  const spentNock = !cosmetics && actions.nockedArrow && !heldOres.includes(actions.nockedArrow) ? actions.nockedArrow : null;
+  const oreStacks = spentNock ? ORE_ORDER.filter(oreId => heldOres.includes(oreId) || oreId === spentNock) : heldOres;
+  elements.count.textContent = `${bagStacks.length + heldOres.length} / ${slotCapacity} ${cosmetics ? "Cosmetics" : "Items"}`;
   const wornRefine = actions.refineLevel && ((itemId: string) => actions.refineLevel!(itemId, 0n));
   renderEquipmentSlot(elements.equippedHead, inventory, "HEAD", "HEAD", mode, actions.upgradeLevel, actions.slotTier, wornRefine, actions.lookRefine);
   renderEquipmentSlot(elements.equippedChest, inventory, "CHEST", "ARMOR", mode, actions.upgradeLevel, actions.slotTier, wornRefine, actions.lookRefine);
