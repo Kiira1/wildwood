@@ -2,6 +2,7 @@ export const RELEASE_NOTES: Record<string, string[]> = {
   "0.917.38": [
     "The guild hall looks better inside and out: centred on its map and minimap, a richer great hall, and every upgrade level reworked",
     "Offline mining now also mines the Arcane Crystal rocks your Mining has unlocked",
+    "Trees, lamps and other objects no longer shift a pixel against the ground as the camera moves",
   ],
   "0.917.37": [
     "The quest tracker now shows only kills the server has counted or has yet to receive, so it matches the Quest Board",

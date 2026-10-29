@@ -367,6 +367,10 @@ export function createRenderController(options: {
   function render() {
     vignetteWanted = false;
     const drawsBefore = options.canvasDraws?.() ?? -1;
+    // The camera drawn from sits on a whole device pixel: every object then rounds the same way against the ground,
+    // so none shifts a pixel against it as the camera glides. Its own smooth position comes back after the frame.
+    const { dpr } = viewport(), cameraX = camera.x, cameraY = camera.y, scale = camera.zoom * dpr;
+    if (Number.isFinite(scale) && scale > 0) { camera.x = Math.round(cameraX * scale) / scale; camera.y = Math.round(cameraY * scale) / scale; }
     try {
       renderFrame();
       showVignette(vignetteWanted);
@@ -378,10 +382,13 @@ export function createRenderController(options: {
       // Assigning the backing width resets the existing context without changing layout.
       ctx.canvas.width = ctx.canvas.width;
       canvasHasPixels = true;
-      const { dpr } = viewport();
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
       ctx.imageSmoothingEnabled = false;
       throw error;
+    }
+    finally {
+      // A duel's camera is placed by its scene; anywhere else the glide carries on from where it was.
+      if (!isDueling() && !isReplayActive() && !duelResultHeld()) { camera.x = cameraX; camera.y = cameraY; }
     }
   }
   return { render, drawBootPickup };
