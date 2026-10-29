@@ -143,6 +143,8 @@ export function createSoulGroundRenderer(options: {
   interiors: () => HTMLImageElement | undefined;
   /** Draws the rooms instead of the village's (a guild hall's great hall), given the view's right and bottom edges. */
   drawRooms?: (viewRight: number, viewBottom: number) => void;
+  /** Draws under the ground image (a guild hall's wood beyond its courtyard, or the dark round its rooms). */
+  drawUnder?: (viewRight: number, viewBottom: number) => void;
   /** The world's decor: its flat props are drawn here, over the ground, in depth order among themselves. */
   decor: readonly WorldDecor[];
   drawProp: (prop: SoulPropDecor, target?: CanvasRenderingContext2D) => void;
@@ -227,6 +229,7 @@ export function createSoulGroundRenderer(options: {
       const { ctx, camera } = options;
       const view = options.viewport();
       const viewRight = camera.x + view.width / camera.zoom, viewBottom = camera.y + view.height / camera.zoom;
+      options.drawUnder?.(viewRight, viewBottom);
       const image = options.ground();
       const area = options.area ?? TOWN_VILLAGE_GROUND;
       const left = Math.max(area.x, camera.x), top = Math.max(area.y, camera.y);

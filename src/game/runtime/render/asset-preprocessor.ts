@@ -4,7 +4,7 @@ import { FOREST_ROAD_SOURCE } from "./forest-road";
 import { SOUL_ATLAS_SOURCE, SOUL_INTERIORS_SOURCE, TOWN_VILLAGE_GROUND_SOURCE, TOWN_VILLAGE_PROPS_SOURCE } from "../soul/soul-prop-renderer";
 import { isProceduralMap } from "../../../../shared/procedural-maps";
 import { isGuildHallMap } from "../../../../shared/guild-hall";
-import { GUILD_HALL_GROUND_SOURCE, GUILD_HALL_PROPS_SOURCE, GUILD_HALL_ROOMS_SOURCE } from "../../guild-hall";
+import { GUILD_HALL_FOREST_SOURCE, GUILD_HALL_GROUND_SOURCE, GUILD_HALL_PROPS_SOURCE, GUILD_HALL_ROOMS_SOURCE } from "../../guild-hall";
 import { GUILD_EMBLEM_SHEET_SOURCES } from "../../../ui/guild-emblems";
 import { DUEL_PLATFORM_ART_SOURCE, DUEL_SPACE_BACKGROUND_SOURCE } from "../../duel";
 import { requiredCanvasContext } from "../dom";
@@ -282,7 +282,8 @@ export function createAssetPreprocessor(onWorldAssetReady: () => void) {
   const soulShoreAsset = decodedSheet(SOUL_SHORE_SOURCE);
   const forestRoadAsset = createLazyImageAsset(FOREST_ROAD_SOURCE);
   const soulInteriorsAsset = decodedSheet(SOUL_INTERIORS_SOURCE);
-  const guildHallAssets = [GUILD_HALL_PROPS_SOURCE, GUILD_HALL_GROUND_SOURCE, GUILD_HALL_ROOMS_SOURCE, ...GUILD_EMBLEM_SHEET_SOURCES].map(source => createLazyImageAsset(source));
+  const guildHallAssets = [GUILD_HALL_PROPS_SOURCE, GUILD_HALL_GROUND_SOURCE, GUILD_HALL_ROOMS_SOURCE, GUILD_HALL_FOREST_SOURCE, ...GUILD_EMBLEM_SHEET_SOURCES]
+    .map(source => createLazyImageAsset(source));
   const assetGroups = {
     forestDecor: [treeAsset],
     orchardDecor: lavaAssets.slice(6),
@@ -350,7 +351,8 @@ export function createAssetPreprocessor(onWorldAssetReady: () => void) {
     guildHallProps: guildHallAssets[0].image,
     guildHallGround: guildHallAssets[1].image,
     guildHallRooms: guildHallAssets[2].image,
-    guildEmblemSheets: guildHallAssets.slice(3).map(asset => asset.image),
+    guildHallForest: guildHallAssets[3].image,
+    guildEmblemSheets: guildHallAssets.slice(4).map(asset => asset.image),
     soulWater: soulWaterAsset.image,
     soulShore: soulShoreAsset.image,
     forestRoad: forestRoadAsset.image,

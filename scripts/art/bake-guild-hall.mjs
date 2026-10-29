@@ -8,18 +8,19 @@
  * carpets, the hearth, the trophy shelf and wall, candelabras. The guild's own
  * crest goes on the banners (and the great hearth) at runtime.
  *
- * The courtyard is a clearing in a wood: the ring of trees round it are props a
- * player walks among, the wood behind them is baked into the ground image,
- * which covers the whole outdoors up to the dark round the great hall, so no
- * zoom shows bare ground or the void.
+ * The courtyard is a clearing in a wood, in the middle of the outdoors: the
+ * ring of trees round it are props a player walks among, the wood just behind
+ * them is baked into the ground image, and beyond that the runtime repeats a
+ * seamless tile of the same wood (hall-forest.webp) as far as any screen sees.
  *
  * Every piece that an upgrade adds says so (`when`: [part, min, max]), and the
- * runtime shows only what the guild has. Everything is in the hall map's own
- * coordinates.
+ * runtime shows only what the guild has. The courtyard is laid out about the
+ * hall at (800, 760) and placed in the world at OUT; the rooms are in the hall
+ * map's own coordinates.
  *
  *   node scripts/art/bake-guild-hall.mjs <extractedPackageDir> [--preview <outDir> <levels json>]
  *
- * Writes public/assets/wildstat/guild-hall/{hall-props,hall-ground,hall-rooms}.webp,
+ * Writes public/assets/wildstat/guild-hall/{hall-props,hall-ground,hall-forest,hall-rooms}.webp,
  * src/game/guild-hall-scene.json and shared/guild-hall-geometry.json.
  */
 import { mkdirSync, writeFileSync } from "node:fs";
@@ -47,13 +48,19 @@ const PATH = { left: 730, right: 870, top: 1340, bottom: 1960 };
  * stand on one centre, far enough east of the courtyard that no screen sees both. Everything east of
  * INTERIOR_LEFT is dark but the room.
  */
-const ROOM_CENTER = 5_300, INTERIOR_LEFT = 3_000;
-/** The ground image: the whole outdoors, up to the dark round the great hall. */
-const EXTERIOR = { left: 0, top: 0, right: INTERIOR_LEFT, bottom: 2_400 };
+const ROOM_CENTER = 5_000, INTERIOR_LEFT = 3_600;
+/** The hall map's height (shared/guild-hall.ts GUILD_HALL_WORLD): the outdoors is x 0..INTERIOR_LEFT, y 0..WORLD_H. */
+const WORLD_H = 4_000;
 /** Where players can be outside: trees baked into the ground stay clear of it, so none is ever drawn over a player. */
 const CLEARING = { left: 185, top: 385, right: 1_425, bottom: 2_030 };
-const ROOMS = [[960, 560], [1_300, 640], [1_700, 720]].map(([w, h]) => ({ x: ROOM_CENTER - w / 2, y: 700, w, h }));
+/** Where the courtyard's layout stands in the world: the clearing in the middle of the outdoors, the same wood all round. */
+const OUT = { x: INTERIOR_LEFT / 2 - HALL_X, y: Math.round((WORLD_H / 2 - (CLEARING.top + CLEARING.bottom) / 2) / 10) * 10 };
+/** The ground image: the clearing and the wood just round it. The forest tile fills everything beyond. */
+const NEAR = { left: CLEARING.left - 360, top: CLEARING.top - 360, right: CLEARING.right + 360, bottom: CLEARING.bottom + 360 };
+/** The repeating wood's tile, in world units. */
+const FOREST_TILE = { w: 1_440, h: 1_120 };
 const WALL_H = 190, CAP = 24, GAP = 96;
+const ROOMS = [[960, 560], [1_300, 640], [1_700, 720]].map(([w, h]) => ({ x: ROOM_CENTER - w / 2, y: Math.round(WORLD_H / 2 - (h - WALL_H) / 2), w, h }));
 const TABLE_SEATS = [6, 10, 14, 20];
 /** Furniture inside is drawn a little bigger than the village's: a great hall's table, not a cottage's. */
 const FURNITURE = .78;
@@ -119,11 +126,13 @@ async function mirrored(image) {
 
 // ---------------------------------------------------------------- the scene
 const props = [], solids = [], crests = [], seats = [], boards = [];
+/** Added to everything placed: OUT while the courtyard is laid out, nothing for the rooms. */
+const shift = { x: 0, y: 0 };
 const when = (...conditions) => conditions.length ? conditions : undefined;
 /** A piece standing at (x, y): its depth is its foot unless told otherwise. */
 function put(image, x, y, options = {}) {
   if (!image) return;
-  props.push({ f: addFrame(image), x: Math.round(x), y: Math.round(y), d: Math.round(options.depth ?? y), ...(options.ground ? { ground: true } : {}),
+  props.push({ f: addFrame(image), x: Math.round(x + shift.x), y: Math.round(y + shift.y), d: Math.round((options.depth ?? y) + shift.y), ...(options.ground ? { ground: true } : {}),
     ...(options.shadow ? { shadow: true } : {}), ...(options.when ? { when: options.when } : {}), ...(options.anim ? { anim: options.anim } : {}),
     ...(options.open !== undefined ? { open: options.open, door: 0 } : {}) });
 }
@@ -132,7 +141,8 @@ function putPrefab(composed, x, y, options = {}) {
   put(composed.body, x, y, options);
 }
 function block(left, top, right, bottom, options = {}) {
-  solids.push({ points: [left, top, right, top, right, bottom, left, bottom].map(Math.round), ...(options.when ? { when: options.when } : {}) });
+  solids.push({ points: [left + shift.x, top + shift.y, right + shift.x, top + shift.y, right + shift.x, bottom + shift.y, left + shift.x, bottom + shift.y].map(Math.round),
+    ...(options.when ? { when: options.when } : {}) });
 }
 /** A prefab standing at (x, y) that nobody walks through: its foot is solid, `half` wide each way. */
 function stand(composed, x, y, half, options = {}) {
@@ -168,7 +178,7 @@ async function wallBanner(w, cloth) {
   return { image: await svgImage(svg, (w + 24) / 2, cloth + 22), crest: { dx: 0, dy: -(cloth + 22) + 12 + cloth * .42, size: w * .74 } };
 }
 function crest(x, depthY, dy, size, options = {}) {
-  crests.push({ x: Math.round(x), d: Math.round(depthY), dy: Math.round(dy), size: Math.round(size), ...(options.when ? { when: options.when } : {}) });
+  crests.push({ x: Math.round(x + shift.x), d: Math.round(depthY + shift.y), dy: Math.round(dy), size: Math.round(size), ...(options.when ? { when: options.when } : {}) });
 }
 
 /** A fire's flickering frames, from a pack fire prefab's flame, at a scale: shared by every fire of that kind. */
@@ -185,6 +195,7 @@ async function flames(prefab, scale) {
 const frameOf = id => [...frames.values()].find(entry => entry.id === id);
 
 // ---------------------------------------------------------------- outside
+shift.x = OUT.x; shift.y = OUT.y;
 const hall = await compose("House_Width_Gray_3", { scale: 1, keep: item => !/^Door/.test(item.name) });
 const hallDoor = (await compose("House_Width_Gray_3", { scale: 1, keep: item => /^Door/.test(item.name) }));
 const doorItem = hallDoor.items[0].item;
@@ -193,7 +204,7 @@ putPrefab(hall, HALL_X, HALL_BASE);
 // The door is its own piece, to swing open: drawn at its place on the wall, a hair in front of it.
 const doorBody = hallDoor.body;
 const openBody = { buffer: openDoor.buffer, w: openDoor.width, h: openDoor.height, pivotX: -openDoor.left, pivotY: -openDoor.top };
-props.push({ f: addFrame(doorBody), x: HALL_X, y: HALL_BASE, d: HALL_BASE + 1, open: addFrame(openBody), door: 0 });
+props.push({ f: addFrame(doorBody), x: HALL_X + OUT.x, y: HALL_BASE + OUT.y, d: HALL_BASE + 1 + OUT.y, open: addFrame(openBody), door: 0 });
 const hallLeft = HALL_X - hall.body.pivotX, hallRight = hallLeft + hall.body.w;
 // The walls stand on their base: the front of the hall is solid but its door.
 const doorSill = HALL_BASE + 2;
@@ -219,7 +230,7 @@ const torch = await compose("Fire_Torch_01", { scale: .8, keep: item => !/^Fire_
 const flameAnim = await flames("Fire_Torch_01", .8);
 function putTorch(x, y, options = {}) {
   putPrefab(torch, x, y, options);
-  props.push({ f: flameAnim.frames[0], x, y, d: y + .5, anim: flameAnim, ...(options.when ? { when: options.when } : {}) });
+  props.push({ f: flameAnim.frames[0], x: x + OUT.x, y: y + OUT.y, d: y + OUT.y + .5, anim: flameAnim, ...(options.when ? { when: options.when } : {}) });
   block(x - 6, y - 5, x + 6, y + 4, options);
 }
 putTorch(HALL_X - 96, HALL_BASE + 26);
@@ -231,7 +242,7 @@ const brazier = await compose("Fire_Torch_04", { scale: .62, keep: item => !/^Fi
 const brazierFlames = await flames("Fire_Torch_04", .62);
 for (const [x, y] of [[HALL_X - 245, 925], [HALL_X + 245, 925], [HALL_X - 245, 1095], [HALL_X + 245, 1095]]) {
   stand(brazier, x, y, 20, { when: when(["lights", 2, 9]) });
-  props.push({ f: brazierFlames.frames[0], x, y, d: y + .5, anim: brazierFlames, when: when(["lights", 2, 9]) });
+  props.push({ f: brazierFlames.frames[0], x: x + OUT.x, y: y + OUT.y, d: y + OUT.y + .5, anim: brazierFlames, when: when(["lights", 2, 9]) });
 }
 
 // The wood round the yard: rows of trees beyond it, solid, so the yard is the place to be.
@@ -277,7 +288,7 @@ const fountainY = PLAZA.top + 330;
 putPrefab(fountain, HALL_X, fountainY, { when: when(["courtyard", 2, 9]) });
 {
   const r = 64, points = [];
-  for (let i = 0; i < 16; i++) points.push(HALL_X + Math.cos(i / 16 * Math.PI * 2) * r, fountainY - 22 + Math.sin(i / 16 * Math.PI * 2) * r * .55);
+  for (let i = 0; i < 16; i++) points.push(HALL_X + OUT.x + Math.cos(i / 16 * Math.PI * 2) * r, fountainY + OUT.y - 22 + Math.sin(i / 16 * Math.PI * 2) * r * .55);
   solids.push({ points: points.map(Math.round), when: when(["courtyard", 2, 9]) });
 }
 for (const [x, y] of [[HALL_X - 140, fountainY - 60], [HALL_X + 140, fountainY - 60]]) {
@@ -288,7 +299,7 @@ for (const [x, y] of [[HALL_X - 140, fountainY - 60], [HALL_X + 140, fountainY -
 // ---------------------------------------------------------------- the ground
 // The yard's ground, in the Town village's own colours (sampled from village-ground.webp): its field and lighter
 // patches of grass, one soft-edged dirt yard in front of the hall and down to the portal, pebbles laid at its heart;
-// the wood beyond, darker the deeper it goes, and night under the trees towards the great hall's dark.
+// the wood just round it, a little darker the deeper it goes, to the tone of the repeating wood beyond.
 const GRASS = "#54783c", GRASS_LIGHT = "#60844c", GRASS_DARK = "#4a6b35", DIRT = "#b89474", DIRT_MARK = "#a8845f", DIRT_EDGE = "#7c6044";
 const PEBBLE = ["#a9a59c", "#9d998f", "#b3afa5"], PEBBLE_EDGE = "#7c776e";
 const groundScale = .5;
@@ -298,9 +309,81 @@ const onYard = (x, y, margin = 0) => (x > 470 - margin && x < 1130 + margin && y
   || (x > 728 - margin && x < 872 + margin && y > 1150 && y < 1910)
   || ((x - HALL_X) ** 2 / (140 + margin) ** 2 + (y - (PATH.bottom - 40)) ** 2 / (82 + margin) ** 2 < 1);
 const inClearing = (x, y, margin = 0) => x > CLEARING.left - margin && x < CLEARING.right + margin && y > CLEARING.top - margin && y < CLEARING.bottom + margin;
+/** The pack's round trees the wood is made of, and the undergrowth along its edge. */
+const woodKinds = [];
+for (const name of ["Tree_08_Green", "Tree_10_Green", "Tree_07_Green", "Tree_15_Green", "Tree_06_Green", "Tree_09_Green", "Tree_04_Green", "Tree_19_Green"])
+  woodKinds.push(await compose(name, { scale: .6 }));
+const undergrowth = [];
+for (const name of ["Bush_01_Green", "Bush_03_Green", "Bush_05_Green"]) undergrowth.push(await compose(name, { scale: .6 }));
+/** The repeating wood's tone: the ground's own wood darkens towards it. */
+const WOOD_TONE = .84;
+const toneOf = async (image, k) => k === 1 ? image : { ...image, buffer: await sharp(image.buffer).ensureAlpha().linear([k, k, k * 1.02, 1], [0, 0, 0, 0]).png().toBuffer() };
+/** Overlays at their pivots in a W by H picture whose top left is (originX, originY), cropped to it. */
+async function place(list, W, H, originX, originY) {
+  const out = [];
+  for (const { image, x, y } of list) {
+    if (!image) continue;
+    const left = Math.round(x - originX - image.pivotX), top = Math.round(y - originY - image.pivotY);
+    const l = Math.max(0, left), t = Math.max(0, top), r = Math.min(W, left + image.w), b = Math.min(H, top + image.h);
+    if (l >= r || t >= b) continue;
+    const input = l === left && t === top && r === left + image.w && b === top + image.h ? image.buffer
+      : await sharp(image.buffer).extract({ left: l - left, top: t - top, width: r - l, height: b - t }).png().toBuffer();
+    out.push({ input, left: l, top: t });
+  }
+  return out;
+}
+/** Shadows overlap as one, at the pack's strength, as the runtime's shadow layer draws them. */
+async function shadowLayer(list, W, H, originX, originY) {
+  return sharp(await sharp({ create: { width: W, height: H, channels: 4, background: { r: 0, g: 0, b: 0, alpha: 0 } } })
+    .composite(await place(list, W, H, originX, originY)).png().toBuffer())
+    .composite([{ input: Buffer.from([0, 0, 0, 56]), raw: { width: 1, height: 1, channels: 4 }, tile: true, blend: "dest-in" }]).png().toBuffer();
+}
+const groundDir = join(root, "public/assets/wildstat/guild-hall");
+mkdirSync(groundDir, { recursive: true });
+
+// The repeating wood: rows of trees on a tile that wraps both ways, the tiling anchored at the world's origin. Drawn
+// in order of their feet across the tiling, so the tile's edges meet seamlessly; the ground image draws the same
+// trees where it lies, so it meets the tiling seamlessly too.
+const forestKinds = [];
+for (const kind of woodKinds) forestKinds.push({ body: await toneOf(kind.body, WOOD_TONE), shadow: kind.shadow });
+const forestTrees = [];
 {
-  const W = EXTERIOR.right - EXTERIOR.left, H = EXTERIOR.bottom - EXTERIOR.top;
-  const X = x => x - EXTERIOR.left, Y = y => y - EXTERIOR.top;
+  const { w: W, h: H } = FOREST_TILE;
+  let state = 53;
+  const next = () => { state = (state * 1_103_515_245 + 12_345) >>> 0; return state / 4_294_967_296; };
+  const rows = Math.round(H / 56), perRow = Math.round(W / 106);
+  for (let row = 0; row < rows; row++) for (let i = 0; i < perRow; i++) {
+    const kind = forestKinds[Math.floor(next() * forestKinds.length)];
+    forestTrees.push({ kind, x: (i + (row % 2) * .5 + (next() - .5) * .35) * W / perRow, y: (row + (next() - .5) * .3) * H / rows });
+  }
+}
+/** Every tree of the tiled wood that reaches into a world rectangle, in drawing order. */
+function forestIn(left, top, right, bottom) {
+  const found = [];
+  for (const tree of forestTrees) {
+    const { body } = tree.kind;
+    for (let x = tree.x + Math.floor((left - tree.x - body.w) / FOREST_TILE.w) * FOREST_TILE.w; x - body.pivotX < right; x += FOREST_TILE.w) {
+      if (x - body.pivotX + body.w <= left) continue;
+      for (let y = tree.y + Math.floor((top - tree.y - body.h) / FOREST_TILE.h) * FOREST_TILE.h; y - body.pivotY < bottom; y += FOREST_TILE.h)
+        if (y - body.pivotY + body.h > top) found.push({ kind: tree.kind, x, y });
+    }
+  }
+  return found.sort((a, b) => a.y - b.y || a.x - b.x);
+}
+{
+  const { w: W, h: H } = FOREST_TILE;
+  const trees = forestIn(0, 0, W, H);
+  const floor = await sharp({ create: { width: W, height: H, channels: 4, background: GRASS_DARK } }).png().toBuffer();
+  const tile = await sharp(floor).composite([
+    { input: await shadowLayer(trees.map(tree => ({ image: tree.kind.shadow, x: tree.x, y: tree.y })), W, H, 0, 0), left: 0, top: 0 },
+    ...await place(trees.map(tree => ({ image: tree.kind.body, x: tree.x, y: tree.y })), W, H, 0, 0),
+  ]).png().toBuffer();
+  await sharp(tile).resize(Math.round(W * groundScale), Math.round(H * groundScale)).webp({ quality: 78, effort: 6 }).toFile(join(groundDir, "hall-forest.webp"));
+}
+
+{
+  const W = NEAR.right - NEAR.left, H = NEAR.bottom - NEAR.top;
+  const X = x => x - NEAR.left, Y = y => y - NEAR.top;
   let state = 29;
   const next = () => { state = (state * 1_103_515_245 + 12_345) >>> 0; return state / 4_294_967_296; };
   const yard = [
@@ -338,15 +421,14 @@ const inClearing = (x, y, margin = 0) => x > CLEARING.left - margin && x < CLEAR
   // A line of them down the path, and round the portal's pad.
   for (let y = 1120; y < PATH.bottom - 100; y += 16) pebble(HALL_X + next() * 30 - 15, y + next() * 6, 4 + next() * 3);
   for (let i = 0; i < 40; i++) { const angle = i / 40 * Math.PI * 2; pebble(HALL_X + Math.cos(angle) * 112, PATH.bottom - 40 + Math.sin(angle) * 62, 4 + next() * 3); }
-  // The wood's floor: darker grass everywhere outside the clearing, its edge ragged like the yard's.
-  const woodFloorPath = `M0 0H${W}V${H}H0Z M${X(CLEARING.left - 40)} ${Y(CLEARING.top + 120)}V${Y(CLEARING.bottom - 60)}Q${X(CLEARING.left - 40)} ${Y(CLEARING.bottom + 60)} ${X(CLEARING.left + 120)} ${Y(CLEARING.bottom + 60)}H${X(CLEARING.right - 120)}Q${X(CLEARING.right + 40)} ${Y(CLEARING.bottom + 60)} ${X(CLEARING.right + 40)} ${Y(CLEARING.bottom - 60)}V${Y(CLEARING.top + 120)}Q${X(CLEARING.right + 40)} ${Y(CLEARING.top - 20)} ${X(CLEARING.right - 120)} ${Y(CLEARING.top - 20)}H${X(CLEARING.left + 120)}Q${X(CLEARING.left - 40)} ${Y(CLEARING.top - 20)} ${X(CLEARING.left - 40)} ${Y(CLEARING.top + 120)}Z`;
+  // The clearing's grass, its edge ragged like the yard's; outside it the wood's own floor shows through.
+  const clearingPath = `M${X(CLEARING.left - 40)} ${Y(CLEARING.top + 120)}V${Y(CLEARING.bottom - 60)}Q${X(CLEARING.left - 40)} ${Y(CLEARING.bottom + 60)} ${X(CLEARING.left + 120)} ${Y(CLEARING.bottom + 60)}H${X(CLEARING.right - 120)}Q${X(CLEARING.right + 40)} ${Y(CLEARING.bottom + 60)} ${X(CLEARING.right + 40)} ${Y(CLEARING.bottom - 60)}V${Y(CLEARING.top + 120)}Q${X(CLEARING.right + 40)} ${Y(CLEARING.top - 20)} ${X(CLEARING.right - 120)} ${Y(CLEARING.top - 20)}H${X(CLEARING.left + 120)}Q${X(CLEARING.left - 40)} ${Y(CLEARING.top - 20)} ${X(CLEARING.left - 40)} ${Y(CLEARING.top + 120)}Z`;
   const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}">
     <defs><filter id="fringe" x="-5%" y="-5%" width="110%" height="110%"><feTurbulence type="fractalNoise" baseFrequency=".35" numOctaves="1" seed="4"/>
       <feDisplacementMap in="SourceGraphic" scale="5" xChannelSelector="R" yChannelSelector="G"/></filter>
       <filter id="ragged" x="-2%" y="-2%" width="104%" height="104%"><feTurbulence type="fractalNoise" baseFrequency=".02" numOctaves="2" seed="7"/>
       <feDisplacementMap in="SourceGraphic" scale="70" xChannelSelector="R" yChannelSelector="G"/></filter></defs>
-    <rect width="${W}" height="${H}" fill="${GRASS}"/>
-    <path d="${woodFloorPath}" fill="${GRASS_DARK}" fill-rule="evenodd" filter="url(#ragged)"/>
+    <rect width="${W}" height="${H}" fill="${GRASS_DARK}"/><path d="${clearingPath}" fill="${GRASS}" filter="url(#ragged)"/>
     <g fill="${GRASS_LIGHT}" filter="url(#fringe)">${patches.join("")}</g>
     <g filter="url(#fringe)"><g fill="${DIRT_EDGE}" stroke="${DIRT_EDGE}" stroke-width="10">${yard}</g><g fill="${DIRT}">${yard}</g></g>
     ${marks.join("")}${pebbles.join("")}</svg>`;
@@ -380,34 +462,17 @@ const inClearing = (x, y, margin = 0) => x > CLEARING.left - margin && x < CLEAR
     shadows.push({ image: stone.shadow, x, y }); lay(stone.body, x, y);
   }
 
-  // The wood itself: row on row of the pack's round trees, darker the deeper they stand.
-  const woodKinds = [];
-  for (const name of ["Tree_08_Green", "Tree_10_Green", "Tree_07_Green", "Tree_15_Green", "Tree_06_Green", "Tree_09_Green", "Tree_04_Green", "Tree_19_Green"])
-    woodKinds.push(await compose(name, { scale: .6 }));
-  const TONES = [1, .9, .8, .7, .6];
-  const toned = [];
-  for (const kind of woodKinds) {
-    const list = [];
-    for (const k of TONES) list.push(k === 1 ? kind.body : { ...kind.body, buffer: await sharp(kind.body.buffer).ensureAlpha().linear([k, k, k * 1.02, 1], [0, 0, 0, 0]).png().toBuffer() });
-    toned.push(list);
-  }
-  const undergrowth = [];
-  for (const name of ["Bush_01_Green", "Bush_03_Green", "Bush_05_Green"]) undergrowth.push(await compose(name, { scale: .6 }));
+  // The wood round the clearing: the tiled wood's own trees, less those that would stand over the clearing.
   const standing = [];
+  const inside = (x, y, image) => X(x) - image.pivotX >= 0 && X(x) - image.pivotX + image.w <= W && Y(y) - image.pivotY >= 0 && Y(y) - image.pivotY + image.h <= H;
   /** A tree there is never drawn over someone in the clearing: behind the north edge, or wholly beside or below it. */
   const clear = (x, y, image) => {
     const half = Math.max(image.pivotX, image.w - image.pivotX) * .85, height = image.pivotY;
     return y <= CLEARING.top || x - half >= CLEARING.right || x + half <= CLEARING.left || y - height >= CLEARING.bottom;
   };
-  for (let y = 30, row = 0; y < H + 280; y += 56, row++) {
-    for (let x = -60 + (row % 2) * 52 + next() * 30; x < W + 120; x += 92 + next() * 34) {
-      const fx = x + (next() - .5) * 24, fy = y + (next() - .5) * 18;
-      const index = Math.floor(next() * woodKinds.length), kind = woodKinds[index];
-      if (!clear(fx, fy, kind.body)) continue;
-      const depth = Math.max(CLEARING.left - fx, fx - CLEARING.right, CLEARING.top - fy, fy - CLEARING.bottom, 0);
-      const tone = Math.min(TONES.length - 1, Math.floor(depth / 260 + next() * .8));
-      standing.push({ image: toned[index][tone], shadow: kind.shadow, x: fx, y: fy });
-    }
+  for (const tree of forestIn(NEAR.left + OUT.x, NEAR.top + OUT.y, NEAR.right + OUT.x, NEAR.bottom + OUT.y)) {
+    const x = tree.x - OUT.x, y = tree.y - OUT.y;
+    if (clear(x, y, tree.kind.body)) standing.push({ image: tree.kind.body, shadow: tree.kind.shadow, x, y });
   }
   // Undergrowth along the wood's edge, behind the ring of trees.
   for (let i = 0; i < 90; i++) {
@@ -415,41 +480,21 @@ const inClearing = (x, y, margin = 0) => x > CLEARING.left - margin && x < CLEAR
     const x = side === 0 ? CLEARING.left - 60 - next() * 60 : side === 1 ? CLEARING.right + 70 + next() * 60 : CLEARING.left + along * (CLEARING.right - CLEARING.left);
     const y = side === 2 ? CLEARING.top - 10 - next() * 40 : side === 3 ? CLEARING.bottom + 60 + next() * 50 : CLEARING.top + along * (CLEARING.bottom - CLEARING.top);
     const bush = undergrowth[Math.floor(next() * undergrowth.length)];
-    if (!clear(x, y, bush.body) && !(side === 3 && y - bush.body.pivotY >= CLEARING.bottom - 40)) continue;
+    if ((!clear(x, y, bush.body) && !(side === 3 && y - bush.body.pivotY >= CLEARING.bottom - 40)) || !inside(x, y, bush.body)) continue;
     standing.push({ image: bush.body, shadow: bush.shadow, x, y });
     if (next() < .4) lay(mushrooms[Math.floor(next() * mushrooms.length)], x + (next() - .5) * 60, y + 10);
   }
   for (const item of standing) shadows.push({ image: item.shadow, x: item.x, y: item.y });
+  // Stable, so the wood's trees keep the tiling's own order.
   standing.sort((a, b) => a.y - b.y);
 
-  /** Overlays at their pivots, cropped to the picture (sharp will not place one hanging off its edge). */
-  async function place(list) {
-    const out = [];
-    for (const { image, x, y } of list) {
-      if (!image) continue;
-      const left = Math.round(X(x) - image.pivotX), top = Math.round(Y(y) - image.pivotY);
-      const l = Math.max(0, left), t = Math.max(0, top), r = Math.min(W, left + image.w), b = Math.min(H, top + image.h);
-      if (l >= r || t >= b) continue;
-      const input = l === left && t === top && r === left + image.w && b === top + image.h ? image.buffer
-        : await sharp(image.buffer).extract({ left: l - left, top: t - top, width: r - l, height: b - t }).png().toBuffer();
-      out.push({ input, left: l, top: t });
-    }
-    return out;
-  }
-  // Shadows overlap as one, at the pack's strength, as the runtime's shadow layer draws them.
-  const shadowLayer = await sharp(await sharp({ create: { width: W, height: H, channels: 4, background: { r: 0, g: 0, b: 0, alpha: 0 } } })
-    .composite(await place(shadows)).png().toBuffer())
-    .composite([{ input: Buffer.from([0, 0, 0, 56]), raw: { width: 1, height: 1, channels: 4 }, tile: true, blend: "dest-in" }]).png().toBuffer();
-  const night = Buffer.from(`<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}"><defs><linearGradient id="n" x1="0" x2="1" y1="0" y2="0">
-    <stop offset="${(2_450 / W).toFixed(3)}" stop-color="#000" stop-opacity="0"/><stop offset="${(2_750 / W).toFixed(3)}" stop-color="#000" stop-opacity=".45"/>
-    <stop offset="${(2_920 / W).toFixed(3)}" stop-color="#000" stop-opacity=".88"/><stop offset="1" stop-color="#000"/></linearGradient></defs>
-    <rect width="${W}" height="${H}" fill="url(#n)"/></svg>`);
-  const full = await sharp(base).composite([...await place(lying), { input: shadowLayer, left: 0, top: 0 }, ...await place(standing), { input: night, left: 0, top: 0 }]).png().toBuffer();
-  mkdirSync(join(root, "public/assets/wildstat/guild-hall"), { recursive: true });
-  await sharp(full).resize(Math.round(W * groundScale), Math.round(H * groundScale)).webp({ quality: 78, effort: 6 }).toFile(join(root, "public/assets/wildstat/guild-hall/hall-ground.webp"));
+  const full = await sharp(base).composite([...await place(lying, W, H, NEAR.left, NEAR.top), { input: await shadowLayer(shadows, W, H, NEAR.left, NEAR.top), left: 0, top: 0 },
+    ...await place(standing, W, H, NEAR.left, NEAR.top)]).png().toBuffer();
+  await sharp(full).resize(Math.round(W * groundScale), Math.round(H * groundScale)).webp({ quality: 78, alphaQuality: 90, effort: 6 }).toFile(join(groundDir, "hall-ground.webp"));
 }
 
 // ---------------------------------------------------------------- inside
+shift.x = 0; shift.y = 0;
 const wallSprite = await spritePixels(packSprite("Module_Width_01"));
 const wallMeta = await sharp(wallSprite).metadata();
 const wallW = Math.round(wallMeta.width * WALL_H / wallMeta.height);
@@ -792,7 +837,13 @@ for (const [size, room] of ROOMS.entries()) {
   block(ox + w / 2 - GAP / 2 - 10, oy + h + 30, ox + w / 2 + GAP / 2 + 10, oy + h + CAP + far, { when: inRoom });
   geometry.rooms.push({ floor: [ox, oy, w, h], exit: { x: ox + w / 2, y: oy + h, half: GAP / 2 } });
 }
-geometry.door = { x: HALL_X, y: doorSill, half: doorHalf, enter: HALL_BASE + 6 };
+geometry.door = { x: HALL_X + OUT.x, y: doorSill + OUT.y, half: doorHalf, enter: HALL_BASE + 6 + OUT.y };
+// The yard feet can reach, inside the wood's solids: a saved position outside it and every room is from an older layout.
+geometry.yard = [200 + OUT.x, 420 + OUT.y, 1_400 + OUT.x, 2_040 + OUT.y];
+// Where a member arrives, at the foot of the yard, and the portal home on the round pad below it.
+geometry.arrival = { x: HALL_X + OUT.x, y: 1_760 + OUT.y };
+geometry.homePad = { x: HALL_X + OUT.x, y: PATH.bottom + OUT.y };
+geometry.interiorLeft = INTERIOR_LEFT;
 
 // ---------------------------------------------------------------- write
 const PADDING = 2;
@@ -808,15 +859,16 @@ const frameList = [...frames.values()].sort((a, b) => b.h - a.h);
 const sheetH = pack(frameList, 2048);
 await sharp({ create: { width: 2048, height: sheetH, channels: 4, background: { r: 0, g: 0, b: 0, alpha: 0 } } })
   .composite(frameList.map(frame => ({ input: frame.buffer, left: frame.x, top: frame.y }))).webp({ quality: 92, alphaQuality: 100, effort: 6 })
-  .toFile(join(root, "public/assets/wildstat/guild-hall/hall-props.webp"));
+  .toFile(join(groundDir, "hall-props.webp"));
 const roomList = [...roomSheets].sort((a, b) => b.h - a.h);
 const roomsH = pack(roomList, 2048);
 await sharp({ create: { width: 2048, height: roomsH, channels: 4, background: { r: 0, g: 0, b: 0, alpha: 0 } } })
   .composite(roomList.map(room => ({ input: room.buffer, left: room.x, top: room.y }))).webp({ quality: 88, alphaQuality: 90, effort: 6 })
-  .toFile(join(root, "public/assets/wildstat/guild-hall/hall-rooms.webp"));
+  .toFile(join(groundDir, "hall-rooms.webp"));
 const scene = {
   frames: Object.fromEntries(frameList.sort((a, b) => a.id - b.id).map(f => [f.id, [f.x, f.y, f.w, f.h, Math.round(f.pivotX), Math.round(f.pivotY)]])),
-  ground: { x: EXTERIOR.left, y: EXTERIOR.top, w: EXTERIOR.right - EXTERIOR.left, h: EXTERIOR.bottom - EXTERIOR.top },
+  ground: { x: NEAR.left + OUT.x, y: NEAR.top + OUT.y, w: NEAR.right - NEAR.left, h: NEAR.bottom - NEAR.top },
+  forest: { w: FOREST_TILE.w, h: FOREST_TILE.h },
   interiorLeft: INTERIOR_LEFT,
   props, crests, seats, boards, solids,
   rooms: roomSheets.map(room => ({ size: room.size, sheet: [room.x, room.y, room.w, room.h], at: room.at })),
@@ -829,42 +881,59 @@ console.log(`${frames.size} frames (sheet 2048x${sheetH}), ${props.length} props
 if (previewAt >= 0) {
   const outDir = args[previewAt + 1], levels = JSON.parse(args[previewAt + 2] ?? "{}");
   const shown = item => !item.when || item.when.every(([part, min, max]) => (levels[part] ?? 0) >= min && (levels[part] ?? 0) <= max);
-  const sheet = await sharp(join(root, "public/assets/wildstat/guild-hall/hall-props.webp")).png().toBuffer();
+  const sheet = await sharp(join(groundDir, "hall-props.webp")).png().toBuffer();
   const emblems = await sharp(join(root, "public/assets/wildstat/guild-emblems-v4.webp")).extract({ left: 9, top: 10, width: 300, height: 300 }).png().toBuffer();
-  async function render(region, base, file) {
-    const layers = [];
-    if (base) layers.push({ input: base, left: 0, top: 0 });
-    const items = [...props.filter(shown).map(p => ({ ...p, kind: "prop" })), ...crests.filter(shown).map(c => ({ ...c, kind: "crest", y: c.d }))]
+  const ground = await sharp(join(groundDir, "hall-ground.webp")).resize(scene.ground.w, scene.ground.h).png().toBuffer();
+  const tile = await sharp(join(groundDir, "hall-forest.webp")).resize(FOREST_TILE.w, FOREST_TILE.h).png().toBuffer();
+  const rooms = await sharp(join(groundDir, "hall-rooms.webp")).png().toBuffer();
+  const room = scene.rooms[levels.size ?? 0];
+  const pin = (buffer, w, h, x, y) => ({ image: { buffer, w, h, pivotX: 0, pivotY: 0 }, x, y });
+  /** Everything in a world rectangle as the runtime draws it: outdoors the wood and the ground, indoors the dark and the room. */
+  async function render(region, file, scale = 1) {
+    const under = [], indoorsView = region.left + region.w / 2 >= INTERIOR_LEFT;
+    // Only the player's side of the door is drawn: the runtime keeps the other side's decor out.
+    const side = item => (item.x >= INTERIOR_LEFT) === indoorsView;
+    if (!indoorsView) {
+      for (let ty = Math.floor(region.top / FOREST_TILE.h) * FOREST_TILE.h; ty < region.top + region.h; ty += FOREST_TILE.h)
+        for (let tx = Math.floor(region.left / FOREST_TILE.w) * FOREST_TILE.w; tx < region.left + region.w; tx += FOREST_TILE.w) under.push(pin(tile, FOREST_TILE.w, FOREST_TILE.h, tx, ty));
+      under.push(pin(ground, scene.ground.w, scene.ground.h, scene.ground.x, scene.ground.y));
+    } else {
+      const [sx, sy, w, h] = room.sheet;
+      under.push(pin(await sharp(rooms).extract({ left: sx, top: sy, width: w, height: h }).png().toBuffer(), w, h, room.at[0], room.at[1]));
+    }
+    const items = [...props.filter(p => shown(p) && side(p)).map(p => ({ ...p, kind: "prop" })), ...crests.filter(c => shown(c) && side(c)).map(c => ({ ...c, kind: "crest", y: c.d }))]
       .sort((a, b) => (a.shadow ? -1e9 : 0) - (b.shadow ? -1e9 : 0) || (a.ground ? -1e8 : 0) - (b.ground ? -1e8 : 0) || a.d - b.d);
+    const list = [];
     for (const item of items) {
       if (item.kind === "crest") {
-        const input = await sharp(emblems).resize(item.size, item.size).png().toBuffer();
-        const left = Math.round(item.x - item.size / 2 - region.left), top = Math.round(item.d + item.dy - item.size / 2 - region.top);
-        if (left >= 0 && top >= 0 && left + item.size <= region.w && top + item.size <= region.h) layers.push({ input, left, top });
+        list.push(pin(await sharp(emblems).resize(item.size, item.size).png().toBuffer(), item.size, item.size, item.x - item.size / 2, item.d + item.dy - item.size / 2));
         continue;
       }
       const [x, y, w, h, ax, ay] = scene.frames[item.f];
+      if (item.x - ax > region.left + region.w || item.x - ax + w < region.left || item.y - ay > region.top + region.h || item.y - ay + h < region.top) continue;
       let input = await sharp(sheet).extract({ left: x, top: y, width: w, height: h }).png().toBuffer();
       if (item.shadow) input = await sharp(input).ensureAlpha().composite([{ input: Buffer.from([0, 0, 0, 56]), raw: { width: 1, height: 1, channels: 4 }, tile: true, blend: "dest-in" }]).png().toBuffer();
-      const left = Math.round(item.x - ax - region.left), top = Math.round(item.y - ay - region.top);
-      if (left < 0 || top < 0 || left + w > region.w || top + h > region.h) continue;
-      layers.push({ input, left, top });
+      list.push(pin(input, w, h, item.x - ax, item.y - ay));
     }
-    await sharp({ create: { width: region.w, height: region.h, channels: 4, background: "#000" } }).composite(layers).png().toFile(file);
+    const layers = [...await place(under, region.w, region.h, region.left, region.top), ...await place(list, region.w, region.h, region.left, region.top)];
+    const picture = await sharp({ create: { width: region.w, height: region.h, channels: 4, background: "#000" } }).composite(layers).png().toBuffer();
+    await sharp(picture).resize(Math.round(region.w * scale)).png().toFile(file);
+  }
+  /** The camera's view, w by h world units, of a player at (x, y): kept to their side of the door, centred when wider. */
+  function view(x, y, w, h) {
+    const indoorsHere = x >= INTERIOR_LEFT;
+    const along = (p, size, lo, hi) => size >= hi - lo ? lo + (hi - lo - size) / 2 : Math.max(lo, Math.min(hi - size, p - size / 2));
+    return { left: Math.round(along(x, w, indoorsHere ? INTERIOR_LEFT : 0, indoorsHere ? 6_400 : INTERIOR_LEFT)), top: Math.round(along(y, h, 0, WORLD_H)), w, h };
   }
   mkdirSync(outDir, { recursive: true });
-  const ground = await sharp(join(root, "public/assets/wildstat/guild-hall/hall-ground.webp")).resize(EXTERIOR.right - EXTERIOR.left, EXTERIOR.bottom - EXTERIOR.top).png().toBuffer();
-  const yard = { left: 0, top: 200, w: 1_600, h: 2_000 };
-  await render(yard, await sharp(ground).extract({ left: yard.left - EXTERIOR.left, top: yard.top - EXTERIOR.top, width: yard.w, height: yard.h }).png().toBuffer(), join(outDir, "outside.png"));
-  // The whole outdoors as the widest zoom out sees it: the map's grass behind the ground, the dark from INTERIOR_LEFT.
-  const wide = { left: 0, top: 0, w: INTERIOR_LEFT + 400, h: 2_400 };
-  const wideBase = await sharp({ create: { width: wide.w, height: wide.h, channels: 4, background: GRASS } })
-    .composite([{ input: ground, left: EXTERIOR.left, top: EXTERIOR.top },
-      { input: { create: { width: wide.w - INTERIOR_LEFT, height: wide.h, channels: 4, background: "#000" } }, left: INTERIOR_LEFT, top: 0 }]).png().toBuffer();
-  await render(wide, wideBase, join(outDir, "wide-full.png"));
-  await sharp(join(outDir, "wide-full.png")).resize(Math.round(wide.w / 2)).png().toFile(join(outDir, "wide.png"));
-  const room = roomSheets[levels.size ?? 0];
-  const rooms = await sharp(join(root, "public/assets/wildstat/guild-hall/hall-rooms.webp")).extract({ left: room.x, top: room.y, width: room.w, height: room.h }).png().toBuffer();
-  await render({ left: room.at[0], top: room.at[1], w: room.w, h: room.h }, rooms, join(outDir, "inside.png"));
-  console.log(`preview: ${outDir}/outside.png, wide.png, inside.png`);
+  await render({ left: OUT.x, top: OUT.y + 200, w: 1_600, h: 2_000 }, join(outDir, "outside.png"));
+  await render({ left: 0, top: 0, w: INTERIOR_LEFT, h: WORLD_H }, join(outDir, "outdoors.png"), .4);
+  // The widest zoom out (50%) on 16:9, 21:9 and 32:9 windows and a short one at the camera's floor, at the door and the yard's east edge.
+  for (const [name, w, h] of [["16x9", 2_480, 1_395], ["21x9", 3_307, 1_395], ["32x9", 4_960, 1_395], ["short", 5_600, 1_200]]) {
+    await render(view(geometry.door.x, geometry.door.y - 150, w, h), join(outDir, `view-${name}-door.png`), .4);
+    await render(view(1_390 + OUT.x, 1_800 + OUT.y, w, h), join(outDir, `view-${name}-east.png`), .4);
+  }
+  await render({ left: room.at[0], top: room.at[1], w: room.sheet[2], h: room.sheet[3] }, join(outDir, "inside.png"));
+  await render(view(room.at[0] + room.sheet[2] / 2, room.at[1] + room.sheet[3] / 2, 3_307, 1_395), join(outDir, "view-21x9-inside.png"), .4);
+  console.log(`preview: ${outDir}`);
 }
