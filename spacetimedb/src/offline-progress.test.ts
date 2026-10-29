@@ -98,6 +98,8 @@ it("splits time away evenly over every vein and stand the skills open, and none 
   expect(mined.copper_ore).toBeGreaterThan(0);
   expect(mined.iron_ore).toBeGreaterThan(0);
   expect(mined.adamant_ore).toBeUndefined();
+  // Mining 60 opens the Copper Hills' crystal rocks (25) but not the iron vein's (75).
+  expect(mined.arcane_crystal).toBeGreaterThan(0);
   expect(Object.keys(chopped)).toEqual(["pine_log"]);
 });
 
