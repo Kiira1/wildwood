@@ -1,4 +1,7 @@
 export const RELEASE_NOTES: Record<string, string[]> = {
+  "0.917.38": [
+    "The guild hall looks better inside and out, with a forest round the courtyard and every upgrade level reworked",
+  ],
   "0.917.37": [
     "The quest tracker now shows only kills the server has counted or has yet to receive, so it matches the Quest Board",
   ],
@@ -4067,6 +4070,7 @@ const RELEASE_DATES: Record<string, string> = {
 };
 
 export const RELEASE_DAYS: Record<string, string> = {
+  "0.917.38": "2026-10-29",
   "0.917.37": "2026-10-29",
   "0.917.36": "2026-10-29",
   "0.917.35": "2026-10-29",
