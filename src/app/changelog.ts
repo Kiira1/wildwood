@@ -1,4 +1,7 @@
 export const RELEASE_NOTES: Record<string, string[]> = {
+  "0.917.37": [
+    "The quest tracker now shows only kills the server has counted or has yet to receive, so it matches the Quest Board",
+  ],
   "0.917.36": [
     "Guild Hall upgrades now give every member a small bonus: gold, Weapon Mastery, offline time, boss gold, offline gathering speed and extra ore or logs",
     "Bigger halls also add more of the guild's quest points to the hall fund",
@@ -4064,6 +4067,7 @@ const RELEASE_DATES: Record<string, string> = {
 };
 
 export const RELEASE_DAYS: Record<string, string> = {
+  "0.917.37": "2026-10-29",
   "0.917.36": "2026-10-29",
   "0.917.35": "2026-10-29",
   "0.917.34": "2026-10-29",

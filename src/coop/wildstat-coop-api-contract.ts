@@ -248,7 +248,7 @@ type ExpectedApiKey =
   | "respecPrestigePerks"
   | "freeRespecAvailable"
   | "useFreePrestigeRespec"
-  | "weeklyQuests"
+  | "weeklyQuests" | "pendingQuestKills"
   | "guildQuestRanking"
   | "refreshWeeklyQuests"
   | "questBoardSeen"
